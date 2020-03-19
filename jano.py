@@ -9,12 +9,13 @@ import pandas as pd
 
 class Jano:
     def __init__(self, dataframe, logs=False):
-        """
-        Jano Primary Class.
+        """t
+        Class Jano: A pandas dataframe time split iterator
+        for train&test time-dependant predictive models.
 
 
         :param dataframe: A defined pandas dataframe.
-        :param logs: bool flag defined logs behaviour..
+        :param logs: bool flag defined logs behaviour.
         """
 
         if self.__check_object_param(dataframe):
@@ -30,8 +31,7 @@ class Jano:
     def move(date, days):
         """
             A staticmethod to go add days given a datetime.
-            Example: move(monday, right, 1) -> Tuesday.
-
+            Example: move(monday, 1) -> Tuesday.
         """
 
         if not isinstance(date, datetime):
@@ -79,7 +79,8 @@ class Jano:
 
     def __check_attrib(self, attrib):
         """
-            Checks that the defined attributes belong to the defined dataframe.
+            Checks that the defined attributes belong to the
+            defined dataframe.
 
             :param attrib:
             :return:
@@ -169,7 +170,8 @@ class Jano:
 
     def __get_train_test_iterator(self, begin, iterations, shift):
         """
-            Iterator method used to move dates along the dataframe splitting time with a defined mask.
+            Iterator method used to move dates along the dataframe
+            splitting time with a defined mask.
 
             :param begin: the starting date.
             :param iterations:
@@ -239,8 +241,8 @@ class Jano:
 
     def __check_splitting_limit(self):
         """
-         Warns if during any time split Jano reaches the limit of the defined dataframe.
-
+         Warns if during any time split Jano reaches the limit of the
+         defined dataframe.
         """
 
         if self.test_end_date > self.dataframe_max_day:

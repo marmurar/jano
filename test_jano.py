@@ -1,12 +1,13 @@
 # !/usr/bin/python
 # -*- coding: utf-8 -*-
 
+
 import unittest
+import random
+import pprint
 import pandas as pd
 from jano import Jano
 from datetime import datetime
-import random
-import pprint
 
 class Test_Jano(unittest.TestCase):
     """
@@ -18,19 +19,16 @@ class Test_Jano(unittest.TestCase):
     @staticmethod
     def generate_dataframe(size):
         """
-            Generates a dataframe from a defined size with a single row for each value.
-
+            Generates a dataframe from a defined size
+            with a single row for each value.
         """
-
         n = size
         today = datetime.now()
-        dataframe = pd.DataFrame({'date': [Jano.move(today, x) for x in range(n)],
-                           'TARGET':   [random.randrange(0, 50) for x in range(0, n)],
-                           'DATE_ATTRIB': [random.randrange(0, 50) for x in range(0, n)],
-                           'DATE_ATTRIB': [random.randrange(0, 50) for x in range(0, n)]
-                           })
-        dataframe['date'] = pd.to_datetime(dataframe['date'])
-
+        dataframe = pd.DataFrame({'date': [pd.to_datetime(Jano.move(today, x)) for x in range(n)],
+                                  'TARGET':   [random.randrange(0, 50) for x in range(0, n)],
+                                  'DATE_ATTRIB': [random.randrange(0, 50) for x in range(0, n)],
+                                  'DATE_ATTRIB': [random.randrange(0, 50) for x in range(0, n)]
+                                  })
         return dataframe
 
     def setUp(self):
@@ -51,7 +49,6 @@ class Test_Jano(unittest.TestCase):
                        train_date_attrib=self.train_date_attrib,
                        test_date_attrib =self.test_date_attrib)
         self.iteration = 10
-
 
     def test_mask(self):
         """
@@ -84,9 +81,7 @@ class Test_Jano(unittest.TestCase):
         X_train, X_test, y_train, y_test = self.jano.walk_one(begin=self.begin,
                                                               shift=self.shift)
 
-
         pprint.pprint(self.jano.summary())
-
 
         # Testeamos que tenga una sola iteracion:
         assert (self.jano.iteration == 1)
@@ -107,7 +102,6 @@ class Test_Jano(unittest.TestCase):
         assert (self.jano.X_train_len == self.jano.y_train_len)
         # Testeamos que exista la misma cantidad de casos entre X_test e y_test:
         assert (self.jano.X_test_len == self.jano.y_test_len)
-
 
     def test_walk(self):
         """
