@@ -11,15 +11,16 @@ from datetime import datetime
 
 class Test_Jano(unittest.TestCase):
     """
-        Test_Jano Class tests all possible combination of walk, and walks
-        given a defined dataset. This class tests dataframes limits and
-        data partitions that can not be made given a defined mask.
+        Test_Jano Class: tests all possible combination of walk, and walks
+        given a defined dataset.
     """
 
     @staticmethod
     def generate_dataframe(size):
-        """ Generates a dataframe from a defined size with a
-            single row for each value."""
+        """
+            Generates a dataframe from a defined size with a
+            single row for each value."
+        """
         n = size
         today = datetime.now()
         dataframe = pd.DataFrame({'date': [pd.to_datetime(Jano.move(today, x)) for x in range(n)],
@@ -49,7 +50,9 @@ class Test_Jano(unittest.TestCase):
         self.iterations = [10, 100, 350]
 
     def test_mask_attribs(self):
-        """ Test the defined mask for a given Jano instance."""
+        """
+            Test the defined mask for a given Jano instance.
+        """
 
         attributes = ['dataframe', 'train_date_attrib', 'test_date_attrib',
                       'train_days', 'gap', 'test_days', 'target', 'dataframe_min_day',
@@ -58,7 +61,7 @@ class Test_Jano(unittest.TestCase):
         for attrib in attributes:
             assert(hasattr(self.jano, attrib) == True)
 
-        assert(self.jano.train_days ==self.train_days)
+        assert(self.jano.train_days == self.train_days)
         assert(self.jano.gap == self.gap)
         assert(self.jano.test_days == self.test_days)
         assert(self.jano.target == self.target)
@@ -68,20 +71,25 @@ class Test_Jano(unittest.TestCase):
         assert(self.jano.dataframe_max_day == self.dataframe['date'].max())
 
     def test_total_mask_attribs(self):
-        """ Test total lenght of mask attributes"""
         assert(len(self.jano.__dict__.keys()) == 9)
 
+    def test_walk_one_total_iterations(self):
+        assert(self.jano.iteration == 1)
+
     def test_walk_one(self):
-        """ Test all combination for one walk given a defined dataframe."""
-        print('Test walk_one...')
+        """
+            Test all combination for one walk given a defined dataframe.
+        """
 
         X_train, X_test, y_train, y_test = self.jano.walk_one(begin=self.begin,
                                                               shift=self.shift)
 
-        pprint.pprint(self.jano.summary())
+        #pprint.pprint(self.jano.summary())
 
         # Testeamos que tenga una sola iteracion:
         assert(self.jano.iteration == 1)
+
+        self.test_walk_one_total_iterations()
 
         if self.begin == 1:
             # Testeamos que corresponda el start_date con la primer fecha del dataframe:
