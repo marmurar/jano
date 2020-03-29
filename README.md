@@ -70,7 +70,7 @@ For the above example we get four splitted dataframes(X_train, X_test, y_train, 
 
 __This is exactly what we did !__
 
-!['basic walk usage'](./docs./docs/jano_walk.gif)
+!['basic walk usage'](./docs/jano_walk.gif)
 
 ---
 
