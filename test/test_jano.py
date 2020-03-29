@@ -6,7 +6,7 @@ import unittest
 import random
 import pprint
 import pandas as pd
-from ...jano import Jano
+from jano import Jano
 from datetime import datetime
 
 class Test_Jano(unittest.TestCase):
@@ -139,4 +139,3 @@ class Test_Jano(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-
