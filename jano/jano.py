@@ -27,13 +27,13 @@ class Jano:
         else:
             pass
             # TODD: Desactivar el logger
+
     @staticmethod
     def move(date, days):
         """
             A staticmethod to go add days given a datetime.
             Example: move(monday, 1) -> Tuesday.
         """
-
         if not isinstance(date, datetime):
             raise ValueError('date must be type datetime')
 
@@ -47,7 +47,6 @@ class Jano:
 
             :return: A dict with defined atributes
         """
-
         return {
                 'train_days': self.train_days,
                 'gap': self.gap,
@@ -85,7 +84,6 @@ class Jano:
             :param attrib:
             :return:
         """
-
         try:
             attrib in self.dataframe.columns.tolist()
         except Exception as e:
@@ -109,7 +107,6 @@ class Jano:
             :param y_test:
             :return: bool
         """
-
         frame_lenghts = {
                          'X_train': len(X_train),
                          'y_train': len(y_train),
@@ -214,7 +211,6 @@ class Jano:
 
             :return: dataframe
         """
-
         # Filter mask:
         X_train = self.dataframe[(self.dataframe[self.train_date_attrib] >= self.train_start_date) &
                                  (self.dataframe[self.train_date_attrib] <= self.train_end_date)]
@@ -244,7 +240,6 @@ class Jano:
          Warns if during any time split Jano reaches the limit of the
          defined dataframe.
         """
-
         if self.test_end_date > self.dataframe_max_day:
             warnings.warn('Last available date is ' + str(self.dataframe_max_day) + ' and test goes up to ' + str(
                 self.test_end_date))
@@ -297,7 +292,6 @@ class Jano:
             iterations : defines the quantity of walks. How many iterations
                     of the given mask and step will Jano walk.
         """
-
         if not isinstance(shift, int):
             raise TypeError('shift parameter must be type int')
         if shift < 0:
@@ -331,7 +325,6 @@ class Jano:
             iterations : defines the quantity of walks. How many iterations
                     of the given mask and step will Jano walk.
         """
-
         if not isinstance(iterations, int):
             raise TypeError('iterations parameter must be type int')
         if iterations <= 0:
