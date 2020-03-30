@@ -88,23 +88,31 @@ class Test_Jano(unittest.TestCase):
         assert(type(self.jano.dataframe_min_day) == type(self.dataframe['date'].min()))
         assert(type(self.jano.dataframe_max_day) == type(self.dataframe['date'].max()))
 
+    def __test_dataframe_lenght(self):
+        # Testeamos que la cantidad de datos de testeo y entrenamiento no sea 0:
+        assert (self.jano.X_train_len != 0)
+        assert (self.jano.X_test_len != 0)
+        # Testeamos que exista la misma cantidad de casos entre X_train e y_train:
+        assert (self.jano.X_train_len == self.jano.y_train_len)
+        # Testeamos que exista la misma cantidad de casos entre X_test e y_test:
+        assert (self.jano.X_test_len == self.jano.y_test_len)
+
+        # pprint.pprint(self.jano.summary())
+
     def test_begin_on_walk_one(self):
         """
             Test begin parameter on walk_one method
         """
         for begin in range(0,10):
-            X_train, X_test, y_train, y_test = self.jano.walk_one(begin=self.begin,
+
+            X_train, X_test, y_train, y_test = self.jano.walk_one(begin=begin,
                                                                   shift=self.shift)
+            print(X_train['date'].min(), self.dataframe['date'].min(), self.jano.move(self.dataframe['date'].min(), begin), begin)
+            #print(X_train['date'].min(), self.jano.move(self.dataframe['date'].min(), begin))
+            self.__test_dataframe_lenght()
 
-            assert(self.jano.train_start_date == self.jano.move(self.jano.train_start_date, self.begin))
 
-            # Testeamos que la cantidad de datos de testeo y entrenamiento no sea 0:
-            assert(self.jano.X_train_len != 0)
-            assert(self.jano.X_test_len != 0)
-            # Testeamos que exista la misma cantidad de casos entre X_train e y_train:
-            assert(self.jano.X_train_len == self.jano.y_train_len)
-            # Testeamos que exista la misma cantidad de casos entre X_test e y_test:
-            assert(self.jano.X_test_len == self.jano.y_test_len)
+
 
     def test_walk(self):
         """

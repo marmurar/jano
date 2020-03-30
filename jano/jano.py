@@ -119,7 +119,7 @@ class Jano:
 
         for framelen in frame_lenghts:
             if frame_lenghts[framelen] == 0:
-                raise Exception('Error when applying mask at: ' + framelen + ' ,the dataframe has no records at iteration: ' + str(self.iteration))
+                raise Exception('Failed to apply mask, dataframe has no information')
 
         return True
 
