@@ -1,0 +1,6 @@
+README.md
+setup.py
+jano.egg-info/PKG-INFO
+jano.egg-info/SOURCES.txt
+jano.egg-info/dependency_links.txt
+jano.egg-info/top_level.txt
