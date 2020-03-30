@@ -22,10 +22,9 @@ class Test_Jano(unittest.TestCase):
         """
         n = size
         today = datetime.now()
-        dataframe = pd.DataFrame({'date': [pd.to_datetime(Jano.move(today, x)) for x in range(n)],
-                                  'TARGET':   [random.randrange(0, 50) for x in range(0, n)],
-                                  'DATE_ATTRIB': [random.randrange(0, 50) for x in range(0, n)],
-                                  'DATE_ATTRIB': [random.randrange(0, 50) for x in range(0, n)]
+        dataframe = pd.DataFrame({'date':   [pd.to_datetime(Jano.move(today, x)) for x in range(n)],
+                                  'target': [random.randrange(0, 50) for x in range(0, n)],
+                                  'attrib': [random.randrange(0, 50) for x in range(0, n)]
                                   })
         return dataframe
 
@@ -35,7 +34,7 @@ class Test_Jano(unittest.TestCase):
         self.train_days = 1
         self.gap = 1
         self.test_days = 1
-        self.target  = 'TARGET'
+        self.target  = 'target'
         self.train_date_attrib = 'date'
         self.test_date_attrib  = 'date'
         self.begin = 0
@@ -94,12 +93,12 @@ class Test_Jano(unittest.TestCase):
         assert (self.jano.X_test_len != 0)
         # Testeamos que exista la misma cantidad de casos entre X_train e y_train:
         assert (self.jano.X_train_len == self.jano.y_train_len)
-        # Testeamos que exista la misma cantidad de casos entre X_test e y_test:
+        # Test1eamos que exista la misma cantidad de casos entre X_test e y_test:
         assert (self.jano.X_test_len == self.jano.y_test_len)
 
         # pprint.pprint(self.jano.summary())
 
-    def test_begin_on_walk_one(self):
+    def test_begin_walk_one(self):
         """
             Test begin parameter on walk_one method
         """
@@ -107,12 +106,9 @@ class Test_Jano(unittest.TestCase):
 
             X_train, X_test, y_train, y_test = self.jano.walk_one(begin=begin,
                                                                   shift=self.shift)
-            print(X_train['date'].min(), self.dataframe['date'].min(), self.jano.move(self.dataframe['date'].min(), begin), begin)
-            #print(X_train['date'].min(), self.jano.move(self.dataframe['date'].min(), begin))
+            #print(X_train['date'].min(), self.dataframe['date'].min(), self.jano.move(self.dataframe['date'].min(), begin), begin)
+            assert(X_train['date'].min() == self.jano.move(self.dataframe['date'].min(), begin))
             self.__test_dataframe_lenght()
-
-
-
 
     def test_walk(self):
         """
@@ -125,14 +121,7 @@ class Test_Jano(unittest.TestCase):
                                                                    iterations=iteration,
                                                                    shift=self.shift):
 
-
-                # Check iterations parameter:
-                for frame_size in [self.jano.X_train_len,
-                                   self.jano.X_test_len,
-                                   self.jano.y_train_len,
-                                   self.jano.y_test_len]:
-
-                    assert (frame_size > 0)
+                self.__test_dataframe_lenght()
 
                 aux += 1
 
@@ -143,7 +132,7 @@ class Test_Jano(unittest.TestCase):
                     train_end_date = self.jano.move(train_start_date, 1)
                     expected_train_end_date = self.jano.move(frame_train_start_date,self.begin)
 
-                #pprint.pprint(self.jano.summary())
+                pprint.pprint(self.jano.summary())
 
 if __name__ == '__main__':
     unittest.main()
