@@ -42,7 +42,7 @@ jano.mask(train_days = 8,
 
 __In this example Jano uses 8 days to train, tests with 1 day and leaves 1 day as a gap from the end of the train until the start of the test period.__ If you want to iterate over a dataframe with the defined mask then you want to "walk" over a dataframe, check te following example...
 
-!['basic walk usage'](./docs/jano)
+!['basic walk usage'](./imgs/jano)
 
 ## How to "walk" with Jano ?
 
@@ -70,7 +70,7 @@ For the above example we get four splitted dataframes(X_train, X_test, y_train, 
 
 __This is exactly what we did !__
 
-!['basic walk usage'](./docs/jano_walk.gif)
+!['basic walk usage'](./imgs/jano_walk.gif)
 
 ---
 
