@@ -58,6 +58,7 @@ It supports:
 - Optional gaps before validation or test segments.
 - Plain index output through `split()`.
 - Rich fold objects through `iter_splits()`.
+- Simulation summaries and HTML timeline reports through `describe_simulation()`.
 
 ## Example: rolling backtest by duration
 
@@ -112,6 +113,21 @@ splitter = TemporalBacktestSplitter(
 for split in splitter.iter_splits(frame):
     print(split.summary())
 ```
+
+## Example: describe a simulation as HTML
+
+```python
+summary = splitter.describe_simulation(
+    frame,
+    output_path="simulation.html",
+    title="Walk-forward simulation",
+)
+
+print(summary.total_folds)
+print(summary.to_frame().head())
+```
+
+That produces an HTML report showing each fold across the dataset timeline, with colored train, validation and test segments plus row counts per partition.
 
 ## Installation
 

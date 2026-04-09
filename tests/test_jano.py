@@ -5,6 +5,7 @@ import pytest
 
 from jano import TemporalBacktestSplitter, TemporalPartitionSpec
 from jano.jano import TemporalBacktestSplitter as LegacyTemporalBacktestSplitter
+from jano.reporting import SimulationSummary
 from jano.splits import TimeSplit
 from jano.types import SegmentBoundaries, SizeSpec
 
@@ -341,3 +342,58 @@ def test_duration_allow_partial_truncates_final_segment() -> None:
 
     assert len(split.segments["train"]) == 4
     assert len(split.segments["test"]) == 3
+
+
+def test_describe_simulation_returns_summary_with_html(tmp_path) -> None:
+    frame = build_frame(size=10)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="4D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="rolling",
+    )
+
+    summary = splitter.describe_simulation(frame)
+
+    assert isinstance(summary, SimulationSummary)
+    assert summary.total_folds == 4
+    assert summary.segment_order == ["train", "test"]
+    assert "Fold 0" in summary.html
+    assert "Temporal partition simulation overview" in summary.html
+
+    output_path = tmp_path / "simulation.html"
+    written_path = summary.write_html(output_path)
+    assert written_path == output_path
+    assert output_path.exists()
+    assert "Jano simulation summary" in output_path.read_text(encoding="utf-8")
+
+
+def test_describe_simulation_can_write_html_directly(tmp_path) -> None:
+    frame = build_frame(size=10)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_val_test",
+            train_size=4,
+            validation_size=2,
+            test_size=2,
+        ),
+        step=2,
+        strategy="expanding",
+    )
+
+    output_path = tmp_path / "report.html"
+    summary = splitter.describe_simulation(
+        frame,
+        output_path=output_path,
+        title="Walk-forward report",
+    )
+
+    assert output_path.exists()
+    assert summary.title == "Walk-forward report"
+    assert "validation" in summary.to_dict()["segment_order"]
+    assert not summary.to_frame().empty

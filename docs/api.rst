@@ -14,6 +14,11 @@ Core objects
    :undoc-members:
    :show-inheritance:
 
+.. automodule:: jano.reporting
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 .. automodule:: jano.types
    :members:
    :undoc-members:

@@ -11,4 +11,5 @@ It is meant for situations where a single random split is not enough and where e
 
    overview
    concepts
+   simulation
    api

@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Dict, Iterator, List, Tuple
 
 import numpy as np
 import pandas as pd
 
+from .reporting import SimulationSummary, build_simulation_summary
 from .slicing import TimeIndexer
 from .splits import TimeSplit
 from .types import SegmentBoundaries, SizeSpec, TemporalPartitionSpec
@@ -57,6 +59,29 @@ class TemporalBacktestSplitter:
         if X is None:
             raise ValueError("X is required to compute the number of splits")
         return sum(1 for _ in self.iter_splits(X, y=y, groups=groups))
+
+    def describe_simulation(
+        self,
+        X: pd.DataFrame,
+        output_path: str | Path | None = None,
+        title: str | None = None,
+    ) -> SimulationSummary:
+        frame = self._coerce_frame(X)
+        splits = list(self.iter_splits(frame))
+        if not splits:
+            raise ValueError("The current configuration did not produce any valid folds")
+
+        summary = build_simulation_summary(
+            splits=splits,
+            frame=frame,
+            time_col=self.time_col,
+            title=title or "Jano simulation summary",
+        )
+
+        if output_path is not None:
+            summary.write_html(output_path)
+
+        return summary
 
     @staticmethod
     def _coerce_frame(X) -> pd.DataFrame:
