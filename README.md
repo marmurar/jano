@@ -1,13 +1,20 @@
 # Jano
 
 [![CI](https://github.com/marmurar/jano/actions/workflows/ci.yml/badge.svg)](https://github.com/marmurar/jano/actions/workflows/ci.yml)
+[![Docs](https://github.com/marmurar/jano/actions/workflows/docs.yml/badge.svg)](https://github.com/marmurar/jano/actions/workflows/docs.yml)
 [![codecov](https://codecov.io/gh/marmurar/jano/graph/badge.svg)](https://codecov.io/gh/marmurar/jano)
 
 Jano is a Python library for defining temporal partitions and backtesting schemes over time-correlated datasets.
 
+Documentation: [marmurar.github.io/jano](https://marmurar.github.io/jano/)
+
 It is designed for cases where a plain `train_test_split()` is not enough: transactional data, production simulations, repeated retraining, walk-forward validation, model monitoring, rule evaluation, or any experiment where the ordering of time matters.
 
 The project is named after Janus, the Roman god of beginnings, transitions and thresholds. That framing fits the library well: Jano helps define how a dataset moves from training periods into evaluation periods, fold after fold.
+
+## Star history
+
+[![Star History Chart](https://api.star-history.com/svg?repos=marmurar/jano&type=Date)](https://star-history.com/#marmurar/jano&Date)
 
 ## Why Jano exists
 
@@ -115,6 +122,7 @@ For local development:
 ```bash
 python -m pip install -e ".[dev]"
 python -m pytest --cov=jano --cov-report=term-missing
+python -m sphinx -b html docs docs/_build/html
 ```
 
 ## Continuous integration and coverage
@@ -122,6 +130,7 @@ python -m pytest --cov=jano --cov-report=term-missing
 The repository includes:
 
 - GitHub Actions for tests across multiple Python versions.
+- GitHub Pages publication for Sphinx documentation.
 - Coverage reporting with `pytest-cov`.
 - Codecov upload and status tracking.
 

@@ -1,10 +1,10 @@
 __pycache__
 ./venv
 ./jano.egg-info
-docs
 .coverage
 coverage.xml
 .pytest_cache
 dist
 build
 *.egg-info
+docs/_build
