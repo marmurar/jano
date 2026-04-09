@@ -39,6 +39,8 @@ Current status
 
 The project is in an early redesign phase. The new core already supports:
 
+- ``TemporalSimulation`` as a higher-level interface for running full simulations.
+- Optional simulation window controls such as ``start_at``, ``end_at`` and ``max_folds``.
 - ``single``, ``rolling`` and ``expanding`` strategies.
 - ``train_test`` and ``train_val_test`` layouts.
 - Sizes expressed as durations, row counts or fractions.

@@ -5,12 +5,22 @@ API reference
 
    <p class="api-lead">
      The API is intentionally compact. Most workflows start with a <code>TemporalPartitionSpec</code>,
-     pass it into <code>TemporalBacktestSplitter</code>, iterate over <code>TimeSplit</code> objects,
-     and optionally inspect a <code>SimulationSummary</code> or <code>SimulationChartData</code>.
+     pass it into <code>TemporalSimulation</code> for a full run, and optionally drop down to
+     <code>TemporalBacktestSplitter</code> when they need manual control over folds.
    </p>
 
 Main workflow
 -------------
+
+.. autoclass:: jano.simulation.TemporalSimulation
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.simulation.SimulationResult
+   :members:
+   :undoc-members:
+   :no-index:
 
 .. autoclass:: jano.types.TemporalPartitionSpec
    :members:

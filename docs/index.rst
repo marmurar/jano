@@ -31,7 +31,7 @@ Jano is useful when a single random split is too weak a proxy for reality: produ
 
 It also works well as a way to evidence drift in simulation results. Jano does not compute drift metrics directly, but it makes temporal shifts in outcomes explicit by preserving chronology across folds and reports.
 
-The current public surface centers on ``TemporalBacktestSplitter``, ``TemporalPartitionSpec``, ``TimeSplit`` and ``describe_simulation()``.
+The recommended public surface now centers on ``TemporalSimulation`` for full simulation runs, while ``TemporalBacktestSplitter`` remains available for manual fold iteration and lower-level control.
 
 .. toctree::
    :maxdepth: 2

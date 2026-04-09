@@ -52,6 +52,7 @@ Outputs
 
 Jano exposes two complementary views:
 
+- ``TemporalSimulation.run()`` materializes a full simulation and returns a reusable result object.
 - ``split()`` yields plain index tuples, which keeps usage lightweight and easy to integrate.
 - ``iter_splits()`` yields ``TimeSplit`` objects with segment metadata and helper methods.
 - ``describe_simulation()`` yields either a ``SimulationSummary``, an HTML report string or ``SimulationChartData`` for custom Python plotting.

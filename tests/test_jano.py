@@ -3,9 +3,10 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from jano import TemporalBacktestSplitter, TemporalPartitionSpec
+from jano import TemporalBacktestSplitter, TemporalPartitionSpec, TemporalSimulation
 from jano.jano import TemporalBacktestSplitter as LegacyTemporalBacktestSplitter
 from jano.reporting import SimulationChartData, SimulationSummary
+from jano.simulation import SimulationResult
 from jano.splits import TimeSplit
 from jano.types import SegmentBoundaries, SizeSpec
 
@@ -461,3 +462,109 @@ def test_describe_simulation_rejects_invalid_output_mode() -> None:
 
     with pytest.raises(ValueError, match="output must be one of"):
         splitter.describe_simulation(frame, output="svg")
+
+
+def test_temporal_simulation_runs_without_manual_iteration(tmp_path) -> None:
+    frame = build_frame(size=10)
+    simulation = TemporalSimulation(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="4D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="rolling",
+    )
+
+    output_path = tmp_path / "simulation.html"
+    result = simulation.run(frame, output_path=output_path, title="Production month")
+
+    assert isinstance(result, SimulationResult)
+    assert result.total_folds == 4
+    assert isinstance(result.summary, SimulationSummary)
+    assert isinstance(result.chart_data, SimulationChartData)
+    assert "Production month" in result.html
+    assert output_path.exists()
+    assert len(list(result.iter_splits())) == 4
+    assert not result.to_frame().empty
+
+
+def test_temporal_simulation_exposes_low_level_splitter() -> None:
+    simulation = TemporalSimulation(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size=5,
+            test_size=3,
+        ),
+        step=1,
+        strategy="single",
+    )
+
+    splitter = simulation.as_splitter()
+
+    assert isinstance(splitter, TemporalBacktestSplitter)
+    assert simulation.time_col == "timestamp"
+
+
+def test_temporal_simulation_can_start_from_specific_date_and_limit_folds() -> None:
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2025-08-20", periods=80, freq="D"),
+            "feature": range(80),
+            "target": range(200, 280),
+        }
+    )
+    simulation = TemporalSimulation(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="15D",
+            test_size="4D",
+        ),
+        step="1D",
+        strategy="rolling",
+        start_at="2025-09-01",
+        max_folds=15,
+    )
+
+    result = simulation.run(frame, title="From explicit start")
+
+    assert result.total_folds == 15
+    assert result.frame["timestamp"].min() == pd.Timestamp("2025-09-01")
+    assert result.splits[0].boundaries["train"].start == pd.Timestamp("2025-09-01")
+    assert result.splits[-1].fold == 14
+
+
+def test_temporal_simulation_rejects_empty_window() -> None:
+    frame = build_frame(size=10)
+    simulation = TemporalSimulation(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size=5,
+            test_size=3,
+        ),
+        step=1,
+        strategy="single",
+        start_at="2026-01-01",
+    )
+
+    with pytest.raises(ValueError, match="does not contain any rows"):
+        simulation.run(frame)
+
+
+def test_temporal_simulation_rejects_invalid_max_folds() -> None:
+    with pytest.raises(ValueError, match="max_folds must be greater than zero"):
+        TemporalSimulation(
+            time_col="timestamp",
+            partition=TemporalPartitionSpec(
+                layout="train_test",
+                train_size=5,
+                test_size=3,
+            ),
+            step=1,
+            strategy="single",
+            max_folds=0,
+        )

@@ -9,6 +9,8 @@ Jano can describe a temporal simulation over a concrete dataset and expose it in
 
 The entry point is ``describe_simulation()`` on ``TemporalBacktestSplitter``.
 
+If you want to run a full simulation without manual fold iteration, the recommended interface is ``TemporalSimulation``.
+
 Example
 -------
 
@@ -16,7 +18,7 @@ Example
 
    import pandas as pd
 
-   from jano import TemporalBacktestSplitter, TemporalPartitionSpec
+   from jano import TemporalPartitionSpec, TemporalSimulation
 
    frame = pd.DataFrame(
        {
@@ -25,6 +27,61 @@ Example
            "target": range(100, 465),
        }
    )
+
+   simulation = TemporalSimulation(
+       time_col="timestamp",
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="10D",
+           test_size="5D",
+       ),
+       step="5D",
+       strategy="rolling",
+   )
+
+   result = simulation.run(
+       frame,
+       title="Walk-forward simulation",
+   )
+
+   print(result.total_folds)
+   print(result.to_frame().head())
+
+   html = result.html
+   chart_data = result.chart_data
+
+   print(html[:120])
+   print(chart_data.segment_stats)
+
+You can anchor the simulation to a specific point in time and cap the number of folds:
+
+.. code-block:: python
+
+   simulation = TemporalSimulation(
+       time_col="timestamp",
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="15D",
+           test_size="4D",
+       ),
+       step="1D",
+       strategy="rolling",
+       start_at="2025-09-01",
+       max_folds=15,
+   )
+
+   result = simulation.run(frame, title="15 daily retraining iterations")
+
+``TemporalSimulation`` also accepts ``end_at`` if you want to constrain the simulation to a bounded time window before folds are generated.
+
+Low-level manual control
+------------------------
+
+When you need direct control over folds or want to integrate with an external training loop, use ``TemporalBacktestSplitter`` directly.
+
+.. code-block:: python
+
+   from jano import TemporalBacktestSplitter, TemporalPartitionSpec
 
    splitter = TemporalBacktestSplitter(
        time_col="timestamp",
@@ -37,19 +94,8 @@ Example
        strategy="rolling",
    )
 
-   summary = splitter.describe_simulation(
-       frame,
-       title="Walk-forward simulation",
-   )
-
-   print(summary.total_folds)
-   print(summary.to_frame().head())
-
-   html = splitter.describe_simulation(frame, output="html")
-   chart_data = splitter.describe_simulation(frame, output="chart_data")
-
-   print(html[:120])
-   print(chart_data.segment_stats)
+   for split in splitter.iter_splits(frame):
+       print(split.summary())
 
 Simple HTML preview
 -------------------

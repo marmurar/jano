@@ -51,7 +51,9 @@ The design goals are:
 
 ## Current API
 
-The main entry point is `TemporalBacktestSplitter`.
+The recommended high-level entry point is `TemporalSimulation`.
+
+`TemporalBacktestSplitter` remains available as the lower-level primitive when you want direct control over folds and manual iteration.
 
 It supports:
 
@@ -64,40 +66,61 @@ It supports:
 - Simulation summaries, HTML timeline reports and plot-ready chart data through `describe_simulation()`.
 - A numpy-first internal indexing path to reduce split overhead on large datasets.
 
-## Example: rolling backtest by duration
+## Example: run a full simulation without manual iteration
 
 ```python
 import pandas as pd
 
-from jano import TemporalBacktestSplitter, TemporalPartitionSpec
+from jano import TemporalPartitionSpec, TemporalSimulation
 
 frame = pd.DataFrame(
     {
-        "timestamp": pd.date_range("2024-01-01", periods=12, freq="D"),
-        "feature": range(12),
-        "target": range(100, 112),
+        "timestamp": pd.date_range("2024-01-01", periods=60, freq="D"),
+        "feature": range(60),
+        "target": range(100, 160),
     }
 )
 
-splitter = TemporalBacktestSplitter(
+simulation = TemporalSimulation(
     time_col="timestamp",
     partition=TemporalPartitionSpec(
         layout="train_test",
-        train_size="5D",
-        test_size="2D",
-        gap_before_test="1D",
+        train_size="30D",
+        test_size="1D",
     ),
     step="1D",
     strategy="rolling",
 )
 
-for train_idx, test_idx in splitter.split(frame):
-    train = frame.iloc[train_idx]
-    test = frame.iloc[test_idx]
-    print(train["timestamp"].min(), test["timestamp"].min())
+result = simulation.run(frame, title="One month in production")
+
+print(result.total_folds)
+print(result.summary.to_frame().head())
+print(result.chart_data.segment_stats)
 ```
 
-## Example: `train/validation/test` by fraction
+You can also anchor a simulation to a specific date and limit how many folds are materialized:
+
+```python
+simulation = TemporalSimulation(
+    time_col="timestamp",
+    partition=TemporalPartitionSpec(
+        layout="train_test",
+        train_size="15D",
+        test_size="4D",
+    ),
+    step="1D",
+    strategy="rolling",
+    start_at="2025-09-01",
+    max_folds=15,
+)
+
+result = simulation.run(frame, title="15 daily retraining iterations")
+```
+
+The high-level simulation layer also supports `end_at` when you want to constrain the simulation to a bounded time window before folds are generated.
+
+## Example: manual control with the low-level splitter
 
 ```python
 from jano import TemporalBacktestSplitter, TemporalPartitionSpec
