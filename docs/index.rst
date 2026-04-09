@@ -41,4 +41,5 @@ The recommended public surface now centers on ``TemporalSimulation`` for full si
    concepts
    simulation
    api
+   release
    about

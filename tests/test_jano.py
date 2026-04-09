@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from importlib.metadata import version
+
 import pandas as pd
 import pytest
 
-from jano import TemporalBacktestSplitter, TemporalPartitionSpec, TemporalSimulation
+from jano import TemporalBacktestSplitter, TemporalPartitionSpec, TemporalSimulation, __version__
 from jano.describe import SimulationSummary as LegacySimulationSummary
 from jano.jano import TemporalBacktestSplitter as LegacyTemporalBacktestSplitter
 from jano.reporting import SimulationChartData, SimulationSummary
@@ -20,6 +22,11 @@ def build_frame(size: int = 12) -> pd.DataFrame:
             "target": range(100, 100 + size),
         }
     )
+
+
+def test_public_version_matches_installed_distribution_metadata() -> None:
+    assert __version__ == "0.2.0"
+    assert version("jano") == __version__
 
 
 def test_single_fraction_train_test_split() -> None:

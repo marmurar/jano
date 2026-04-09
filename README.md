@@ -1,7 +1,7 @@
 # Jano
 
 <p align="center">
-  <img src="./imgs/jano_logo.png" alt="Jano logo" width="260" />
+  <img src="https://raw.githubusercontent.com/marmurar/jano/master/imgs/jano_logo.png" alt="Jano logo" width="260" />
 </p>
 
 [![CI](https://github.com/marmurar/jano/actions/workflows/ci.yml/badge.svg)](https://github.com/marmurar/jano/actions/workflows/ci.yml)
@@ -163,7 +163,11 @@ The generated report shows each fold across the dataset timeline, with richer su
 
 ## Installation
 
-Once published, the package will be installable from PyPI.
+After the first PyPI release, install the package with:
+
+```bash
+python -m pip install jano
+```
 
 For local development:
 
@@ -172,6 +176,21 @@ python -m pip install -e ".[dev]"
 python -m pytest --cov=jano --cov-report=term-missing
 python -m sphinx -b html docs docs/_build/html
 ```
+
+Jano also exposes its runtime version through `jano.__version__`.
+
+## Release flow
+
+The repository includes a dedicated GitHub Actions workflow for PyPI publication through trusted publishing.
+
+The release path is:
+
+1. Update `jano/_version.py`.
+2. Run `python -m pytest -q`.
+3. Run `python -m build` and `python -m twine check dist/*`.
+4. Push a tag like `v0.2.0`.
+
+That tag triggers the `Publish` workflow, which builds the wheel and source distribution and publishes them to PyPI.
 
 ## Continuous integration and coverage
 

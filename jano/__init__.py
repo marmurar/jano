@@ -1,5 +1,6 @@
 """Public package interface for Jano."""
 
+from ._version import __version__
 from .reporting import SimulationChartData, SimulationSummary
 from .simulation import SimulationResult, TemporalSimulation
 from .splitters import TemporalBacktestSplitter
@@ -16,4 +17,5 @@ __all__ = [
     "TemporalBacktestSplitter",
     "TemporalPartitionSpec",
     "TimeSplit",
+    "__version__",
 ]
