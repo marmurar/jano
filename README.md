@@ -12,6 +12,10 @@ It is designed for cases where a plain `train_test_split()` is not enough: trans
 
 The project is named after Janus, the Roman god of beginnings, transitions and thresholds. That framing fits the library well: Jano helps define how a dataset moves from training periods into evaluation periods, fold after fold.
 
+## Star history
+
+[![Star History Chart](https://api.star-history.com/svg?repos=marmurar/jano&type=Date)](https://star-history.com/#marmurar/jano&Date)
+
 ## Why Jano exists
 
 Most train/test utilities answer a simple question:
