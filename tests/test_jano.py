@@ -4,6 +4,7 @@ import pandas as pd
 import pytest
 
 from jano import TemporalBacktestSplitter, TemporalPartitionSpec, TemporalSimulation
+from jano.describe import SimulationSummary as LegacySimulationSummary
 from jano.jano import TemporalBacktestSplitter as LegacyTemporalBacktestSplitter
 from jano.reporting import SimulationChartData, SimulationSummary
 from jano.simulation import SimulationResult
@@ -260,6 +261,10 @@ def test_legacy_import_surface_matches_public_splitter() -> None:
     assert LegacyTemporalBacktestSplitter is TemporalBacktestSplitter
 
 
+def test_legacy_describe_import_surface_matches_public_summary() -> None:
+    assert LegacySimulationSummary is SimulationSummary
+
+
 def test_split_slice_returns_named_frames() -> None:
     frame = build_frame(size=10)
     split = TimeSplit(
@@ -422,6 +427,23 @@ def test_describe_simulation_can_write_html_directly(tmp_path) -> None:
     assert not summary.to_frame().empty
 
 
+def test_describe_simulation_rejects_empty_fold_configuration() -> None:
+    frame = build_frame(size=4)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="4D",
+            test_size="4D",
+        ),
+        step="1D",
+        strategy="single",
+    )
+
+    with pytest.raises(ValueError, match="did not produce any valid folds"):
+        splitter.describe_simulation(frame)
+
+
 def test_describe_simulation_can_return_html_or_chart_data() -> None:
     frame = build_frame(size=10)
     splitter = TemporalBacktestSplitter(
@@ -488,6 +510,7 @@ def test_temporal_simulation_runs_without_manual_iteration(tmp_path) -> None:
     assert output_path.exists()
     assert len(list(result.iter_splits())) == 4
     assert not result.to_frame().empty
+    assert result.to_dict()["total_folds"] == 4
 
 
 def test_temporal_simulation_exposes_low_level_splitter() -> None:
@@ -555,6 +578,47 @@ def test_temporal_simulation_rejects_empty_window() -> None:
         simulation.run(frame)
 
 
+def test_temporal_simulation_can_constrain_with_end_at() -> None:
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2025-09-01", periods=20, freq="D"),
+            "feature": range(20),
+            "target": range(300, 320),
+        }
+    )
+    simulation = TemporalSimulation(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="5D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="rolling",
+        end_at="2025-09-12",
+    )
+
+    result = simulation.run(frame)
+
+    assert result.frame["timestamp"].max() == pd.Timestamp("2025-09-12")
+
+
+def test_temporal_simulation_partition_property_returns_validated_partition() -> None:
+    simulation = TemporalSimulation(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="5D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="rolling",
+    )
+
+    assert simulation.partition.layout == "train_test"
+    assert simulation.partition.size_kind == "duration"
+
+
 def test_temporal_simulation_rejects_invalid_max_folds() -> None:
     with pytest.raises(ValueError, match="max_folds must be greater than zero"):
         TemporalSimulation(
@@ -568,3 +632,106 @@ def test_temporal_simulation_rejects_invalid_max_folds() -> None:
             strategy="single",
             max_folds=0,
         )
+
+
+def test_validation_accepts_train_val_test_with_both_gaps() -> None:
+    simulation = TemporalSimulation(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_val_test",
+            train_size="5D",
+            validation_size="2D",
+            test_size="2D",
+            gap_before_validation="1D",
+            gap_before_test="1D",
+        ),
+        step="1D",
+        strategy="rolling",
+    )
+
+    assert simulation.partition.gaps["validation"].kind == "duration"
+    assert simulation.partition.gaps["test"].kind == "duration"
+
+
+def test_validation_rejects_missing_test_size_for_train_test() -> None:
+    with pytest.raises(ValueError, match="test_size is required"):
+        TemporalSimulation(
+            time_col="timestamp",
+            partition=TemporalPartitionSpec(
+                layout="train_test",
+                train_size=5,
+            ),
+            step=1,
+        )
+
+
+def test_fractional_size_resolution_can_fail_when_rounding_to_zero() -> None:
+    frame = build_frame(size=3)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size=0.2,
+            test_size=0.8,
+        ),
+        step=0.1,
+        strategy="single",
+    )
+
+    with pytest.raises(ValueError, match="resolved to zero rows"):
+        list(splitter.iter_splits(frame))
+
+
+def test_duration_single_fold_breaks_after_first_valid_split() -> None:
+    frame = build_frame(size=20)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="5D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="single",
+    )
+
+    splits = list(splitter.iter_splits(frame))
+
+    assert len(splits) == 1
+
+
+def test_positional_allow_partial_breaks_when_last_segment_starts_after_dataset() -> None:
+    frame = build_frame(size=4)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size=4,
+            test_size=3,
+        ),
+        step=1,
+        strategy="single",
+        allow_partial=True,
+    )
+
+    with pytest.raises(StopIteration):
+        next(splitter.iter_splits(frame))
+
+
+def test_time_indexer_slice_between_uses_bounds_correctly() -> None:
+    frame = build_frame(size=6).iloc[[3, 0, 4, 1, 5, 2]].reset_index(drop=True)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="2D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="single",
+    )
+
+    train_idx, test_idx = next(splitter.split(frame))
+
+    assert train_idx.tolist() == [1, 3]
+    assert test_idx.tolist() == [5, 0]
