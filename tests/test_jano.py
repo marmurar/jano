@@ -1,138 +1,343 @@
-# !/usr/bin/python
-# -*- coding: utf-8 -*-
+from __future__ import annotations
 
-import unittest
-import random
-import pprint
 import pandas as pd
-from jano.jano import Jano
-from datetime import datetime
+import pytest
 
-class Test_Jano(unittest.TestCase):
-    """
-        Test_Jano Class: tests all possible combination of walk, and walks
-        given a defined dataset.
-    """
+from jano import TemporalBacktestSplitter, TemporalPartitionSpec
+from jano.jano import TemporalBacktestSplitter as LegacyTemporalBacktestSplitter
+from jano.splits import TimeSplit
+from jano.types import SegmentBoundaries, SizeSpec
 
-    @staticmethod
-    def generate_dataframe(size):
-        """
-            Generates a dataframe from a defined size with a
-            single row for each value."
-        """
-        n = size
-        today = datetime.now()
-        dataframe = pd.DataFrame({'date':   [pd.to_datetime(Jano.move(today, x)) for x in range(n)],
-                                  'target': [random.randrange(0, 50) for x in range(0, n)],
-                                  'attrib': [random.randrange(0, 50) for x in range(0, n)]
-                                  })
-        return dataframe
 
-    def setUp(self):
-        self.dataframe =  Test_Jano.generate_dataframe(size=1000)
-        self.jano = Jano(self.dataframe)
-        self.train_days = 1
-        self.gap = 1
-        self.test_days = 1
-        self.target  = 'target'
-        self.train_date_attrib = 'date'
-        self.test_date_attrib  = 'date'
-        self.begin = 0
-        self.shift = 1
-        self.jano.mask(train_days=self.train_days,
-                       gap=self.gap,
-                       test_days=self.test_days,
-                       target=self.target,
-                       train_date_attrib=self.train_date_attrib,
-                       test_date_attrib =self.test_date_attrib)
-        self.iterations = [10, 100, 350]
+def build_frame(size: int = 12) -> pd.DataFrame:
+    return pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01", periods=size, freq="D"),
+            "feature": range(size),
+            "target": range(100, 100 + size),
+        }
+    )
 
-    def test_mask_attribs(self):
-        """
-            Test the defined mask for a given Jano instance.
-        """
 
-        attributes = ['dataframe', 'train_date_attrib', 'test_date_attrib',
-                      'train_days', 'gap', 'test_days', 'target', 'dataframe_min_day',
-                      'dataframe_max_day']
+def test_single_fraction_train_test_split() -> None:
+    frame = build_frame(size=10)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size=0.7,
+            test_size=0.3,
+        ),
+        step=0.1,
+        strategy="single",
+    )
 
-        for attrib in attributes:
-            assert(hasattr(self.jano, attrib) == True)
+    split = next(splitter.iter_splits(frame))
 
-        assert(self.jano.train_days == self.train_days)
-        assert(self.jano.gap == self.gap)
-        assert(self.jano.test_days == self.test_days)
-        assert(self.jano.target == self.target)
-        assert(self.jano.train_date_attrib == self.train_date_attrib)
-        assert(self.jano.test_date_attrib == self.test_date_attrib)
-        assert(self.jano.dataframe_min_day == self.dataframe['date'].min())
-        assert(self.jano.dataframe_max_day == self.dataframe['date'].max())
+    assert list(split.segments.keys()) == ["train", "test"]
+    assert len(split.segments["train"]) == 7
+    assert len(split.segments["test"]) == 3
 
-    def test_mask_attribs_lenght(self):
-        """
-            Test lenght of all mask attributes.
-        """
-        assert(len(self.jano.__dict__.keys()) == 9)
 
-    def test_mask_attributes_types(self):
-        """
-            Test all of mask attribute types.
-        """
-        assert(type(self.jano.train_days) == int)
-        assert(type(self.jano.gap) == int)
-        assert(type(self.jano.test_days) == int)
-        assert(type(self.jano.target) == str)
-        assert(type(self.jano.train_date_attrib) == str)
-        assert(type(self.jano.test_date_attrib) == str)
-        assert(type(self.jano.dataframe_min_day) == type(self.dataframe['date'].min()))
-        assert(type(self.jano.dataframe_max_day) == type(self.dataframe['date'].max()))
+def test_rolling_duration_splits_with_gap() -> None:
+    frame = build_frame(size=8)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="3D",
+            test_size="2D",
+            gap_before_test="1D",
+        ),
+        step="1D",
+        strategy="rolling",
+    )
 
-    def __test_dataframe_lenght(self):
-        # Testeamos que la cantidad de datos de testeo y entrenamiento no sea 0:
-        assert (self.jano.X_train_len != 0)
-        assert (self.jano.X_test_len != 0)
-        # Testeamos que exista la misma cantidad de casos entre X_train e y_train:
-        assert (self.jano.X_train_len == self.jano.y_train_len)
-        # Test1eamos que exista la misma cantidad de casos entre X_test e y_test:
-        assert (self.jano.X_test_len == self.jano.y_test_len)
+    splits = list(splitter.iter_splits(frame))
 
-        # pprint.pprint(self.jano.summary())
+    assert len(splits) == 2
+    assert splits[0].boundaries["train"].start == pd.Timestamp("2024-01-01")
+    assert splits[0].boundaries["test"].start == pd.Timestamp("2024-01-05")
+    assert len(splits[0].segments["train"]) == 3
+    assert len(splits[0].segments["test"]) == 2
 
-    def test_begin_walk_one(self):
-        """
-            Test begin parameter on walk_one method
-        """
-        for begin in range(0,10):
 
-            X_train, X_test, y_train, y_test = self.jano.walk_one(begin=begin,
-                                                                  shift=self.shift)
-            #print(X_train['date'].min(), self.dataframe['date'].min(), self.jano.move(self.dataframe['date'].min(), begin), begin)
-            assert(X_train['date'].min() == self.jano.move(self.dataframe['date'].min(), begin))
-            self.__test_dataframe_lenght()
+def test_expanding_train_val_test_layout() -> None:
+    frame = build_frame(size=12)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_val_test",
+            train_size=4,
+            validation_size=2,
+            test_size=2,
+        ),
+        step=2,
+        strategy="expanding",
+    )
 
-    def test_walk(self):
-        """
-            Test all possible combinations given a dataset, warnings and errors.
-        """
-        aux = 0
+    splits = list(splitter.iter_splits(frame))
 
-        for iteration in self.iterations:
-            for X_train, X_test, y_train, y_test in self.jano.walk(begin=self.begin,
-                                                                   iterations=iteration,
-                                                                   shift=self.shift):
+    assert len(splits) == 3
+    first = splits[0]
+    second = splits[1]
 
-                self.__test_dataframe_lenght()
+    assert list(first.segments.keys()) == ["train", "validation", "test"]
+    assert len(first.segments["train"]) == 4
+    assert len(first.segments["validation"]) == 2
+    assert len(first.segments["test"]) == 2
+    assert len(second.segments["train"]) == 6
+    assert len(second.segments["validation"]) == 2
 
-                aux += 1
 
-                # Check dates movement is ok:
-                if self.begin == 0:
-                    train_start_date = pd.to_datetime(self.jano.summary()['train_start_date'])
-                    frame_train_start_date = pd.to_datetime(self.dataframe['date'].min())
-                    train_end_date = self.jano.move(train_start_date, 1)
-                    expected_train_end_date = self.jano.move(frame_train_start_date,self.begin)
+def test_split_returns_plain_index_tuples() -> None:
+    frame = build_frame(size=10)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size=5,
+            test_size=3,
+        ),
+        step=1,
+        strategy="single",
+    )
 
-                pprint.pprint(self.jano.summary())
+    train_idx, test_idx = next(splitter.split(frame))
+    assert train_idx.tolist() == [0, 1, 2, 3, 4]
+    assert test_idx.tolist() == [5, 6, 7]
 
-if __name__ == '__main__':
-    unittest.main()
+
+def test_slice_xy_returns_named_segments() -> None:
+    frame = build_frame(size=10)
+    features = frame[["timestamp", "feature"]]
+    target = frame["target"]
+
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="4D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="single",
+    )
+
+    split = next(splitter.iter_splits(frame))
+    sliced = split.slice_xy(features, target)
+
+    assert list(sliced.keys()) == ["X_train", "y_train", "X_test", "y_test"]
+    assert len(sliced["X_train"]) == 4
+    assert len(sliced["y_test"]) == 2
+
+
+def test_get_n_splits_matches_generated_splits() -> None:
+    frame = build_frame(size=12)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="3D",
+            test_size="2D",
+            gap_before_test="1D",
+        ),
+        step="1D",
+        strategy="rolling",
+    )
+
+    assert splitter.get_n_splits(frame) == len(list(splitter.iter_splits(frame)))
+
+
+def test_allow_partial_keeps_last_incomplete_test_segment() -> None:
+    frame = build_frame(size=7)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="3D",
+            test_size="3D",
+        ),
+        step="1D",
+        strategy="single",
+        allow_partial=True,
+    )
+
+    split = next(splitter.iter_splits(frame))
+
+    assert len(split.segments["train"]) == 3
+    assert len(split.segments["test"]) == 3
+
+
+def test_invalid_layout_requires_validation_and_test_sizes() -> None:
+    with pytest.raises(ValueError, match="validation_size and test_size"):
+        TemporalBacktestSplitter(
+            time_col="timestamp",
+            partition=TemporalPartitionSpec(
+                layout="train_val_test",
+                train_size=0.6,
+                test_size=0.2,
+            ),
+            step=0.2,
+            strategy="single",
+        )
+
+
+def test_mixed_unit_families_are_rejected() -> None:
+    with pytest.raises(ValueError, match="same unit family"):
+        TemporalBacktestSplitter(
+            time_col="timestamp",
+            partition=TemporalPartitionSpec(
+                layout="train_test",
+                train_size="7D",
+                test_size=0.3,
+            ),
+            step="1D",
+            strategy="single",
+        )
+
+
+def test_invalid_frame_type_is_rejected() -> None:
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size=5,
+            test_size=3,
+        ),
+        step=1,
+        strategy="single",
+    )
+
+    with pytest.raises(TypeError, match="pandas DataFrame"):
+        next(splitter.iter_splits([1, 2, 3]))
+
+
+def test_summary_exposes_segment_metadata() -> None:
+    frame = build_frame(size=10)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size=5,
+            test_size=3,
+        ),
+        step=1,
+        strategy="single",
+    )
+
+    split = next(splitter.iter_splits(frame))
+    summary = split.summary()
+
+    assert summary["fold"] == 0
+    assert summary["strategy"] == "single"
+    assert summary["segments"]["train"]["rows"] == 5
+    assert summary["segments"]["test"]["rows"] == 3
+
+
+def test_legacy_import_surface_matches_public_splitter() -> None:
+    assert LegacyTemporalBacktestSplitter is TemporalBacktestSplitter
+
+
+def test_split_slice_returns_named_frames() -> None:
+    frame = build_frame(size=10)
+    split = TimeSplit(
+        fold=0,
+        segments={"train": pd.Index([0, 1, 2]).to_numpy(), "test": pd.Index([3, 4]).to_numpy()},
+        boundaries={
+            "train": SegmentBoundaries(pd.Timestamp("2024-01-01"), pd.Timestamp("2024-01-04")),
+            "test": SegmentBoundaries(pd.Timestamp("2024-01-04"), pd.Timestamp("2024-01-06")),
+        },
+    )
+
+    sliced = split.slice(frame)
+
+    assert list(sliced.keys()) == ["train", "test"]
+    assert len(sliced["train"]) == 3
+    assert len(sliced["test"]) == 2
+
+
+def test_missing_time_column_is_rejected() -> None:
+    frame = build_frame(size=10).rename(columns={"timestamp": "event_time"})
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=5, test_size=3),
+        step=1,
+        strategy="single",
+    )
+
+    with pytest.raises(ValueError, match="time_col"):
+        next(splitter.iter_splits(frame))
+
+
+def test_empty_frame_is_rejected() -> None:
+    frame = build_frame(size=0)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=5, test_size=3),
+        step=1,
+        strategy="single",
+    )
+
+    with pytest.raises(ValueError, match="at least one row"):
+        next(splitter.iter_splits(frame))
+
+
+def test_invalid_strategy_is_rejected() -> None:
+    with pytest.raises(ValueError, match="strategy"):
+        TemporalBacktestSplitter(
+            time_col="timestamp",
+            partition=TemporalPartitionSpec(layout="train_test", train_size=5, test_size=3),
+            step=1,
+            strategy="diagonal",
+        )
+
+
+def test_get_n_splits_requires_dataset() -> None:
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=5, test_size=3),
+        step=1,
+        strategy="single",
+    )
+
+    with pytest.raises(ValueError, match="X is required"):
+        splitter.get_n_splits()
+
+
+@pytest.mark.parametrize("value", [True, 0, 1.2, "not-a-duration"])
+def test_invalid_size_values_are_rejected(value) -> None:
+    with pytest.raises((TypeError, ValueError)):
+        SizeSpec.from_value(value)
+
+
+def test_allow_partial_for_row_based_segments_truncates_last_segment() -> None:
+    frame = build_frame(size=9)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=5, test_size=5),
+        step=1,
+        strategy="single",
+        allow_partial=True,
+    )
+
+    split = next(splitter.iter_splits(frame))
+
+    assert len(split.segments["train"]) == 5
+    assert len(split.segments["test"]) == 4
+
+
+def test_duration_allow_partial_truncates_final_segment() -> None:
+    frame = build_frame(size=7)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size="4D", test_size="4D"),
+        step="1D",
+        strategy="single",
+        allow_partial=True,
+    )
+
+    split = next(splitter.iter_splits(frame))
+
+    assert len(split.segments["train"]) == 4
+    assert len(split.segments["test"]) == 3

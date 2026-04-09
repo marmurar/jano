@@ -1,79 +1,140 @@
-
 # Jano
 
-*God of beginnins, time and trasitions... *
+[![CI](https://github.com/marmurar/jano/actions/workflows/ci.yml/badge.svg)](https://github.com/marmurar/jano/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/marmurar/jano/graph/badge.svg)](https://codecov.io/gh/marmurar/jano)
 
----------------------------------------------------------------
+Jano is a Python library for defining temporal partitions and backtesting schemes over time-correlated datasets.
 
-## What is Jano ?
+It is designed for cases where a plain `train_test_split()` is not enough: transactional data, production simulations, repeated retraining, walk-forward validation, model monitoring, rule evaluation, or any experiment where the ordering of time matters.
 
-__Jano is a time slicer designed to train and test time correlated machine learning models.__ Jano operates by "walking" along pandas dataframes with at least one time variable. Users can think of Jano as an iteration over a dtaframe of sklearn.model_selection.TimeSeriesSplit where a few features are addes such as: definning training size iteration over time, test size, a definen gap of time between train and test, etc...
+The project is named after Janus, the Roman god of beginnings, transitions and thresholds. That framing fits the library well: Jano helps define how a dataset moves from training periods into evaluation periods, fold after fold.
 
-__Jano was essentially designed to test how will a defined model will behaive over time based on your disposable trasactional data.__ On the other hand tryes to tackle some of the following questions: How much data should be used in train and test to make robust predictions over time ?When the model should be re trained ?, How long will the model maintain performance ?, Do distribution attributes change over time ?, Does my target distirbution change over time ?
+## Why Jano exists
 
-##  What is a mask ?
+Most train/test utilities answer a simple question:
 
-A mask is defined by the users and simply defines how would you like to iterate over a defined dataframe, check this example: 
+"How do I split this dataset once?"
 
+Jano is meant to answer a richer one:
 
-```python
- import pandas as pd
+"How would this system have behaved over time if I had trained, retrained and evaluated it under a specific temporal policy?"
 
-df = pd.DataFrame('date':['01-01-2020', '02-01-2020', '03-01-2020',
-                          '04-01-2020', '05-01-2020', '06-01-2020',
-                          '07-01-2020', '08-01-2020', '09-01-2020'],
-                  'attrib':[9,4,2,3,4,5,6,1,2,4]
-                  'target':[0,1,2,3,4,5,6,7,8,9])
-```
+That makes it useful not only for machine learning, but for any workflow where the data is time-dependent:
 
+- Backtesting predictive models on transactional data.
+- Simulating daily or weekly retraining in production.
+- Comparing rolling versus expanding windows.
+- Introducing explicit gaps between training and evaluation periods.
+- Defining `train/test` or `train/validation/test` partitions with durations, row counts or percentages.
 
-```python
-import jano as jano
+## Project direction
 
-jano = Jano(df)
+Jano is being reshaped as a small, explicit temporal partitioning toolkit with an interface inspired by `sklearn.model_selection`.
 
-# Define a jano mask:
-jano.mask(train_days = 8, 
-          gap = 1, 
-          test_days = 1, 
-          target = 'target', 
-          train_date_attrib = 'date')
-```
+The design goals are:
 
-__In this example Jano uses 8 days to train, tests with 1 day and leaves 1 day as a gap from the end of the train until the start of the test period.__ If you want to iterate over a dataframe with the defined mask then you want to "walk" over a dataframe, check te following example...
+- Clear, composable temporal partition definitions.
+- Low hidden state and predictable behavior.
+- Compatibility with pandas-first workflows.
+- A splitter-style API that can evolve toward stronger scikit-learn interoperability.
+- Rich split objects for inspection, auditability and simulation.
 
-!['basic walk usage'](./imgs/jano)
+## Current API
 
-## How to "walk" with Jano ?
+The main entry point is `TemporalBacktestSplitter`.
 
-__Jano "walks" over dataframes slicing time and defining where train and test begins and ends.__ It walks along an user defined mask with the condition to iterate over time. We'l the above dataframe to make a simple example training and testing with 2 and 1 day, leaving no days between train and test.
+It supports:
 
+- `single`, `rolling` and `expanding` strategies.
+- `train_test` and `train_val_test` layouts.
+- Segment sizes defined as durations like `"30D"`, row counts like `5000`, or fractions like `0.7`.
+- Optional gaps before validation or test segments.
+- Plain index output through `split()`.
+- Rich fold objects through `iter_splits()`.
 
-```python
-# Re-define the mask:
-jano.mask(train_days = 1, 
-          gap = 0, 
-          test_days = 1, 
-          target = 'target', 
-          train_date_attrib = 'date')
-```
-
+## Example: rolling backtest by duration
 
 ```python
-for X_train, X_test, y_train, y_test in jano.walk(begin=0, iterations=3, shift=0):
-    <train your model...>
-    <predict...>
-    <check results !>
+import pandas as pd
+
+from jano import TemporalBacktestSplitter, TemporalPartitionSpec
+
+frame = pd.DataFrame(
+    {
+        "timestamp": pd.date_range("2024-01-01", periods=12, freq="D"),
+        "feature": range(12),
+        "target": range(100, 112),
+    }
+)
+
+splitter = TemporalBacktestSplitter(
+    time_col="timestamp",
+    partition=TemporalPartitionSpec(
+        layout="train_test",
+        train_size="5D",
+        test_size="2D",
+        gap_before_test="1D",
+    ),
+    step="1D",
+    strategy="rolling",
+)
+
+for train_idx, test_idx in splitter.split(frame):
+    train = frame.iloc[train_idx]
+    test = frame.iloc[test_idx]
+    print(train["timestamp"].min(), test["timestamp"].min())
 ```
 
-For the above example we get four splitted dataframes(X_train, X_test, y_train, y_test) splitted from the first day of the dataframe (since parameter "begin" is 0 which is the first day) and each for iterarion will return a new dataframe.
+## Example: `train/validation/test` by fraction
 
-__This is exactly what we did !__
+```python
+from jano import TemporalBacktestSplitter, TemporalPartitionSpec
 
-!['basic walk usage'](./imgs/jano_walk.gif)
+splitter = TemporalBacktestSplitter(
+    time_col="timestamp",
+    partition=TemporalPartitionSpec(
+        layout="train_val_test",
+        train_size=0.6,
+        validation_size=0.2,
+        test_size=0.2,
+    ),
+    step=0.2,
+    strategy="single",
+)
 
----
+for split in splitter.iter_splits(frame):
+    print(split.summary())
+```
 
-### Author:
+## Installation
 
-Marcos Manuel Muraro
+Once published, the package will be installable from PyPI.
+
+For local development:
+
+```bash
+python -m pip install -e ".[dev]"
+python -m pytest --cov=jano --cov-report=term-missing
+```
+
+## Continuous integration and coverage
+
+The repository includes:
+
+- GitHub Actions for tests across multiple Python versions.
+- Coverage reporting with `pytest-cov`.
+- Codecov upload and status tracking.
+
+## Status
+
+Jano is currently in an early redesign phase. The public API is stabilizing around temporal partition specs, reusable splitters and rich split objects.
+
+That means the project is already usable for experimentation, but it is still a good moment to refine naming, ergonomics and compatibility guarantees before publishing broadly.
+
+## Authors
+
+- Marcos Manuel Muraro
+
+## Contributing
+
+Feedback and design discussion are especially valuable right now. If you are using temporal backtesting for ML, analytics, operations or experimentation, that context can help shape the API in the right direction.

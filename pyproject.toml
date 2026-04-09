@@ -1,0 +1,54 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "jano"
+version = "0.2.0"
+description = "Temporal partitioning and backtesting utilities for time-correlated datasets."
+readme = "README.md"
+license = { file = "LICENSE.txt" }
+requires-python = ">=3.9"
+authors = [
+  { name = "Marcos Manuel Muraro" }
+]
+keywords = ["backtesting", "time-series", "model-selection", "validation", "pandas"]
+urls = { Homepage = "https://github.com/marmurar/jano", Repository = "https://github.com/marmurar/jano", Issues = "https://github.com/marmurar/jano/issues" }
+dependencies = [
+  "pandas>=2.0",
+  "numpy>=1.24"
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3 :: Only",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+
+[project.optional-dependencies]
+dev = [
+  "build>=1.2",
+  "pytest>=8.0",
+  "pytest-cov>=5.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["jano*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["jano"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 85

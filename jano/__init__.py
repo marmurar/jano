@@ -1,4 +1,4 @@
-"""Backward-compatible import surface for legacy users."""
+"""Public package interface for Jano."""
 
 from .splitters import TemporalBacktestSplitter
 from .splits import TimeSplit
