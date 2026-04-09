@@ -17,6 +17,7 @@ class ValidatedPartitionSpec:
 
 
 def validate_strategy(strategy: str) -> str:
+    """Validate and normalize a split strategy name."""
     valid = {"single", "rolling", "expanding"}
     if strategy not in valid:
         raise ValueError(f"strategy must be one of {sorted(valid)}")
@@ -24,6 +25,7 @@ def validate_strategy(strategy: str) -> str:
 
 
 def validate_partition_spec(partition: TemporalPartitionSpec) -> ValidatedPartitionSpec:
+    """Validate a high-level partition spec and normalize its sizes."""
     if partition.layout not in {"train_test", "train_val_test"}:
         raise ValueError("layout must be 'train_test' or 'train_val_test'")
 

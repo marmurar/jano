@@ -1,0 +1,237 @@
+body {
+  background: linear-gradient(180deg, #edf6ff 0%, #f8fafc 28%, #ffffff 100%);
+}
+
+div.bodywrapper {
+  box-shadow: none;
+}
+
+div.document {
+  background: transparent;
+}
+
+div.body {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 28px;
+  box-shadow: 0 20px 70px rgba(15, 23, 42, 0.08);
+  padding: 2.4rem 2.6rem;
+}
+
+div.sphinxsidebar {
+  background: transparent;
+  padding-top: 1rem;
+}
+
+div.sphinxsidebarwrapper {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 22px;
+  box-shadow: 0 16px 50px rgba(15, 23, 42, 0.06);
+  padding: 1.25rem 1.1rem;
+}
+
+div.sphinxsidebarwrapper h1.logo {
+  margin-bottom: 0.5rem;
+}
+
+div.sphinxsidebarwrapper h1.logo img {
+  max-width: 92px;
+  border-radius: 18px;
+}
+
+div.sphinxsidebarwrapper p.logo {
+  display: none;
+}
+
+div.sphinxsidebarwrapper h3,
+div.sphinxsidebarwrapper h4 {
+  color: #0f172a;
+}
+
+.sidebar-about {
+  padding-bottom: 1rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  margin-bottom: 1rem;
+}
+
+.sidebar-about p {
+  margin: 0.5rem 0 0;
+  line-height: 1.55;
+  color: #475569;
+}
+
+.sidebar-about .sidebar-kicker {
+  display: inline-block;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #2563eb;
+  font-weight: 700;
+}
+
+.sidebar-about .sidebar-link {
+  display: inline-block;
+  margin-top: 0.75rem;
+  color: #0f172a;
+  font-weight: 600;
+}
+
+.landing-hero {
+  padding: 1.2rem 0 0.4rem;
+}
+
+.landing-kicker {
+  display: inline-block;
+  color: #2563eb;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.landing-hero h1 {
+  margin: 0.35rem 0 0.7rem;
+  font-size: clamp(2.4rem, 4vw, 3.6rem);
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.landing-lead {
+  max-width: 50rem;
+  font-size: 1.1rem;
+  line-height: 1.8;
+  color: #334155;
+}
+
+.landing-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin: 1.8rem 0 2rem;
+}
+
+.landing-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.95));
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 20px;
+  padding: 1.1rem 1rem;
+}
+
+.landing-card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+}
+
+.landing-card p {
+  margin: 0;
+  color: #475569;
+  line-height: 1.6;
+}
+
+.section-note {
+  color: #475569;
+  line-height: 1.7;
+}
+
+.simulation-preview {
+  margin: 1.5rem 0 2rem;
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 60%);
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+}
+
+.simulation-preview .preview-top {
+  padding: 1.2rem 1.3rem 0.6rem;
+}
+
+.simulation-preview .preview-kicker {
+  color: #2563eb;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+.simulation-preview .preview-title {
+  margin: 0.3rem 0 0.5rem;
+  font-size: 1.35rem;
+  font-weight: 700;
+}
+
+.simulation-preview .preview-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
+  color: #475569;
+  font-size: 0.92rem;
+}
+
+.simulation-preview .preview-chip {
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.86);
+  padding: 0.38rem 0.7rem;
+}
+
+.simulation-preview .preview-body {
+  padding: 0.7rem 1.3rem 1.3rem;
+}
+
+.simulation-preview .preview-row {
+  margin-top: 0.8rem;
+}
+
+.simulation-preview .preview-label {
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.simulation-preview .preview-track {
+  position: relative;
+  height: 22px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(191, 219, 254, 0.52), rgba(219, 234, 254, 0.9));
+  border: 1px solid rgba(191, 219, 254, 0.9);
+  overflow: hidden;
+}
+
+.simulation-preview .preview-segment {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  border-radius: 999px;
+}
+
+.simulation-preview .train {
+  background: #1d4ed8;
+}
+
+.simulation-preview .validation {
+  background: #d97706;
+}
+
+.simulation-preview .test {
+  background: #059669;
+}
+
+.api-lead {
+  color: #475569;
+  line-height: 1.75;
+  max-width: 52rem;
+}
+
+table.docutils td,
+table.docutils th {
+  padding: 0.6rem 0.7rem;
+}
+
+@media (max-width: 900px) {
+  div.body {
+    padding: 1.6rem 1.2rem;
+    border-radius: 20px;
+  }
+}

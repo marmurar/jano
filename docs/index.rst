@@ -1,9 +1,37 @@
-Jano documentation
-==================
+Temporal Backtesting for Time-Correlated Data
+=============================================
 
-Jano is a Python library for temporal partitions and backtesting over time-correlated datasets.
+.. raw:: html
 
-It is meant for situations where a single random split is not enough and where evaluation has to respect the ordering of time: transactional data, production simulations, walk-forward validation, repeated retraining, or any experiment in which the past should never peek into the future.
+   <div class="landing-hero">
+     <span class="landing-kicker">Jano</span>
+     <h1>Temporal partitions that make simulations auditable.</h1>
+     <p class="landing-lead">
+       Jano is a Python toolkit for defining temporal partition policies, running walk-forward simulations
+       and inspecting how systems behave as time advances. It is built for datasets where chronology is part
+       of the problem, not noise to average away.
+     </p>
+     <div class="landing-grid">
+       <div class="landing-card">
+         <h3>Explicit partition policies</h3>
+         <p>Define train/test or train/validation/test layouts with durations, row counts or fractions.</p>
+       </div>
+       <div class="landing-card">
+         <h3>Operational simulations</h3>
+         <p>Model rolling, expanding or single-window evaluation with optional temporal gaps.</p>
+       </div>
+       <div class="landing-card">
+         <h3>Drift becomes visible</h3>
+         <p>By keeping folds anchored in time, changes in outcomes, calibration or behavior are easier to spot.</p>
+       </div>
+     </div>
+   </div>
+
+Jano is useful when a single random split is too weak a proxy for reality: production retraining, walk-forward validation, model monitoring, policy evaluation or any workflow where the past should not leak into the future.
+
+It also works well as a way to evidence drift in simulation results. Jano does not compute drift metrics directly, but it makes temporal shifts in outcomes explicit by preserving chronology across folds and reports.
+
+The current public surface centers on ``TemporalBacktestSplitter``, ``TemporalPartitionSpec``, ``TimeSplit`` and ``describe_simulation()``.
 
 .. toctree::
    :maxdepth: 2
@@ -13,3 +41,4 @@ It is meant for situations where a single random split is not enough and where e
    concepts
    simulation
    api
+   about

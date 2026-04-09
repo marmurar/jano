@@ -10,13 +10,19 @@ SizeValue = Union[str, int, float, pd.Timedelta]
 
 @dataclass(frozen=True)
 class SizeSpec:
-    """Normalized specification for segment sizes."""
+    """Normalized specification for segment sizes.
+
+    Attributes:
+        value: Parsed size value as ``Timedelta``, integer row count or fraction.
+        kind: Unit family for the value: ``duration``, ``rows`` or ``fraction``.
+    """
 
     value: Union[pd.Timedelta, int, float]
     kind: str
 
     @classmethod
     def from_value(cls, value: SizeValue) -> "SizeSpec":
+        """Normalize a raw size value into a typed ``SizeSpec``."""
         if isinstance(value, pd.Timedelta):
             return cls(value=value, kind="duration")
         if isinstance(value, str):
@@ -38,7 +44,16 @@ class SizeSpec:
 
 @dataclass(frozen=True)
 class TemporalPartitionSpec:
-    """High-level description of a temporal partition layout."""
+    """High-level description of a temporal partition layout.
+
+    Attributes:
+        layout: Either ``train_test`` or ``train_val_test``.
+        train_size: Size of the train segment.
+        test_size: Size of the test segment when present.
+        validation_size: Size of the validation segment when present.
+        gap_before_validation: Optional gap inserted before validation.
+        gap_before_test: Optional gap inserted before test.
+    """
 
     layout: str
     train_size: SizeValue

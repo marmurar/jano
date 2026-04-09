@@ -22,7 +22,18 @@ class _SegmentOffsets:
 
 
 class TemporalBacktestSplitter:
-    """Flexible temporal splitter for single or repeated backtests."""
+    """Flexible temporal splitter for single or repeated temporal backtests.
+
+    Args:
+        time_col: Name of the timestamp column used to order the dataset.
+        partition: High-level definition of the train/test or train/validation/test layout.
+        step: Amount by which the simulation advances after each fold. It must use the
+            same unit family as the partition sizes.
+        strategy: Simulation policy. Use ``"single"`` for one split, ``"rolling"`` for
+            fixed-size windows or ``"expanding"`` for growing training history.
+        allow_partial: Whether to keep the last fold when the final evaluation segment
+            would otherwise run past the end of the dataset.
+    """
 
     def __init__(
         self,
@@ -42,11 +53,31 @@ class TemporalBacktestSplitter:
             raise ValueError("step must use the same unit family as the partition sizes")
 
     def split(self, X, y=None, groups=None) -> Iterator[Tuple[np.ndarray, ...]]:
+        """Yield each fold as a plain tuple of positional index arrays.
+
+        Args:
+            X: Input dataset as a pandas ``DataFrame``.
+            y: Unused placeholder for scikit-learn compatibility.
+            groups: Unused placeholder for scikit-learn compatibility.
+
+        Yields:
+            Tuples of NumPy arrays ordered by the configured segment names.
+        """
         for split in self.iter_splits(X, y=y, groups=groups):
             ordered_names = list(split.segments.keys())
             yield tuple(split.segments[name] for name in ordered_names)
 
     def iter_splits(self, X, y=None, groups=None) -> Iterator[TimeSplit]:
+        """Yield rich ``TimeSplit`` objects for each fold in the simulation.
+
+        Args:
+            X: Input dataset as a pandas ``DataFrame``.
+            y: Unused placeholder for scikit-learn compatibility.
+            groups: Unused placeholder for scikit-learn compatibility.
+
+        Yields:
+            ``TimeSplit`` instances containing segment indices, boundaries and metadata.
+        """
         frame = self._coerce_frame(X)
         indexer = TimeIndexer(frame=frame, time_col=self.time_col)
 
@@ -56,6 +87,16 @@ class TemporalBacktestSplitter:
             yield from self._iter_positional_splits(indexer)
 
     def get_n_splits(self, X=None, y=None, groups=None) -> int:
+        """Return the number of valid folds generated for ``X``.
+
+        Args:
+            X: Input dataset as a pandas ``DataFrame``.
+            y: Unused placeholder for scikit-learn compatibility.
+            groups: Unused placeholder for scikit-learn compatibility.
+
+        Returns:
+            Total number of folds that would be produced by ``iter_splits``.
+        """
         if X is None:
             raise ValueError("X is required to compute the number of splits")
         return sum(1 for _ in self.iter_splits(X, y=y, groups=groups))
@@ -67,6 +108,21 @@ class TemporalBacktestSplitter:
         title: str | None = None,
         output: str = "summary",
     ) -> SimulationSummary | SimulationChartData | str:
+        """Describe a simulation over a concrete dataset.
+
+        Args:
+            X: Input dataset as a pandas ``DataFrame``.
+            output_path: Optional filesystem path where the rendered HTML report should
+                be written.
+            title: Optional title used in the returned report outputs.
+            output: Output mode. Use ``"summary"`` for ``SimulationSummary``,
+                ``"html"`` for a rendered HTML string or ``"chart_data"`` for
+                plot-ready Python data.
+
+        Returns:
+            A ``SimulationSummary``, raw HTML string or ``SimulationChartData``
+            depending on ``output``.
+        """
         frame = self._coerce_frame(X)
         splits = list(self.iter_splits(frame))
         if not splits:

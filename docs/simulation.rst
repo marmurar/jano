@@ -51,6 +51,51 @@ Example
    print(html[:120])
    print(chart_data.segment_stats)
 
+Simple HTML preview
+-------------------
+
+Below is a compact mock of the kind of timeline the generated HTML report shows.
+
+.. raw:: html
+
+   <div class="simulation-preview">
+     <div class="preview-top">
+       <div class="preview-kicker">Simulation report</div>
+       <div class="preview-title">Walk-forward simulation</div>
+       <div class="preview-meta">
+         <span class="preview-chip">Rows: 365</span>
+         <span class="preview-chip">Folds: 6</span>
+         <span class="preview-chip">Strategy: rolling</span>
+       </div>
+     </div>
+     <div class="preview-body">
+       <div class="preview-row">
+         <div class="preview-label">Fold 0</div>
+         <div class="preview-track">
+           <span class="preview-segment train" style="left: 0%; width: 44%;"></span>
+           <span class="preview-segment validation" style="left: 48%; width: 12%;"></span>
+           <span class="preview-segment test" style="left: 64%; width: 16%;"></span>
+         </div>
+       </div>
+       <div class="preview-row">
+         <div class="preview-label">Fold 1</div>
+         <div class="preview-track">
+           <span class="preview-segment train" style="left: 8%; width: 44%;"></span>
+           <span class="preview-segment validation" style="left: 56%; width: 12%;"></span>
+           <span class="preview-segment test" style="left: 72%; width: 16%;"></span>
+         </div>
+       </div>
+       <div class="preview-row">
+         <div class="preview-label">Fold 2</div>
+         <div class="preview-track">
+           <span class="preview-segment train" style="left: 16%; width: 44%;"></span>
+           <span class="preview-segment validation" style="left: 64%; width: 12%;"></span>
+           <span class="preview-segment test" style="left: 80%; width: 14%;"></span>
+         </div>
+       </div>
+     </div>
+   </div>
+
 What it returns
 ---------------
 

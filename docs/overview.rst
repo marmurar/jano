@@ -12,6 +12,8 @@ Jano is designed to answer a more operational one:
 
 "How would this system have behaved over time if I had trained, retrained and evaluated it under an explicit temporal policy?"
 
+That also makes it useful for evidencing drift in simulation results, because temporal changes in behavior or performance become explicit fold after fold.
+
 That makes it useful for:
 
 - Backtesting predictive systems over transactional data.
@@ -19,6 +21,7 @@ That makes it useful for:
 - Comparing rolling and expanding windows.
 - Introducing temporal gaps between train and evaluation segments.
 - Defining ``train/test`` or ``train/validation/test`` layouts using durations, row counts or percentages.
+- Surfacing drift in simulation outcomes by making temporal changes explicit across folds.
 
 Design goals
 ------------

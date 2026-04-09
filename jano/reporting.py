@@ -18,7 +18,22 @@ SEGMENT_COLORS = {
 
 @dataclass(frozen=True)
 class SimulationChartData:
-    """Plot-ready description of a temporal simulation timeline."""
+    """Plot-ready description of a temporal simulation timeline.
+
+    Attributes:
+        title: Report title.
+        time_col: Name of the timestamp column used in the dataset.
+        dataset_start: Earliest timestamp present in the dataset.
+        dataset_end: Latest timestamp present in the dataset.
+        total_rows: Number of rows in the source dataset.
+        total_folds: Number of simulated folds.
+        strategy: Split strategy used to build the simulation.
+        size_kind: Unit family used by the partition sizes.
+        segment_order: Ordered list of segment names.
+        segment_colors: Color associated with each segment.
+        segment_stats: Aggregate per-segment row statistics across folds.
+        folds: Fold-level timeline payload ready for plotting.
+    """
 
     title: str
     time_col: str
@@ -34,6 +49,7 @@ class SimulationChartData:
     folds: List[Dict[str, object]]
 
     def to_dict(self) -> Dict[str, object]:
+        """Return a serializable dictionary representation."""
         return {
             "title": self.title,
             "time_col": self.time_col,
@@ -52,7 +68,22 @@ class SimulationChartData:
 
 @dataclass(frozen=True)
 class SimulationSummary:
-    """Structured description of a temporal simulation over a dataset."""
+    """Structured description of a temporal simulation over a dataset.
+
+    Attributes:
+        title: Report title.
+        time_col: Name of the timestamp column used in the dataset.
+        dataset_start: Earliest timestamp present in the dataset.
+        dataset_end: Latest timestamp present in the dataset.
+        total_rows: Number of rows in the source dataset.
+        total_folds: Number of simulated folds.
+        strategy: Split strategy used to build the simulation.
+        size_kind: Unit family used by the partition sizes.
+        folds: Fold-by-fold segment metadata.
+        segment_order: Ordered list of segment names.
+        chart_data: Plot-ready representation of the same simulation.
+        html: Rendered HTML report.
+    """
 
     title: str
     time_col: str
@@ -68,6 +99,7 @@ class SimulationSummary:
     html: str = field(repr=False)
 
     def to_dict(self) -> Dict[str, object]:
+        """Return a serializable dictionary representation."""
         return {
             "title": self.title,
             "time_col": self.time_col,
@@ -83,6 +115,7 @@ class SimulationSummary:
         }
 
     def to_frame(self) -> pd.DataFrame:
+        """Convert fold summaries into a tabular pandas DataFrame."""
         rows = []
         for fold in self.folds:
             row = {
@@ -98,6 +131,7 @@ class SimulationSummary:
         return pd.DataFrame(rows)
 
     def write_html(self, path: str | Path) -> Path:
+        """Write the rendered HTML report to ``path``."""
         destination = Path(path)
         destination.write_text(self.html, encoding="utf-8")
         return destination

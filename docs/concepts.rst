@@ -6,6 +6,8 @@ Temporal partitioning
 
 Jano models evaluation as a temporal partitioning problem instead of a random sampling problem.
 
+That framing is also useful when you want to evidence drift in simulation results, since changes over time remain visible instead of being blurred by random splits.
+
 Instead of asking for a random share of rows, you define a partition policy:
 
 - how large the train segment is,

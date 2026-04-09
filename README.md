@@ -26,6 +26,8 @@ Jano is meant to answer a richer one:
 
 "How would this system have behaved over time if I had trained, retrained and evaluated it under a specific temporal policy?"
 
+That also makes it a useful way to evidence drift in simulation results, because temporal shifts in behavior, performance or calibration become visible fold after fold.
+
 That makes it useful not only for machine learning, but for any workflow where the data is time-dependent:
 
 - Backtesting predictive models on transactional data.
@@ -33,6 +35,7 @@ That makes it useful not only for machine learning, but for any workflow where t
 - Comparing rolling versus expanding windows.
 - Introducing explicit gaps between training and evaluation periods.
 - Defining `train/test` or `train/validation/test` partitions with durations, row counts or percentages.
+- Surfacing drift in simulation outcomes by making temporal changes explicit across folds.
 
 ## Project direction
 
