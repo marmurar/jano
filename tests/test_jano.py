@@ -5,7 +5,7 @@ import pytest
 
 from jano import TemporalBacktestSplitter, TemporalPartitionSpec
 from jano.jano import TemporalBacktestSplitter as LegacyTemporalBacktestSplitter
-from jano.reporting import SimulationSummary
+from jano.reporting import SimulationChartData, SimulationSummary
 from jano.splits import TimeSplit
 from jano.types import SegmentBoundaries, SizeSpec
 
@@ -107,6 +107,25 @@ def test_split_returns_plain_index_tuples() -> None:
     train_idx, test_idx = next(splitter.split(frame))
     assert train_idx.tolist() == [0, 1, 2, 3, 4]
     assert test_idx.tolist() == [5, 6, 7]
+
+
+def test_duration_split_keeps_original_positions_on_unsorted_frame() -> None:
+    frame = build_frame(size=8).iloc[[4, 0, 5, 1, 6, 2, 7, 3]].reset_index(drop=True)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="3D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="single",
+    )
+
+    train_idx, test_idx = next(splitter.split(frame))
+
+    assert train_idx.tolist() == [1, 3, 5]
+    assert test_idx.tolist() == [7, 0]
 
 
 def test_slice_xy_returns_named_segments() -> None:
@@ -362,8 +381,11 @@ def test_describe_simulation_returns_summary_with_html(tmp_path) -> None:
     assert isinstance(summary, SimulationSummary)
     assert summary.total_folds == 4
     assert summary.segment_order == ["train", "test"]
+    assert isinstance(summary.chart_data, SimulationChartData)
+    assert summary.chart_data.segment_stats["train"]["avg_rows"] == 4.0
     assert "Fold 0" in summary.html
     assert "Temporal partition simulation overview" in summary.html
+    assert "Segment profile" in summary.html
 
     output_path = tmp_path / "simulation.html"
     written_path = summary.write_html(output_path)
@@ -397,3 +419,45 @@ def test_describe_simulation_can_write_html_directly(tmp_path) -> None:
     assert summary.title == "Walk-forward report"
     assert "validation" in summary.to_dict()["segment_order"]
     assert not summary.to_frame().empty
+
+
+def test_describe_simulation_can_return_html_or_chart_data() -> None:
+    frame = build_frame(size=10)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_val_test",
+            train_size=4,
+            validation_size=2,
+            test_size=2,
+        ),
+        step=2,
+        strategy="expanding",
+    )
+
+    html = splitter.describe_simulation(frame, output="html", title="HTML only")
+    chart_data = splitter.describe_simulation(frame, output="chart_data")
+
+    assert isinstance(html, str)
+    assert "HTML only" in html
+    assert isinstance(chart_data, SimulationChartData)
+    assert chart_data.segment_order == ["train", "validation", "test"]
+    assert chart_data.segment_colors["validation"]
+    assert chart_data.folds[0]["segments"]["train"]["offset_pct"] == 0.0
+
+
+def test_describe_simulation_rejects_invalid_output_mode() -> None:
+    frame = build_frame(size=10)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size=5,
+            test_size=3,
+        ),
+        step=1,
+        strategy="single",
+    )
+
+    with pytest.raises(ValueError, match="output must be one of"):
+        splitter.describe_simulation(frame, output="svg")

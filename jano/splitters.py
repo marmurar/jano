@@ -7,7 +7,7 @@ from typing import Dict, Iterator, List, Tuple
 import numpy as np
 import pandas as pd
 
-from .reporting import SimulationSummary, build_simulation_summary
+from .reporting import SimulationChartData, SimulationSummary, build_simulation_summary
 from .slicing import TimeIndexer
 from .splits import TimeSplit
 from .types import SegmentBoundaries, SizeSpec, TemporalPartitionSpec
@@ -65,7 +65,8 @@ class TemporalBacktestSplitter:
         X: pd.DataFrame,
         output_path: str | Path | None = None,
         title: str | None = None,
-    ) -> SimulationSummary:
+        output: str = "summary",
+    ) -> SimulationSummary | SimulationChartData | str:
         frame = self._coerce_frame(X)
         splits = list(self.iter_splits(frame))
         if not splits:
@@ -81,7 +82,13 @@ class TemporalBacktestSplitter:
         if output_path is not None:
             summary.write_html(output_path)
 
-        return summary
+        if output == "summary":
+            return summary
+        if output == "html":
+            return summary.html
+        if output == "chart_data":
+            return summary.chart_data
+        raise ValueError("output must be one of 'summary', 'html' or 'chart_data'")
 
     @staticmethod
     def _coerce_frame(X) -> pd.DataFrame:
@@ -132,10 +139,10 @@ class TemporalBacktestSplitter:
                 else:
                     break
 
-            segments = {
-                name: indexer.slice_between(boundary.start, boundary.end)
-                for name, boundary in boundaries.items()
-            }
+            segments = {}
+            for name, boundary in boundaries.items():
+                left, right = indexer.bounds_between(boundary.start, boundary.end)
+                segments[name] = indexer.slice_positional(left, right)
 
             if not self._is_valid_segments(segments):
                 break
@@ -153,7 +160,7 @@ class TemporalBacktestSplitter:
             start = start + self.step.value
 
     def _iter_positional_splits(self, indexer: TimeIndexer) -> Iterator[TimeSplit]:
-        total_rows = len(indexer.ordered)
+        total_rows = indexer.total_rows
         sizes = {
             name: self._resolve_position_size(spec, total_rows)
             for name, spec in self.partition.segments.items()
@@ -186,8 +193,8 @@ class TemporalBacktestSplitter:
                 else:
                     positions[name] = (segment_start, segment_end)
                 boundaries[name] = SegmentBoundaries(
-                    start=indexer.timestamps.iloc[min(segment_start, total_rows - 1)],
-                    end=indexer.timestamps.iloc[min(segment_end - 1, total_rows - 1)],
+                    start=indexer.timestamp_at(min(segment_start, total_rows - 1)),
+                    end=indexer.timestamp_at(min(segment_end - 1, total_rows - 1)),
                 )
                 cursor = segment_end
 
@@ -199,8 +206,8 @@ class TemporalBacktestSplitter:
                         break
                     positions[last_name] = (segment_start, total_rows)
                     boundaries[last_name] = SegmentBoundaries(
-                        start=indexer.timestamps.iloc[segment_start],
-                        end=indexer.timestamps.iloc[-1],
+                        start=indexer.timestamp_at(segment_start),
+                        end=indexer.max_time,
                     )
                 else:
                     break

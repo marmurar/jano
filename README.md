@@ -58,7 +58,8 @@ It supports:
 - Optional gaps before validation or test segments.
 - Plain index output through `split()`.
 - Rich fold objects through `iter_splits()`.
-- Simulation summaries and HTML timeline reports through `describe_simulation()`.
+- Simulation summaries, HTML timeline reports and plot-ready chart data through `describe_simulation()`.
+- A numpy-first internal indexing path to reduce split overhead on large datasets.
 
 ## Example: rolling backtest by duration
 
@@ -117,17 +118,22 @@ for split in splitter.iter_splits(frame):
 ## Example: describe a simulation as HTML
 
 ```python
-summary = splitter.describe_simulation(
-    frame,
-    output_path="simulation.html",
-    title="Walk-forward simulation",
-)
+summary = splitter.describe_simulation(frame, title="Walk-forward simulation")
+html = splitter.describe_simulation(frame, output="html")
+chart_data = splitter.describe_simulation(frame, output="chart_data")
 
 print(summary.total_folds)
 print(summary.to_frame().head())
+print(chart_data.segment_stats)
 ```
 
-That produces an HTML report showing each fold across the dataset timeline, with colored train, validation and test segments plus row counts per partition.
+That gives you three ways to consume the same simulation:
+
+- `summary` for tabular metadata and export helpers,
+- `html` for a standalone visual report,
+- `chart_data` for direct Python plotting without reparsing HTML.
+
+The generated report shows each fold across the dataset timeline, with richer summary cards, clearer segment labels and row counts per partition.
 
 ## Installation
 

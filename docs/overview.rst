@@ -40,5 +40,7 @@ The project is in an early redesign phase. The new core already supports:
 - ``train_test`` and ``train_val_test`` layouts.
 - Sizes expressed as durations, row counts or fractions.
 - Optional gaps before validation or test segments.
+- Simulation reporting as summary objects, HTML reports or plot-ready Python data.
+- A numpy-first temporal indexing path that trims overhead on large datasets.
 
 The API is stable enough for experimentation and active design work, while still small enough to refine before broader publication.
