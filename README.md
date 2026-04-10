@@ -171,6 +171,28 @@ for split in splitter.iter_splits(frame):
     print(split.summary())
 ```
 
+## Example: keep the same test window and grow train backward
+
+This is useful when you want to study whether more training history really improves the same test slice.
+
+```python
+import pandas as pd
+
+cutoff = pd.Timestamp("2025-09-15")
+test_start = cutoff
+test_end = cutoff + pd.Timedelta(days=4)
+train_sizes = ["7D", "14D", "21D", "28D"]
+
+for train_size in train_sizes:
+    train_start = test_start - pd.to_timedelta(train_size)
+    train = frame.loc[(frame["timestamp"] >= train_start) & (frame["timestamp"] < test_start)]
+    test = frame.loc[(frame["timestamp"] >= test_start) & (frame["timestamp"] < test_end)]
+
+    print(train_size, len(train), len(test))
+```
+
+That pattern keeps `test` fixed while `train` expands toward the past. It is a practical way to study data efficiency or to estimate how much history is actually needed before adding a dedicated high-level study API.
+
 ## Example: describe a simulation as HTML
 
 ```python

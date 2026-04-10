@@ -147,6 +147,50 @@ When you need direct control over folds or want to integrate with an external tr
    for split in splitter.iter_splits(frame):
        print(split.summary())
 
+Fixed cutoff studies
+--------------------
+
+Another useful pattern is to keep the same test window fixed and repeatedly expand the train window backward in time. That is helpful when you want to answer questions such as:
+
+- does adding more historical data actually improve test performance?
+- can a smaller train sample match the same test quality?
+- where does extra history stop being useful?
+
+The current API does not expose that study as a dedicated class yet, but you can express it directly with a fixed cutoff and manual iteration over train sizes.
+
+.. container:: example-block
+
+   Fixed test, expanding train
+
+.. code-block:: python
+
+   import pandas as pd
+
+   frame = pd.DataFrame(
+       {
+           "timestamp": pd.date_range("2025-08-01", periods=80, freq="D"),
+           "feature": range(80),
+           "target": range(200, 280),
+       }
+   )
+
+   cutoff = pd.Timestamp("2025-09-15")
+   test_start = cutoff
+   test_end = cutoff + pd.Timedelta(days=4)
+   train_sizes = ["7D", "14D", "21D", "28D"]
+
+   for train_size in train_sizes:
+       train_start = test_start - pd.to_timedelta(train_size)
+       train_mask = (frame["timestamp"] >= train_start) & (frame["timestamp"] < test_start)
+       test_mask = (frame["timestamp"] >= test_start) & (frame["timestamp"] < test_end)
+
+       train = frame.loc[train_mask]
+       test = frame.loc[test_mask]
+
+       print(train_size, len(train), len(test))
+
+This keeps the same test slice fixed while you expand the train window toward the past. If the target becomes available later than the event timestamp, combine the same idea with ``TemporalSemanticsSpec`` so train eligibility follows the true availability column.
+
 Temporal semantics and leakage control
 --------------------------------------
 
