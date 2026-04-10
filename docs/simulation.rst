@@ -97,6 +97,45 @@ When you need direct control over folds or want to integrate with an external tr
    for split in splitter.iter_splits(frame):
        print(split.summary())
 
+Temporal semantics and leakage control
+--------------------------------------
+
+When a single timestamp column is not enough, you can pass a ``TemporalSemanticsSpec`` instead of a plain ``time_col`` string.
+
+This lets you separate:
+
+- the timeline used for reporting and global simulation bounds,
+- the internal ordering column,
+- and the timestamp column used to decide whether each segment is eligible.
+
+That matters in production-like datasets where availability and event time differ. For example, a flight may depart on one day but only become usable for supervised training when its arrival is known.
+
+.. code-block:: python
+
+   from jano import TemporalBacktestSplitter, TemporalPartitionSpec, TemporalSemanticsSpec
+
+   splitter = TemporalBacktestSplitter(
+       time_col=TemporalSemanticsSpec(
+           timeline_col="departured_at",
+           segment_time_cols={
+               "train": "arrived_at",
+               "test": "departured_at",
+           },
+       ),
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="14D",
+           test_size="3D",
+           gap_before_train="1D",
+           gap_before_test="1D",
+           gap_after_test="2D",
+       ),
+       step="1D",
+       strategy="rolling",
+   )
+
+In that configuration, the simulation is reported over the ``departured_at`` timeline, while the train set only includes rows whose ``arrived_at`` falls inside the train window. This prevents rows from entering train before the target would actually be available in production.
+
 Simple HTML preview
 -------------------
 

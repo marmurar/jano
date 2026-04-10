@@ -5,7 +5,7 @@ from .reporting import SimulationChartData, SimulationSummary
 from .simulation import SimulationResult, TemporalSimulation
 from .splitters import TemporalBacktestSplitter
 from .splits import TimeSplit
-from .types import SegmentBoundaries, SizeSpec, TemporalPartitionSpec
+from .types import SegmentBoundaries, SizeSpec, TemporalPartitionSpec, TemporalSemanticsSpec
 
 __all__ = [
     "SegmentBoundaries",
@@ -16,6 +16,7 @@ __all__ = [
     "TemporalSimulation",
     "TemporalBacktestSplitter",
     "TemporalPartitionSpec",
+    "TemporalSemanticsSpec",
     "TimeSplit",
     "__version__",
 ]

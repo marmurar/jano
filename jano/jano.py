@@ -3,7 +3,7 @@
 from .splitters import TemporalBacktestSplitter
 from .reporting import SimulationSummary
 from .splits import TimeSplit
-from .types import SegmentBoundaries, SizeSpec, TemporalPartitionSpec
+from .types import SegmentBoundaries, SizeSpec, TemporalPartitionSpec, TemporalSemanticsSpec
 
 __all__ = [
     "SegmentBoundaries",
@@ -11,5 +11,6 @@ __all__ = [
     "SizeSpec",
     "TemporalBacktestSplitter",
     "TemporalPartitionSpec",
+    "TemporalSemanticsSpec",
     "TimeSplit",
 ]

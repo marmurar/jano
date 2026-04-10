@@ -5,7 +5,13 @@ from importlib.metadata import version
 import pandas as pd
 import pytest
 
-from jano import TemporalBacktestSplitter, TemporalPartitionSpec, TemporalSimulation, __version__
+from jano import (
+    TemporalBacktestSplitter,
+    TemporalPartitionSpec,
+    TemporalSemanticsSpec,
+    TemporalSimulation,
+    __version__,
+)
 from jano.describe import SimulationSummary as LegacySimulationSummary
 from jano.jano import TemporalBacktestSplitter as LegacyTemporalBacktestSplitter
 from jano.reporting import SimulationChartData, SimulationSummary
@@ -299,7 +305,7 @@ def test_missing_time_column_is_rejected() -> None:
         strategy="single",
     )
 
-    with pytest.raises(ValueError, match="time_col"):
+    with pytest.raises(ValueError, match="not found"):
         next(splitter.iter_splits(frame))
 
 
@@ -742,3 +748,94 @@ def test_time_indexer_slice_between_uses_bounds_correctly() -> None:
 
     assert train_idx.tolist() == [1, 3]
     assert test_idx.tolist() == [5, 0]
+
+
+def test_gap_before_train_and_gap_after_test_are_respected() -> None:
+    frame = build_frame(size=12)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="3D",
+            test_size="2D",
+            gap_before_train="1D",
+            gap_before_test="1D",
+            gap_after_test="2D",
+        ),
+        step="1D",
+        strategy="rolling",
+    )
+
+    splits = list(splitter.iter_splits(frame))
+
+    assert len(splits) == 3
+    assert splits[0].boundaries["train"].start == pd.Timestamp("2024-01-02")
+    assert splits[0].boundaries["train"].end == pd.Timestamp("2024-01-05")
+    assert splits[0].boundaries["test"].start == pd.Timestamp("2024-01-06")
+    assert splits[-1].boundaries["test"].end == pd.Timestamp("2024-01-10")
+
+
+def test_temporal_semantics_can_use_different_columns_per_segment() -> None:
+    frame = pd.DataFrame(
+        {
+            "departured_at": pd.to_datetime(
+                [
+                    "2025-09-01",
+                    "2025-09-02",
+                    "2025-09-03",
+                    "2025-09-04",
+                    "2025-09-05",
+                    "2025-09-06",
+                    "2025-09-07",
+                ]
+            ),
+            "arrived_at": pd.to_datetime(
+                [
+                    "2025-09-02",
+                    "2025-09-03",
+                    "2025-09-04",
+                    "2025-09-08",
+                    "2025-09-09",
+                    "2025-09-10",
+                    "2025-09-11",
+                ]
+            ),
+            "feature": range(7),
+            "target": range(10, 17),
+        }
+    )
+    splitter = TemporalBacktestSplitter(
+        time_col=TemporalSemanticsSpec(
+            timeline_col="departured_at",
+            segment_time_cols={"train": "arrived_at", "test": "departured_at"},
+        ),
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="4D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="single",
+    )
+
+    split = next(splitter.iter_splits(frame))
+
+    assert split.segments["train"].tolist() == [0, 1, 2]
+    assert split.segments["test"].tolist() == [4, 5]
+
+
+def test_custom_segment_temporal_semantics_require_duration_sizes() -> None:
+    with pytest.raises(ValueError, match="require duration-based sizes"):
+        TemporalBacktestSplitter(
+            time_col=TemporalSemanticsSpec(
+                timeline_col="departured_at",
+                segment_time_cols={"train": "arrived_at"},
+            ),
+            partition=TemporalPartitionSpec(
+                layout="train_test",
+                train_size=4,
+                test_size=2,
+            ),
+            step=1,
+            strategy="single",
+        )

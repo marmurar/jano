@@ -27,6 +27,11 @@ Main workflow
    :undoc-members:
    :no-index:
 
+.. autoclass:: jano.types.TemporalSemanticsSpec
+   :members:
+   :undoc-members:
+   :no-index:
+
 .. autoclass:: jano.splitters.TemporalBacktestSplitter
    :members:
    :undoc-members:

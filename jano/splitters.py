@@ -10,8 +10,13 @@ import pandas as pd
 from .reporting import SimulationChartData, SimulationSummary, build_simulation_summary
 from .slicing import TimeIndexer
 from .splits import TimeSplit
-from .types import SegmentBoundaries, SizeSpec, TemporalPartitionSpec
-from .validation import ValidatedPartitionSpec, validate_partition_spec, validate_strategy
+from .types import SegmentBoundaries, SizeSpec, TemporalPartitionSpec, TemporalSemanticsSpec
+from .validation import (
+    ValidatedPartitionSpec,
+    validate_partition_spec,
+    validate_strategy,
+    validate_temporal_semantics,
+)
 
 
 @dataclass(frozen=True)
@@ -25,7 +30,8 @@ class TemporalBacktestSplitter:
     """Flexible temporal splitter for single or repeated temporal backtests.
 
     Args:
-        time_col: Name of the timestamp column used to order the dataset.
+        time_col: Either the name of the timeline column or a ``TemporalSemanticsSpec``
+            describing the timeline, ordering column and per-segment eligibility columns.
         partition: High-level definition of the train/test or train/validation/test layout.
         step: Amount by which the simulation advances after each fold. It must use the
             same unit family as the partition sizes.
@@ -37,13 +43,19 @@ class TemporalBacktestSplitter:
 
     def __init__(
         self,
-        time_col: str,
+        time_col: str | TemporalSemanticsSpec,
         partition: TemporalPartitionSpec,
         step,
         strategy: str = "rolling",
         allow_partial: bool = False,
     ) -> None:
-        self.time_col = time_col
+        if isinstance(time_col, TemporalSemanticsSpec):
+            self.temporal_semantics = validate_temporal_semantics(time_col)
+        else:
+            self.temporal_semantics = validate_temporal_semantics(
+                TemporalSemanticsSpec(timeline_col=time_col)
+            )
+        self.time_col = self.temporal_semantics.timeline_col
         self.partition = validate_partition_spec(partition)
         self.step = SizeSpec.from_value(step)
         self.strategy = validate_strategy(strategy)
@@ -51,6 +63,17 @@ class TemporalBacktestSplitter:
 
         if self.partition.size_kind != self.step.kind:
             raise ValueError("step must use the same unit family as the partition sizes")
+        if self.partition.size_kind != "duration" and self._uses_custom_segment_times:
+            raise ValueError(
+                "Per-segment temporal semantics currently require duration-based sizes and steps"
+            )
+
+    @property
+    def _uses_custom_segment_times(self) -> bool:
+        return any(
+            self.temporal_semantics.column_for_segment(name) != self.time_col
+            for name in self.partition.segments
+        )
 
     def split(self, X, y=None, groups=None) -> Iterator[Tuple[np.ndarray, ...]]:
         """Yield each fold as a plain tuple of positional index arrays.
@@ -79,7 +102,7 @@ class TemporalBacktestSplitter:
             ``TimeSplit`` instances containing segment indices, boundaries and metadata.
         """
         frame = self._coerce_frame(X)
-        indexer = TimeIndexer(frame=frame, time_col=self.time_col)
+        indexer = TimeIndexer(frame=frame, semantics=self.temporal_semantics)
 
         if self.partition.size_kind == "duration":
             yield from self._iter_duration_splits(indexer)
@@ -158,6 +181,7 @@ class TemporalBacktestSplitter:
         segment_names = list(self.partition.segments.keys())
         segment_sizes = self.partition.segments
         gap_sizes = self.partition.gaps
+        tail_gap = self.partition.tail_gap
 
         start = indexer.min_time
         fold = 0
@@ -168,8 +192,12 @@ class TemporalBacktestSplitter:
             boundaries: Dict[str, SegmentBoundaries] = {}
 
             for name in segment_names:
+                gap = gap_sizes.get(name)
+                if gap is not None:
+                    cursor = cursor + gap.value
+
                 if name == "train":
-                    segment_start = train_start
+                    segment_start = train_start + gap.value if gap is not None else train_start
                     if self.strategy == "expanding":
                         segment_end = start + segment_sizes[name].value
                         if segment_end <= segment_start:
@@ -177,15 +205,14 @@ class TemporalBacktestSplitter:
                     else:
                         segment_end = segment_start + segment_sizes[name].value
                 else:
-                    gap = gap_sizes.get(name)
-                    if gap is not None:
-                        cursor = cursor + gap.value
                     segment_start = cursor
                     segment_end = segment_start + segment_sizes[name].value
                 boundaries[name] = SegmentBoundaries(start=segment_start, end=segment_end)
                 cursor = segment_end
 
             last_end = boundaries[segment_names[-1]].end
+            if tail_gap is not None:
+                last_end = last_end + tail_gap.value
             if last_end > indexer.max_time:
                 if self.allow_partial and boundaries[segment_names[-1]].start < indexer.max_time:
                     boundaries[segment_names[-1]] = SegmentBoundaries(
@@ -197,8 +224,11 @@ class TemporalBacktestSplitter:
 
             segments = {}
             for name, boundary in boundaries.items():
-                left, right = indexer.bounds_between(boundary.start, boundary.end)
-                segments[name] = indexer.slice_positional(left, right)
+                segments[name] = indexer.slice_between_for_segment(
+                    name,
+                    boundary.start,
+                    boundary.end,
+                )
 
             if not self._is_valid_segments(segments):
                 break
@@ -226,6 +256,7 @@ class TemporalBacktestSplitter:
             for name, spec in self.partition.gaps.items()
         }
         step = self._resolve_position_size(self.step, total_rows)
+        tail_gap = self._resolve_position_size(self.partition.tail_gap, total_rows) if self.partition.tail_gap is not None else 0
         fold = 0
         start = 0
         segment_names = list(self.partition.segments.keys())
@@ -237,11 +268,10 @@ class TemporalBacktestSplitter:
 
             for name in segment_names:
                 if name == "train" and self.strategy == "expanding":
-                    segment_start = 0
+                    segment_start = gaps.get("train", 0)
                     segment_end = sizes[name] + (fold * step)
                 else:
-                    if name != "train":
-                        cursor += gaps.get(name, 0)
+                    cursor += gaps.get(name, 0)
                     segment_start = cursor
                     segment_end = segment_start + sizes[name]
                 if name != "train" or self.strategy != "expanding":
@@ -254,7 +284,7 @@ class TemporalBacktestSplitter:
                 )
                 cursor = segment_end
 
-            if positions[segment_names[-1]][1] > total_rows:
+            if positions[segment_names[-1]][1] + tail_gap > total_rows:
                 if self.allow_partial:
                     last_name = segment_names[-1]
                     segment_start, _ = positions[last_name]

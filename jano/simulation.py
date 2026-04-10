@@ -13,7 +13,7 @@ from .reporting import (
 )
 from .splitters import TemporalBacktestSplitter
 from .splits import TimeSplit
-from .types import TemporalPartitionSpec
+from .types import TemporalPartitionSpec, TemporalSemanticsSpec
 
 
 @dataclass(frozen=True)
@@ -66,7 +66,8 @@ class TemporalSimulation:
     """High-level interface for executing a complete temporal simulation.
 
     Args:
-        time_col: Name of the timestamp column used to order the dataset.
+        time_col: Either the name of the timeline column or a ``TemporalSemanticsSpec``
+            describing the timeline, ordering column and per-segment eligibility columns.
         partition: High-level definition of the train/test or train/validation/test layout.
         step: Amount by which the simulation advances after each fold.
         strategy: Simulation policy. Use ``"single"``, ``"rolling"`` or ``"expanding"``.
@@ -81,7 +82,7 @@ class TemporalSimulation:
 
     def __init__(
         self,
-        time_col: str,
+        time_col: str | TemporalSemanticsSpec,
         partition: TemporalPartitionSpec,
         step,
         strategy: str = "rolling",
@@ -112,6 +113,11 @@ class TemporalSimulation:
     def partition(self):
         """Return the validated partition configuration used by the simulation."""
         return self.splitter.partition
+
+    @property
+    def temporal_semantics(self) -> TemporalSemanticsSpec:
+        """Return the temporal semantics used by the simulation."""
+        return self.splitter.temporal_semantics
 
     def as_splitter(self) -> TemporalBacktestSplitter:
         """Return the underlying low-level splitter."""

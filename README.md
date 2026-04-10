@@ -120,6 +120,8 @@ result = simulation.run(frame, title="15 daily retraining iterations")
 
 The high-level simulation layer also supports `end_at` when you want to constrain the simulation to a bounded time window before folds are generated.
 
+When a single timestamp is not enough, both `TemporalSimulation` and `TemporalBacktestSplitter` can also receive a `TemporalSemanticsSpec`. That lets you keep one column as the reported timeline while using different timestamp columns to decide whether `train`, `validation` or `test` rows are actually eligible. This is useful for production-style leakage control, for example when a target only becomes available at `arrived_at` even if the operational timeline is anchored on `departured_at`.
+
 ## Example: manual control with the low-level splitter
 
 ```python
