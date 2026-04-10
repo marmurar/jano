@@ -25,6 +25,10 @@ That means the temporal configuration stays the same even if the upstream data s
 Example
 -------
 
+.. container:: example-block
+
+   Example
+
 .. code-block:: python
 
    import pandas as pd
@@ -66,6 +70,10 @@ Example
 
 You can anchor the simulation to a specific point in time and cap the number of folds:
 
+.. container:: example-block
+
+   Anchored simulation
+
 .. code-block:: python
 
    simulation = TemporalSimulation(
@@ -86,6 +94,10 @@ You can anchor the simulation to a specific point in time and cap the number of 
 ``TemporalSimulation`` also accepts ``end_at`` if you want to constrain the simulation to a bounded time window before folds are generated.
 
 If your source data is a NumPy array, reference the time column by integer position:
+
+.. container:: example-block
+
+   NumPy input
 
 .. code-block:: python
 

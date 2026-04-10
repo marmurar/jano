@@ -6,17 +6,29 @@ Installation
 
 Once the package is published to PyPI, install it with:
 
+.. container:: example-block
+
+   Standard installation
+
 .. code-block:: bash
 
    python -m pip install jano
 
 To use Polars inputs directly, install the optional extra:
 
+.. container:: example-block
+
+   Optional Polars extra
+
 .. code-block:: bash
 
    python -m pip install "jano[polars]"
 
 For local development, install the project in editable mode with the development dependencies:
+
+.. container:: example-block
+
+   Development setup
 
 .. code-block:: bash
 
@@ -35,6 +47,10 @@ The repository now includes a dedicated GitHub Actions workflow for PyPI publica
 1. Update ``jano/_version.py`` to the release version.
 2. Verify locally:
 
+   .. container:: example-block
+
+      Release checks
+
    .. code-block:: bash
 
       python -m pytest -q
@@ -43,6 +59,10 @@ The repository now includes a dedicated GitHub Actions workflow for PyPI publica
 
 3. Commit and push the release changes.
 4. Create and push a Git tag that matches the release version, for example:
+
+   .. container:: example-block
+
+      Release tag
 
    .. code-block:: bash
 
