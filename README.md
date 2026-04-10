@@ -192,6 +192,8 @@ The release path is:
 
 That tag triggers the `Publish` workflow, which builds the wheel and source distribution and publishes them to PyPI.
 
+In parallel, the repository also includes a `GitHub Release` workflow that can create a GitHub Release and attach the built wheel and source distribution for any `v*` tag. That gives the project a distribution channel even while PyPI access is still being recovered.
+
 ## Continuous integration and coverage
 
 The repository includes:
