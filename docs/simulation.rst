@@ -150,7 +150,9 @@ When you need direct control over folds or want to integrate with an external tr
 Fixed cutoff studies
 --------------------
 
-Another useful pattern is to keep the same test window fixed and repeatedly expand the train window backward in time. That is helpful when you want to answer questions such as:
+This is a special use case rather than the default simulation pattern.
+
+One useful variant is to keep the same test window fixed and repeatedly expand the train window backward in time. That is helpful when you want to answer questions such as:
 
 - does adding more historical data actually improve test performance?
 - can a smaller train sample match the same test quality?
@@ -190,6 +192,17 @@ The current API does not expose that study as a dedicated class yet, but you can
        print(train_size, len(train), len(test))
 
 This keeps the same test slice fixed while you expand the train window toward the past. If the target becomes available later than the event timestamp, combine the same idea with ``TemporalSemanticsSpec`` so train eligibility follows the true availability column.
+
+The opposite special case is also common: keep train fixed, move test forward day by day and measure for how long a model or rule keeps its performance without retraining. That pattern answers a different operational question:
+
+- how many days can this object stay in production before it degrades?
+- how quickly does performance decay after the training cutoff?
+- how often should retraining happen?
+
+In other words:
+
+- fixed test + growing train helps study training-history sufficiency
+- fixed train + moving test helps study performance durability after deployment
 
 Temporal semantics and leakage control
 --------------------------------------

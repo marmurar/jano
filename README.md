@@ -173,7 +173,7 @@ for split in splitter.iter_splits(frame):
 
 ## Example: keep the same test window and grow train backward
 
-This is useful when you want to study whether more training history really improves the same test slice.
+This is a special use case. It is useful when you want to study whether more training history really improves the same test slice.
 
 ```python
 import pandas as pd
@@ -192,6 +192,11 @@ for train_size in train_sizes:
 ```
 
 That pattern keeps `test` fixed while `train` expands toward the past. It is a practical way to study data efficiency or to estimate how much history is actually needed before adding a dedicated high-level study API.
+
+The opposite special case is also common: keep `train` fixed and move `test` forward day by day to estimate how long a model or rule keeps its performance without retraining. The two patterns answer different questions:
+
+- fixed `test` + growing `train`: how much history do I actually need?
+- fixed `train` + moving `test`: for how long does performance hold after deployment?
 
 ## Example: describe a simulation as HTML
 
