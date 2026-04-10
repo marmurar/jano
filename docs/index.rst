@@ -50,6 +50,7 @@ Supported input backends:
    overview
    concepts
    simulation
+   benchmark
    api
    release
    about

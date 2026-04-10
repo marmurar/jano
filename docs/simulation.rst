@@ -27,7 +27,7 @@ Example
 
 .. container:: example-block
 
-   Example
+   pandas.DataFrame
 
 .. code-block:: python
 
@@ -124,6 +124,36 @@ If your source data is a NumPy array, reference the time column by integer posit
        strategy="single",
    )
 
+If your source data is a Polars frame, the same configuration works with named columns:
+
+.. container:: example-block
+
+   polars.DataFrame
+
+.. code-block:: python
+
+   import polars as pl
+
+   frame = pl.DataFrame(
+       {
+           "timestamp": ["2025-09-01", "2025-09-02", "2025-09-03", "2025-09-04"],
+           "feature": [0.2, 0.4, 0.1, 0.3],
+           "target": [1, 0, 1, 0],
+       }
+   ).with_columns(pl.col("timestamp").str.strptime(pl.Datetime, "%Y-%m-%d"))
+
+   simulation = TemporalSimulation(
+       time_col="timestamp",
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="2D",
+           test_size="1D",
+       ),
+       step="1D",
+       strategy="single",
+   )
+
+   result = simulation.run(frame)
 Low-level manual control
 ------------------------
 
