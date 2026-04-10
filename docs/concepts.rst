@@ -8,6 +8,12 @@ Jano models evaluation as a temporal partitioning problem instead of a random sa
 
 That framing is also useful when you want to evidence drift in simulation results, since changes over time remain visible instead of being blurred by random splits.
 
+Internally, the engine operates on pandas objects. At the public boundary, though, Jano accepts:
+
+- ``pandas.DataFrame`` with named columns,
+- ``numpy.ndarray`` with integer column references such as ``time_col=0``,
+- ``polars.DataFrame`` converted internally before fold generation.
+
 Instead of asking for a random share of rows, you define a partition policy:
 
 - how large the train segment is,

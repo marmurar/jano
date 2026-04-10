@@ -14,6 +14,8 @@ Documentation: [marmurar.github.io/jano](https://marmurar.github.io/jano/)
 
 It is designed for cases where a plain `train_test_split()` is not enough: transactional data, production simulations, repeated retraining, walk-forward validation, model monitoring, rule evaluation, or any experiment where the ordering of time matters.
 
+The core accepts `pandas.DataFrame`, `numpy.ndarray` and `polars.DataFrame` inputs. `pandas` remains the internal execution engine, while NumPy and Polars inputs are normalized at the boundary so the split/reporting API stays consistent.
+
 The project is named after Janus, the Roman god of beginnings, transitions and thresholds. That framing fits the library well: Jano helps define how a dataset moves from training periods into evaluation periods, fold after fold.
 
 ## Why Jano exists
@@ -122,6 +124,32 @@ The high-level simulation layer also supports `end_at` when you want to constrai
 
 When a single timestamp is not enough, both `TemporalSimulation` and `TemporalBacktestSplitter` can also receive a `TemporalSemanticsSpec`. That lets you keep one column as the reported timeline while using different timestamp columns to decide whether `train`, `validation` or `test` rows are actually eligible. This is useful for production-style leakage control, for example when a target only becomes available at `arrived_at` even if the operational timeline is anchored on `departured_at`.
 
+For `numpy.ndarray` inputs, use integer column references:
+
+```python
+import numpy as np
+
+values = np.array(
+    [
+        ["2025-09-01", 1.2, 10],
+        ["2025-09-02", 1.5, 11],
+        ["2025-09-03", 1.1, 12],
+    ],
+    dtype=object,
+)
+
+splitter = TemporalBacktestSplitter(
+    time_col=0,
+    partition=TemporalPartitionSpec(
+        layout="train_test",
+        train_size="2D",
+        test_size="1D",
+    ),
+    step="1D",
+    strategy="single",
+)
+```
+
 ## Example: manual control with the low-level splitter
 
 ```python
@@ -169,6 +197,12 @@ After the first PyPI release, install the package with:
 
 ```bash
 python -m pip install jano
+```
+
+To use Polars inputs directly:
+
+```bash
+python -m pip install "jano[polars]"
 ```
 
 For local development:

@@ -6,6 +6,7 @@ from typing import Mapping, Union
 import pandas as pd
 
 SizeValue = Union[str, int, float, pd.Timedelta]
+ColumnRef = Union[str, int]
 
 
 @dataclass(frozen=True)
@@ -79,16 +80,16 @@ class TemporalSemanticsSpec:
             stays anchored on ``departured_at``.
     """
 
-    timeline_col: str
-    order_col: str | None = None
-    segment_time_cols: Mapping[str, str] = field(default_factory=dict)
+    timeline_col: ColumnRef
+    order_col: ColumnRef | None = None
+    segment_time_cols: Mapping[str, ColumnRef] = field(default_factory=dict)
 
     @property
-    def effective_order_col(self) -> str:
+    def effective_order_col(self) -> ColumnRef:
         """Return the ordering column used by the engine."""
         return self.order_col or self.timeline_col
 
-    def column_for_segment(self, name: str) -> str:
+    def column_for_segment(self, name: str) -> ColumnRef:
         """Return the timestamp column used to assign rows to ``name``."""
         return self.segment_time_cols.get(name, self.timeline_col)
 

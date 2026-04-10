@@ -80,15 +80,15 @@ def validate_partition_spec(partition: TemporalPartitionSpec) -> ValidatedPartit
 
 def validate_temporal_semantics(semantics: TemporalSemanticsSpec) -> TemporalSemanticsSpec:
     """Validate a temporal semantics configuration."""
-    if not semantics.timeline_col:
-        raise ValueError("timeline_col must be a non-empty string")
-    if not semantics.effective_order_col:
-        raise ValueError("order_col must resolve to a non-empty string")
+    if semantics.timeline_col is None:
+        raise ValueError("timeline_col must not be None")
+    if semantics.effective_order_col is None:
+        raise ValueError("order_col must resolve to a non-null column reference")
 
     for name, column in semantics.segment_time_cols.items():
         if not name:
             raise ValueError("segment_time_cols keys must be non-empty strings")
-        if not column:
-            raise ValueError("segment_time_cols values must be non-empty strings")
+        if column is None:
+            raise ValueError("segment_time_cols values must be non-null column references")
 
     return semantics

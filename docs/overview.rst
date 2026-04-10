@@ -32,6 +32,7 @@ Jano is being reshaped around a few clear ideas:
 - Minimal hidden state.
 - Predictable, inspectable folds.
 - A pandas-friendly workflow with an interface inspired by ``sklearn.model_selection``.
+- Input normalization for ``pandas``, ``numpy`` and ``polars`` tabular data.
 - Rich fold objects that can be inspected, summarized and sliced.
 
 Current status

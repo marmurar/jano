@@ -140,11 +140,12 @@ class SimulationSummary:
 def build_simulation_summary(
     splits: List[TimeSplit],
     frame: pd.DataFrame,
-    time_col: str,
+    time_col: object,
     title: str,
 ) -> SimulationSummary:
     dataset_start = pd.to_datetime(frame[time_col]).min()
     dataset_end = pd.to_datetime(frame[time_col]).max()
+    time_col_label = str(time_col)
     segment_order = list(splits[0].segments.keys()) if splits else []
     fold_rows = [
         _build_fold_summary(split=split, segment_order=segment_order) for split in splits
@@ -153,7 +154,7 @@ def build_simulation_summary(
     size_kind = splits[0].metadata.get("size_kind", "unknown") if splits else "unknown"
     chart_data = _build_chart_data(
         title=title,
-        time_col=time_col,
+        time_col=time_col_label,
         dataset_start=dataset_start,
         dataset_end=dataset_end,
         total_rows=len(frame),
@@ -167,7 +168,7 @@ def build_simulation_summary(
 
     return SimulationSummary(
         title=title,
-        time_col=time_col,
+        time_col=time_col_label,
         dataset_start=dataset_start,
         dataset_end=dataset_end,
         total_rows=len(frame),

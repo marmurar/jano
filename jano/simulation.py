@@ -105,8 +105,8 @@ class TemporalSimulation:
         self.max_folds = max_folds
 
     @property
-    def time_col(self) -> str:
-        """Return the timestamp column configured for the simulation."""
+    def time_col(self):
+        """Return the timeline column configured for the simulation."""
         return self.splitter.time_col
 
     @property
@@ -132,7 +132,8 @@ class TemporalSimulation:
         """Execute the configured simulation over ``X`` and materialize its folds.
 
         Args:
-            X: Input dataset as a pandas ``DataFrame``.
+            X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
+                ``polars.DataFrame``.
             output_path: Optional filesystem path where the rendered HTML report should
                 be written.
             title: Optional title used in the returned report outputs.
@@ -161,7 +162,7 @@ class TemporalSimulation:
         if self.start_at is None and self.end_at is None:
             return frame
 
-        timestamps = pd.to_datetime(frame[self.time_col])
+        timestamps = pd.to_datetime(frame[self.temporal_semantics.timeline_col])
         mask = pd.Series(True, index=frame.index)
         if self.start_at is not None:
             mask &= timestamps >= self.start_at

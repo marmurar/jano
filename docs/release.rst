@@ -10,6 +10,12 @@ Once the package is published to PyPI, install it with:
 
    python -m pip install jano
 
+To use Polars inputs directly, install the optional extra:
+
+.. code-block:: bash
+
+   python -m pip install "jano[polars]"
+
 For local development, install the project in editable mode with the development dependencies:
 
 .. code-block:: bash

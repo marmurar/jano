@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .reporting import SimulationChartData, SimulationSummary, build_simulation_summary
+from .io import coerce_tabular_input
 from .slicing import TimeIndexer
 from .splits import TimeSplit
 from .types import SegmentBoundaries, SizeSpec, TemporalPartitionSpec, TemporalSemanticsSpec
@@ -79,7 +80,8 @@ class TemporalBacktestSplitter:
         """Yield each fold as a plain tuple of positional index arrays.
 
         Args:
-            X: Input dataset as a pandas ``DataFrame``.
+            X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
+                ``polars.DataFrame``.
             y: Unused placeholder for scikit-learn compatibility.
             groups: Unused placeholder for scikit-learn compatibility.
 
@@ -94,7 +96,8 @@ class TemporalBacktestSplitter:
         """Yield rich ``TimeSplit`` objects for each fold in the simulation.
 
         Args:
-            X: Input dataset as a pandas ``DataFrame``.
+            X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
+                ``polars.DataFrame``.
             y: Unused placeholder for scikit-learn compatibility.
             groups: Unused placeholder for scikit-learn compatibility.
 
@@ -113,7 +116,8 @@ class TemporalBacktestSplitter:
         """Return the number of valid folds generated for ``X``.
 
         Args:
-            X: Input dataset as a pandas ``DataFrame``.
+            X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
+                ``polars.DataFrame``.
             y: Unused placeholder for scikit-learn compatibility.
             groups: Unused placeholder for scikit-learn compatibility.
 
@@ -134,7 +138,8 @@ class TemporalBacktestSplitter:
         """Describe a simulation over a concrete dataset.
 
         Args:
-            X: Input dataset as a pandas ``DataFrame``.
+            X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
+                ``polars.DataFrame``.
             output_path: Optional filesystem path where the rendered HTML report should
                 be written.
             title: Optional title used in the returned report outputs.
@@ -171,11 +176,10 @@ class TemporalBacktestSplitter:
 
     @staticmethod
     def _coerce_frame(X) -> pd.DataFrame:
-        if not isinstance(X, pd.DataFrame):
-            raise TypeError("TemporalBacktestSplitter currently expects a pandas DataFrame")
-        if X.empty:
+        frame = coerce_tabular_input(X)
+        if frame.empty:
             raise ValueError("X must contain at least one row")
-        return X
+        return frame
 
     def _iter_duration_splits(self, indexer: TimeIndexer) -> Iterator[TimeSplit]:
         segment_names = list(self.partition.segments.keys())

@@ -2,8 +2,10 @@ from __future__ import annotations
 
 from importlib.metadata import version
 
+import numpy as np
 import pandas as pd
 import pytest
+import polars as pl
 
 from jano import (
     TemporalBacktestSplitter,
@@ -244,7 +246,7 @@ def test_invalid_frame_type_is_rejected() -> None:
         strategy="single",
     )
 
-    with pytest.raises(TypeError, match="pandas DataFrame"):
+    with pytest.raises(TypeError, match="pandas DataFrame, NumPy ndarray or polars DataFrame"):
         next(splitter.iter_splits([1, 2, 3]))
 
 
@@ -748,6 +750,77 @@ def test_time_indexer_slice_between_uses_bounds_correctly() -> None:
 
     assert train_idx.tolist() == [1, 3]
     assert test_idx.tolist() == [5, 0]
+
+
+def test_numpy_array_input_is_supported_with_integer_time_column() -> None:
+    frame = build_frame(size=8)
+    values = np.column_stack(
+        [
+            frame["timestamp"].astype("datetime64[ns]").astype(str).to_numpy(),
+            frame["feature"].to_numpy(),
+            frame["target"].to_numpy(),
+        ]
+    )
+    splitter = TemporalBacktestSplitter(
+        time_col=0,
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="3D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="single",
+    )
+
+    train_idx, test_idx = next(splitter.split(values))
+
+    assert train_idx.tolist() == [0, 1, 2]
+    assert test_idx.tolist() == [3, 4]
+
+
+def test_polars_input_is_supported() -> None:
+    frame = pl.DataFrame(build_frame(size=8))
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="3D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="single",
+    )
+
+    split = next(splitter.iter_splits(frame))
+
+    assert split.segments["train"].tolist() == [0, 1, 2]
+    assert split.segments["test"].tolist() == [3, 4]
+
+
+def test_temporal_simulation_accepts_numpy_input() -> None:
+    frame = build_frame(size=12)
+    values = np.column_stack(
+        [
+            frame["timestamp"].astype("datetime64[ns]").astype(str).to_numpy(),
+            frame["feature"].to_numpy(),
+            frame["target"].to_numpy(),
+        ]
+    )
+    simulation = TemporalSimulation(
+        time_col=0,
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="4D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="rolling",
+    )
+
+    result = simulation.run(values)
+
+    assert result.total_folds == 6
+    assert result.frame.columns.tolist() == [0, 1, 2]
 
 
 def test_gap_before_train_and_gap_after_test_are_respected() -> None:

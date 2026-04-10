@@ -11,6 +11,12 @@ The entry point is ``describe_simulation()`` on ``TemporalBacktestSplitter``.
 
 If you want to run a full simulation without manual fold iteration, the recommended interface is ``TemporalSimulation``.
 
+The same API accepts three tabular inputs:
+
+- ``pandas.DataFrame``
+- ``numpy.ndarray`` using integer column references such as ``time_col=0``
+- ``polars.DataFrame`` when the optional Polars dependency is installed
+
 Example
 -------
 
@@ -73,6 +79,33 @@ You can anchor the simulation to a specific point in time and cap the number of 
    result = simulation.run(frame, title="15 daily retraining iterations")
 
 ``TemporalSimulation`` also accepts ``end_at`` if you want to constrain the simulation to a bounded time window before folds are generated.
+
+If your source data is a NumPy array, reference the time column by integer position:
+
+.. code-block:: python
+
+   import numpy as np
+
+   values = np.array(
+       [
+           ["2025-09-01", 0.2, 1],
+           ["2025-09-02", 0.4, 0],
+           ["2025-09-03", 0.1, 1],
+           ["2025-09-04", 0.3, 0],
+       ],
+       dtype=object,
+   )
+
+   simulation = TemporalSimulation(
+       time_col=0,
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="2D",
+           test_size="1D",
+       ),
+       step="1D",
+       strategy="single",
+   )
 
 Low-level manual control
 ------------------------
