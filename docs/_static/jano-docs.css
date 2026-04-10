@@ -82,9 +82,9 @@ div.body h5 {
 }
 
 div.body h1 {
-  font-size: clamp(2.6rem, 4.2vw, 4rem);
-  line-height: 0.96;
-  margin-bottom: 1rem;
+  font-size: clamp(1.9rem, 2.6vw, 2.7rem);
+  line-height: 1.02;
+  margin-bottom: 0.8rem;
 }
 
 div.body h2 {
@@ -202,15 +202,16 @@ div.sphinxsidebarwrapper a:hover {
 .landing-kicker {
   display: inline-block;
   color: var(--brand);
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.14em;
+  margin-bottom: 0.35rem;
 }
 
 .landing-hero h1 {
-  margin: 0.35rem 0 0.8rem;
-  font-size: clamp(2.7rem, 4vw, 4rem);
+  margin: 0.1rem 0 0.95rem;
+  font-size: clamp(3.1rem, 5vw, 4.6rem);
   line-height: 0.95;
   letter-spacing: -0.05em;
 }
@@ -503,7 +504,7 @@ hr.docutils {
   }
 
   div.body h1 {
-    font-size: 2.25rem;
+    font-size: 1.7rem;
   }
 
   div.body h2 {
@@ -511,6 +512,6 @@ hr.docutils {
   }
 
   .landing-hero h1 {
-    font-size: 2.35rem;
+    font-size: 2.75rem;
   }
 }
