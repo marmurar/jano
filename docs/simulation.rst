@@ -17,6 +17,11 @@ The same API accepts three tabular inputs:
 - ``numpy.ndarray`` using integer column references such as ``time_col=0``
 - ``polars.DataFrame`` when the optional Polars dependency is installed
 
+That means the temporal configuration stays the same even if the upstream data source changes. The only thing that changes is how you reference columns:
+
+- by name for pandas and Polars
+- by integer position for NumPy arrays
+
 Example
 -------
 

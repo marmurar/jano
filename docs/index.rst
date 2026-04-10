@@ -24,6 +24,10 @@ Temporal Backtesting for Time-Correlated Data
          <h3>Drift becomes visible</h3>
          <p>By keeping folds anchored in time, changes in outcomes, calibration or behavior are easier to spot.</p>
        </div>
+       <div class="landing-card">
+         <h3>Flexible tabular inputs</h3>
+         <p>Run the same API on pandas, NumPy or Polars data while keeping one temporal engine underneath.</p>
+       </div>
      </div>
    </div>
 
@@ -32,6 +36,12 @@ Jano is useful when a single random split is too weak a proxy for reality: produ
 It also works well as a way to evidence drift in simulation results. Jano does not compute drift metrics directly, but it makes temporal shifts in outcomes explicit by preserving chronology across folds and reports.
 
 The recommended public surface now centers on ``TemporalSimulation`` for full simulation runs, while ``TemporalBacktestSplitter`` remains available for manual fold iteration and lower-level control.
+
+Supported input backends:
+
+- ``pandas.DataFrame`` with named columns
+- ``numpy.ndarray`` with integer column references
+- ``polars.DataFrame`` through the optional ``jano[polars]`` extra
 
 .. toctree::
    :maxdepth: 2

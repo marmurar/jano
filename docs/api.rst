@@ -9,6 +9,12 @@ API reference
      <code>TemporalBacktestSplitter</code> when they need manual control over folds.
    </p>
 
+   <p class="api-lead">
+     Public inputs can come from <code>pandas</code>, <code>numpy</code> or
+     <code>polars</code>. When the source is not pandas, Jano normalizes it at the boundary
+     and keeps the same split and reporting surface.
+   </p>
+
 Main workflow
 -------------
 

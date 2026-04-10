@@ -45,7 +45,9 @@ The project is in an early redesign phase. The new core already supports:
 - ``single``, ``rolling`` and ``expanding`` strategies.
 - ``train_test`` and ``train_val_test`` layouts.
 - Sizes expressed as durations, row counts or fractions.
-- Optional gaps before validation or test segments.
+- Optional gaps before train, validation or test, plus a trailing gap after test.
+- Temporal semantics that let each segment use a different timestamp column for eligibility.
+- Input normalization for ``pandas``, ``numpy`` and optional ``polars`` data.
 - Simulation reporting as summary objects, HTML reports or plot-ready Python data.
 - A numpy-first temporal indexing path that trims overhead on large datasets.
 
