@@ -198,6 +198,24 @@ The opposite special case is also common: keep `train` fixed and move `test` for
 - fixed `test` + growing `train`: how much history do I actually need?
 - fixed `train` + moving `test`: for how long does performance hold after deployment?
 
+Example of the second pattern:
+
+```python
+train_start = pd.Timestamp("2025-08-01")
+train_end = pd.Timestamp("2025-09-01")
+test_size = pd.Timedelta(days=3)
+evaluation_days = 10
+
+train = frame.loc[(frame["timestamp"] >= train_start) & (frame["timestamp"] < train_end)]
+
+for offset in range(evaluation_days):
+    test_start = train_end + pd.Timedelta(days=offset)
+    test_end = test_start + test_size
+    test = frame.loc[(frame["timestamp"] >= test_start) & (frame["timestamp"] < test_end)]
+
+    print(test_start.date(), len(train), len(test))
+```
+
 ## Example: describe a simulation as HTML
 
 ```python

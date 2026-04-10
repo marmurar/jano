@@ -204,6 +204,30 @@ In other words:
 - fixed test + growing train helps study training-history sufficiency
 - fixed train + moving test helps study performance durability after deployment
 
+.. container:: example-block
+
+   Fixed train, moving test
+
+.. code-block:: python
+
+   import pandas as pd
+
+   train_start = pd.Timestamp("2025-08-01")
+   train_end = pd.Timestamp("2025-09-01")
+   test_size = pd.Timedelta(days=3)
+   evaluation_days = 10
+
+   train = frame.loc[(frame["timestamp"] >= train_start) & (frame["timestamp"] < train_end)]
+
+   for offset in range(evaluation_days):
+       test_start = train_end + pd.Timedelta(days=offset)
+       test_end = test_start + test_size
+       test = frame.loc[(frame["timestamp"] >= test_start) & (frame["timestamp"] < test_end)]
+
+       print(test_start.date(), len(train), len(test))
+
+This keeps the same training history fixed while the evaluation window moves forward over time. It is the right shape when you want to estimate how long an object can stay in production before retraining becomes necessary.
+
 Temporal semantics and leakage control
 --------------------------------------
 
