@@ -154,6 +154,7 @@ If your source data is a Polars frame, the same configuration works with named c
    )
 
    result = simulation.run(frame)
+
 Low-level manual control
 ------------------------
 
