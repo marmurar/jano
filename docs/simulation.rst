@@ -11,8 +11,23 @@ The entry point is ``describe_simulation()`` on ``TemporalBacktestSplitter``.
 
 If you want to run a full simulation without manual fold iteration, the recommended interface is ``TemporalSimulation``.
 
+The same API accepts three tabular inputs:
+
+- ``pandas.DataFrame``
+- ``numpy.ndarray`` using integer column references such as ``time_col=0``
+- ``polars.DataFrame`` when the optional Polars dependency is installed
+
+That means the temporal configuration stays the same even if the upstream data source changes. The only thing that changes is how you reference columns:
+
+- by name for pandas and Polars
+- by integer position for NumPy arrays
+
 Example
 -------
+
+.. container:: example-block
+
+   pandas.DataFrame
 
 .. code-block:: python
 
@@ -55,6 +70,10 @@ Example
 
 You can anchor the simulation to a specific point in time and cap the number of folds:
 
+.. container:: example-block
+
+   Anchored simulation
+
 .. code-block:: python
 
    simulation = TemporalSimulation(
@@ -73,6 +92,68 @@ You can anchor the simulation to a specific point in time and cap the number of 
    result = simulation.run(frame, title="15 daily retraining iterations")
 
 ``TemporalSimulation`` also accepts ``end_at`` if you want to constrain the simulation to a bounded time window before folds are generated.
+
+If your source data is a NumPy array, reference the time column by integer position:
+
+.. container:: example-block
+
+   NumPy input
+
+.. code-block:: python
+
+   import numpy as np
+
+   values = np.array(
+       [
+           ["2025-09-01", 0.2, 1],
+           ["2025-09-02", 0.4, 0],
+           ["2025-09-03", 0.1, 1],
+           ["2025-09-04", 0.3, 0],
+       ],
+       dtype=object,
+   )
+
+   simulation = TemporalSimulation(
+       time_col=0,
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="2D",
+           test_size="1D",
+       ),
+       step="1D",
+       strategy="single",
+   )
+
+If your source data is a Polars frame, the same configuration works with named columns:
+
+.. container:: example-block
+
+   polars.DataFrame
+
+.. code-block:: python
+
+   import polars as pl
+
+   frame = pl.DataFrame(
+       {
+           "timestamp": ["2025-09-01", "2025-09-02", "2025-09-03", "2025-09-04"],
+           "feature": [0.2, 0.4, 0.1, 0.3],
+           "target": [1, 0, 1, 0],
+       }
+   ).with_columns(pl.col("timestamp").str.strptime(pl.Datetime, "%Y-%m-%d"))
+
+   simulation = TemporalSimulation(
+       time_col="timestamp",
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="2D",
+           test_size="1D",
+       ),
+       step="1D",
+       strategy="single",
+   )
+
+   result = simulation.run(frame)
 
 Low-level manual control
 ------------------------
@@ -96,6 +177,126 @@ When you need direct control over folds or want to integrate with an external tr
 
    for split in splitter.iter_splits(frame):
        print(split.summary())
+
+Fixed cutoff studies
+--------------------
+
+This is a special use case rather than the default simulation pattern.
+
+One useful variant is to keep the same test window fixed and repeatedly expand the train window backward in time. That is helpful when you want to answer questions such as:
+
+- does adding more historical data actually improve test performance?
+- can a smaller train sample match the same test quality?
+- where does extra history stop being useful?
+
+The current API does not expose that study as a dedicated class yet, but you can express it directly with a fixed cutoff and manual iteration over train sizes.
+
+.. container:: example-block
+
+   Fixed test, expanding train
+
+.. code-block:: python
+
+   import pandas as pd
+
+   frame = pd.DataFrame(
+       {
+           "timestamp": pd.date_range("2025-08-01", periods=80, freq="D"),
+           "feature": range(80),
+           "target": range(200, 280),
+       }
+   )
+
+   cutoff = pd.Timestamp("2025-09-15")
+   test_start = cutoff
+   test_end = cutoff + pd.Timedelta(days=4)
+   train_sizes = ["7D", "14D", "21D", "28D"]
+
+   for train_size in train_sizes:
+       train_start = test_start - pd.to_timedelta(train_size)
+       train_mask = (frame["timestamp"] >= train_start) & (frame["timestamp"] < test_start)
+       test_mask = (frame["timestamp"] >= test_start) & (frame["timestamp"] < test_end)
+
+       train = frame.loc[train_mask]
+       test = frame.loc[test_mask]
+
+       print(train_size, len(train), len(test))
+
+This keeps the same test slice fixed while you expand the train window toward the past. If the target becomes available later than the event timestamp, combine the same idea with ``TemporalSemanticsSpec`` so train eligibility follows the true availability column.
+
+The opposite special case is also common: keep train fixed, move test forward day by day and measure for how long a model or rule keeps its performance without retraining. That pattern answers a different operational question:
+
+- how many days can this object stay in production before it degrades?
+- how quickly does performance decay after the training cutoff?
+- how often should retraining happen?
+
+In other words:
+
+- fixed test + growing train helps study training-history sufficiency
+- fixed train + moving test helps study performance durability after deployment
+
+.. container:: example-block
+
+   Fixed train, moving test
+
+.. code-block:: python
+
+   import pandas as pd
+
+   train_start = pd.Timestamp("2025-08-01")
+   train_end = pd.Timestamp("2025-09-01")
+   test_size = pd.Timedelta(days=3)
+   evaluation_days = 10
+
+   train = frame.loc[(frame["timestamp"] >= train_start) & (frame["timestamp"] < train_end)]
+
+   for offset in range(evaluation_days):
+       test_start = train_end + pd.Timedelta(days=offset)
+       test_end = test_start + test_size
+       test = frame.loc[(frame["timestamp"] >= test_start) & (frame["timestamp"] < test_end)]
+
+       print(test_start.date(), len(train), len(test))
+
+This keeps the same training history fixed while the evaluation window moves forward over time. It is the right shape when you want to estimate how long an object can stay in production before retraining becomes necessary.
+
+Temporal semantics and leakage control
+--------------------------------------
+
+When a single timestamp column is not enough, you can pass a ``TemporalSemanticsSpec`` instead of a plain ``time_col`` string.
+
+This lets you separate:
+
+- the timeline used for reporting and global simulation bounds,
+- the internal ordering column,
+- and the timestamp column used to decide whether each segment is eligible.
+
+That matters in production-like datasets where availability and event time differ. For example, a flight may depart on one day but only become usable for supervised training when its arrival is known.
+
+.. code-block:: python
+
+   from jano import TemporalBacktestSplitter, TemporalPartitionSpec, TemporalSemanticsSpec
+
+   splitter = TemporalBacktestSplitter(
+       time_col=TemporalSemanticsSpec(
+           timeline_col="departured_at",
+           segment_time_cols={
+               "train": "arrived_at",
+               "test": "departured_at",
+           },
+       ),
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="14D",
+           test_size="3D",
+           gap_before_train="1D",
+           gap_before_test="1D",
+           gap_after_test="2D",
+       ),
+       step="1D",
+       strategy="rolling",
+   )
+
+In that configuration, the simulation is reported over the ``departured_at`` timeline, while the train set only includes rows whose ``arrived_at`` falls inside the train window. This prevents rows from entering train before the target would actually be available in production.
 
 Simple HTML preview
 -------------------

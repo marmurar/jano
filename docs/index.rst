@@ -24,6 +24,10 @@ Temporal Backtesting for Time-Correlated Data
          <h3>Drift becomes visible</h3>
          <p>By keeping folds anchored in time, changes in outcomes, calibration or behavior are easier to spot.</p>
        </div>
+       <div class="landing-card">
+         <h3>Flexible tabular inputs</h3>
+         <p>Run the same API on pandas, NumPy or Polars data while keeping one temporal engine underneath.</p>
+       </div>
      </div>
    </div>
 
@@ -33,6 +37,12 @@ It also works well as a way to evidence drift in simulation results. Jano does n
 
 The recommended public surface now centers on ``TemporalSimulation`` for full simulation runs, while ``TemporalBacktestSplitter`` remains available for manual fold iteration and lower-level control.
 
+Supported input backends:
+
+- ``pandas.DataFrame`` with named columns
+- ``numpy.ndarray`` with integer column references
+- ``polars.DataFrame`` through the optional ``jano[polars]`` extra
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents
@@ -40,5 +50,7 @@ The recommended public surface now centers on ``TemporalSimulation`` for full si
    overview
    concepts
    simulation
+   benchmark
    api
+   release
    about
