@@ -29,6 +29,10 @@ Temporal Backtesting for Time-Correlated Data
          <p>Run the same API on pandas, NumPy or Polars data while keeping one temporal engine underneath.</p>
        </div>
      </div>
+     <div class="landing-visual">
+       <img src="_static/jano_viz.png" alt="Jano temporal partition visualization" />
+       <p class="landing-visual-caption">A visual summary of how Jano lays out temporal partitions, folds and reporting across time.</p>
+     </div>
    </div>
 
 Jano is useful when a single random split is too weak a proxy for reality: production retraining, walk-forward validation, model monitoring, policy evaluation or any workflow where the past should not leak into the future.

@@ -230,6 +230,28 @@ div.sphinxsidebarwrapper a:hover {
   margin: 1.8rem 0 2rem;
 }
 
+.landing-visual {
+  margin: 1.4rem 0 2.2rem;
+}
+
+.landing-visual img {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+  border: 1px solid var(--panel-border);
+  border-radius: 24px;
+  box-shadow: 0 22px 60px rgba(15, 23, 42, 0.08);
+  display: block;
+  max-width: 100%;
+  width: 100%;
+}
+
+.landing-visual-caption {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.7;
+  margin: 0.8rem 0 0;
+  max-width: 48rem;
+}
+
 .landing-card {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.95));
   border: 1px solid var(--panel-border);
