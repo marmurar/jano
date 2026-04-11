@@ -4,7 +4,6 @@ Temporal Backtesting for Time-Correlated Data
 .. raw:: html
 
    <div class="landing-hero">
-     <span class="landing-kicker">Jano</span>
      <h1>Temporal partitions that make simulations auditable.</h1>
      <p class="landing-lead">
        Jano is a Python toolkit for defining temporal partition policies, running walk-forward simulations

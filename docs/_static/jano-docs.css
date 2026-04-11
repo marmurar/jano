@@ -199,6 +199,18 @@ div.sphinxsidebarwrapper a:hover {
   padding: 1.2rem 0 0.4rem;
 }
 
+.index div.body > h1:first-of-type,
+body.index div.body > h1:first-of-type {
+  color: var(--text-muted);
+  font-family: var(--body-font);
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  line-height: 1.4;
+  margin-bottom: 0.75rem;
+  text-transform: uppercase;
+}
+
 .landing-kicker {
   display: inline-block;
   color: var(--brand);
@@ -210,10 +222,11 @@ div.sphinxsidebarwrapper a:hover {
 }
 
 .landing-hero h1 {
-  margin: 0.1rem 0 0.95rem;
-  font-size: clamp(3.1rem, 5vw, 4.6rem);
-  line-height: 0.95;
+  margin: 0.15rem 0 0.8rem;
+  font-size: clamp(2.15rem, 3.3vw, 3rem);
+  line-height: 1.02;
   letter-spacing: -0.05em;
+  max-width: 18ch;
 }
 
 .landing-lead {
@@ -608,7 +621,7 @@ hr.docutils {
   }
 
   .landing-hero h1 {
-    font-size: 2.75rem;
+    font-size: 2.1rem;
   }
 
   .benchmark-bar {
