@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Mapping, Union
+from typing import Mapping, Sequence, Union
 
 import pandas as pd
 
@@ -92,6 +92,44 @@ class TemporalSemanticsSpec:
     def column_for_segment(self, name: str) -> ColumnRef:
         """Return the timestamp column used to assign rows to ``name``."""
         return self.segment_time_cols.get(name, self.timeline_col)
+
+
+@dataclass(frozen=True)
+class FeatureLookbackSpec:
+    """Lookback requirements for feature groups within the same fold.
+
+    Attributes:
+        default_lookback: Optional fallback lookback applied to features that do not
+            belong to an explicit group.
+        group_lookbacks: Mapping from feature-group name to the temporal lookback
+            needed to build that group.
+        feature_groups: Mapping from group name to the feature columns that belong to it.
+
+    All lookbacks must use duration-based sizes.
+    """
+
+    default_lookback: SizeValue | None = None
+    group_lookbacks: Mapping[str, SizeValue] = field(default_factory=dict)
+    feature_groups: Mapping[str, Sequence[ColumnRef]] = field(default_factory=dict)
+
+    def normalized_group_lookbacks(self) -> dict[str, SizeSpec]:
+        """Return validated duration lookbacks for each explicit feature group."""
+        normalized: dict[str, SizeSpec] = {}
+        for name, value in self.group_lookbacks.items():
+            spec = SizeSpec.from_value(value)
+            if spec.kind != "duration":
+                raise ValueError("Feature lookbacks must use duration-based sizes")
+            normalized[name] = spec
+        return normalized
+
+    def normalized_default_lookback(self) -> SizeSpec | None:
+        """Return the validated duration lookback for ungrouped features."""
+        if self.default_lookback is None:
+            return None
+        spec = SizeSpec.from_value(self.default_lookback)
+        if spec.kind != "duration":
+            raise ValueError("Feature lookbacks must use duration-based sizes")
+        return spec
 
 
 @dataclass(frozen=True)

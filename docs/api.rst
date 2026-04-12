@@ -38,7 +38,35 @@ Main workflow
    :undoc-members:
    :no-index:
 
+.. autoclass:: jano.types.FeatureLookbackSpec
+   :members:
+   :undoc-members:
+   :no-index:
+
 .. autoclass:: jano.splitters.TemporalBacktestSplitter
+   :members:
+   :undoc-members:
+   :no-index:
+
+Temporal policies
+-----------------
+
+.. autoclass:: jano.policies.TrainGrowthPolicy
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.policies.TrainGrowthResult
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.policies.PerformanceDecayPolicy
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.policies.PerformanceDecayResult
    :members:
    :undoc-members:
    :no-index:

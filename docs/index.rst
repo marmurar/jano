@@ -7,6 +7,9 @@ Jano
      <p class="landing-lead">
        Temporal Simulation and Backtesting Toolkit for Time-Dependent Machine Learning Systems
      </p>
+     <p class="landing-tagline">
+       The missing layer between ML models and production temporal validation.
+     </p>
      <div class="landing-grid">
        <div class="landing-card">
          <h3>Explicit partition policies</h3>

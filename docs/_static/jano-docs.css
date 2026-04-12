@@ -237,6 +237,15 @@ body.index div.body > h1:first-of-type {
   font-weight: 600;
 }
 
+.landing-tagline {
+  margin: 0.35rem 0 1.2rem;
+  max-width: 44rem;
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-main);
+  font-weight: 700;
+}
+
 .landing-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));

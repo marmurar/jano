@@ -10,6 +10,8 @@
 
 Jano is a Python library for defining temporal partitions and backtesting schemes over time-correlated datasets.
 
+The missing layer between ML models and production temporal validation.
+
 Documentation: [marmurar.github.io/jano](https://marmurar.github.io/jano/)
 
 It is designed for cases where a plain `train_test_split()` is not enough: transactional data, production simulations, repeated retraining, walk-forward validation, model monitoring, rule evaluation, or any experiment where the ordering of time matters.
@@ -182,22 +184,28 @@ for split in splitter.iter_splits(frame):
 This is a special use case. It is useful when you want to study whether more training history really improves the same test slice.
 
 ```python
-import pandas as pd
+from jano import TrainGrowthPolicy
 
-cutoff = pd.Timestamp("2025-09-15")
-test_start = cutoff
-test_end = cutoff + pd.Timedelta(days=4)
-train_sizes = ["7D", "14D", "21D", "28D"]
+policy = TrainGrowthPolicy(
+    "timestamp",
+    cutoff="2025-09-15",
+    train_sizes=["7D", "14D", "21D", "28D"],
+    test_size="4D",
+)
 
-for train_size in train_sizes:
-    train_start = test_start - pd.to_timedelta(train_size)
-    train = frame.loc[(frame["timestamp"] >= train_start) & (frame["timestamp"] < test_start)]
-    test = frame.loc[(frame["timestamp"] >= test_start) & (frame["timestamp"] < test_end)]
+result = policy.evaluate(
+    frame,
+    model=model,
+    target_col="target",
+    feature_cols=["feature_1", "feature_2"],
+    metrics=["mae", "rmse"],
+)
 
-    print(train_size, len(train), len(test))
+print(result.to_frame()[["train_size", "rmse"]])
+print(result.find_optimal_train_size(metric="rmse", tolerance=0.01))
 ```
 
-That pattern keeps `test` fixed while `train` expands toward the past. It is a practical way to study data efficiency or to estimate how much history is actually needed before adding a dedicated high-level study API.
+That pattern keeps `test` fixed while `train` expands toward the past. It is a practical way to study data efficiency or to estimate how much history is actually needed.
 
 The opposite special case is also common: keep `train` fixed and move `test` forward day by day to estimate how long a model or rule keeps its performance without retraining. The two patterns answer different questions:
 
@@ -207,20 +215,57 @@ The opposite special case is also common: keep `train` fixed and move `test` for
 Example of the second pattern:
 
 ```python
-train_start = pd.Timestamp("2025-08-01")
-train_end = pd.Timestamp("2025-09-01")
-test_size = pd.Timedelta(days=3)
-evaluation_days = 10
+from jano import PerformanceDecayPolicy
 
-train = frame.loc[(frame["timestamp"] >= train_start) & (frame["timestamp"] < train_end)]
+policy = PerformanceDecayPolicy(
+    "timestamp",
+    cutoff="2025-09-15",
+    train_size="30D",
+    test_size="3D",
+    step="1D",
+    max_windows=10,
+)
 
-for offset in range(evaluation_days):
-    test_start = train_end + pd.Timedelta(days=offset)
-    test_end = test_start + test_size
-    test = frame.loc[(frame["timestamp"] >= test_start) & (frame["timestamp"] < test_end)]
+result = policy.evaluate(
+    frame,
+    model=model,
+    target_col="target",
+    feature_cols=["feature_1", "feature_2"],
+    metrics=["mae", "rmse"],
+)
 
-    print(test_start.date(), len(train), len(test))
+print(result.to_frame()[["window", "test_start", "rmse"]])
+print(result.find_drift_onset(metric="rmse", threshold=0.15, baseline="first"))
 ```
+
+## Example: different feature groups can require different history depths
+
+The supervised fold can stay fixed while feature engineering still asks for different
+lookback windows per feature group.
+
+```python
+from jano import FeatureLookbackSpec
+
+split = next(splitter.iter_splits(frame))
+lookbacks = FeatureLookbackSpec(
+    default_lookback="15D",
+    group_lookbacks={"lag_features": "65D"},
+    feature_groups={"lag_features": ["lag_30", "lag_60"]},
+)
+
+history = split.slice_feature_history(
+    frame,
+    lookbacks,
+    time_col="timestamp",
+    segment_name="train",
+)
+
+recent_context = history["__default__"]
+lag_context = history["lag_features"]
+```
+
+This is useful when recent features only need a short window while lagged or seasonal
+features need much deeper historical context for the same model.
 
 ## Example: describe a simulation as HTML
 
