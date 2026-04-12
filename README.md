@@ -320,7 +320,7 @@ The release path is:
 1. Update `jano/_version.py`.
 2. Run `python -m pytest -q`.
 3. Run `python -m build` and `python -m twine check dist/*`.
-4. Push a tag like `v0.2.0`.
+4. Push a tag like `v0.3.0`.
 
 That tag triggers the `Publish` workflow, which builds the wheel and source distribution and publishes them to PyPI.
 

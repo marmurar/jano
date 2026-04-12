@@ -66,8 +66,8 @@ The repository now includes a dedicated GitHub Actions workflow for PyPI publica
 
    .. code-block:: bash
 
-      git tag v0.2.0
-      git push origin v0.2.0
+      git tag v0.3.0
+      git push origin v0.3.0
 
 5. The ``Publish`` workflow builds the artifacts, validates them with ``twine check`` and publishes them to PyPI via trusted publishing.
 

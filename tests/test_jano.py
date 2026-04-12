@@ -50,7 +50,7 @@ class SimpleLinearRegressor:
 
 
 def test_public_version_matches_installed_distribution_metadata() -> None:
-    assert __version__ == "0.2.0"
+    assert __version__ == "0.3.0"
     assert version("jano") == __version__
 
 
