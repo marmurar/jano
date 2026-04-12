@@ -20,6 +20,10 @@ The project is named after Janus, the Roman god of beginnings, transitions and t
 
 ## Why Jano exists
 
+Many machine learning datasets are not just tabular; they are structured over time and often across multiple entities such as users, routes, sellers or products. In those settings, a more faithful view of the data is not "a bag of independent rows" but a temporally ordered process.
+
+Standard evaluation tooling usually assumes observations are i.i.d. enough that a static split is acceptable. That assumption breaks quickly when time matters: future information leaks into training, performance estimates become optimistic, and offline validation stops reflecting what really happens in production.
+
 Most train/test utilities answer a simple question:
 
 "How do I split this dataset once?"
@@ -27,6 +31,8 @@ Most train/test utilities answer a simple question:
 Jano is meant to answer a richer one:
 
 "How would this system have behaved over time if I had trained, retrained and evaluated it under a specific temporal policy?"
+
+That difference is the core of the project. Jano treats evaluation as a temporal simulation rather than a static partition. Instead of defining one split, it defines a policy over time: train window, evaluation horizon, shift between iterations and optional leakage-control gaps. Running that policy produces a sequence of causally valid folds rather than one aggregate estimate.
 
 That also makes it a useful way to evidence drift in simulation results, because temporal shifts in behavior, performance or calibration become visible fold after fold.
 

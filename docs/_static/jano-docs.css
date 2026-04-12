@@ -231,9 +231,10 @@ body.index div.body > h1:first-of-type {
 
 .landing-lead {
   max-width: 50rem;
-  font-size: 1.12rem;
-  line-height: 1.9;
-  color: var(--text-body);
+  font-size: 0.98rem;
+  line-height: 1.72;
+  color: var(--text-soft);
+  font-weight: 600;
 }
 
 .landing-grid {
@@ -275,9 +276,11 @@ body.index div.body > h1:first-of-type {
 .landing-card h3 {
   margin: 0 0 0.45rem;
   font-family: var(--body-font);
-  font-size: 1.02rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
+  font-size: 0.9rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--text-main);
 }
 
 .landing-card p {

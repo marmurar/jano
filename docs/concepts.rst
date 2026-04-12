@@ -8,6 +8,21 @@ Jano models evaluation as a temporal partitioning problem instead of a random sa
 
 That framing is also useful when you want to evidence drift in simulation results, since changes over time remain visible instead of being blurred by random splits.
 
+The important distinction is that Jano does not treat partitioning as a one-time preprocessing step. It treats it as a temporal process. A partition policy defines:
+
+- how much history belongs in train,
+- how large the evaluation horizon is,
+- how far the simulation moves at each step,
+- and which temporal gaps must exist to avoid leakage.
+
+In that sense, a simulation is better understood as a sequence of causally valid folds than as a single train/test decomposition.
+
+.. math::
+
+   \left\{(\mathcal{D}_{train}^{(k)}, \mathcal{D}_{test}^{(k)})\right\}_{k=1}^K
+
+This is why Jano is useful both for backtesting and for operational questions such as retraining cadence, stability over time and evidence of regime change.
+
 Internally, the engine operates on pandas objects. At the public boundary, though, Jano accepts:
 
 - ``pandas.DataFrame`` with named columns,
