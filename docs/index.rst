@@ -1,6 +1,10 @@
 Jano
 ====
 
+.. container:: language-switch
+
+   **Language:** English | :doc:`Español <es/index>`
+
 .. raw:: html
 
    <div class="landing-hero">
@@ -60,6 +64,11 @@ Supported input backends:
 - ``pandas.DataFrame`` with named columns
 - ``numpy.ndarray`` with integer column references
 - ``polars.DataFrame`` through the optional ``jano[polars]`` extra
+
+.. toctree::
+   :hidden:
+ 
+   es/index
 
 .. toctree::
    :maxdepth: 2
