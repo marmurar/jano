@@ -6,6 +6,7 @@ from typing import Iterator, List
 
 import pandas as pd
 
+from .planning import SimulationPlan
 from .reporting import (
     SimulationChartData,
     SimulationSummary,
@@ -156,6 +157,20 @@ class TemporalSimulation:
         if output_path is not None:
             summary.write_html(output_path)
         return SimulationResult(frame=frame, splits=splits, summary=summary)
+
+    def plan(
+        self,
+        X: pd.DataFrame,
+        title: str | None = None,
+    ) -> SimulationPlan:
+        """Precompute the simulation geometry before materializing any folds."""
+        frame = self._select_frame(X)
+        plan = self.splitter.plan(frame)
+        if self.max_folds is not None:
+            plan = plan.select_until_iteration(self.max_folds - 1)
+        if plan.total_folds == 0:
+            raise ValueError("The current configuration did not produce any valid folds")
+        return SimulationPlan(partition_plan=plan, title=title or "Jano simulation summary")
 
     def _select_frame(self, X: pd.DataFrame) -> pd.DataFrame:
         frame = self.splitter._coerce_frame(X)

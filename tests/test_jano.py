@@ -9,7 +9,10 @@ import polars as pl
 
 from jano import (
     FeatureLookbackSpec,
+    PartitionPlan,
     PerformanceDecayPolicy,
+    PlannedFold,
+    SimulationPlan,
     TemporalBacktestSplitter,
     TemporalPartitionSpec,
     TemporalSemanticsSpec,
@@ -1391,3 +1394,137 @@ def test_performance_decay_policy_honors_max_windows_and_custom_metrics() -> Non
 
     assert result.to_frame()["window"].tolist() == [0, 1]
     assert "signed_error" in result.to_frame().columns
+
+
+def test_splitter_plan_exposes_iterations_boundaries_and_counts() -> None:
+    frame = build_frame(size=12)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="3D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="rolling",
+    )
+
+    plan = splitter.plan(frame)
+    plan_frame = plan.to_frame()
+
+    assert isinstance(plan, PartitionPlan)
+    assert plan.total_folds == 7
+    assert plan_frame["iteration"].tolist() == [0, 1, 2, 3, 4, 5, 6]
+    assert plan_frame["train_rows"].tolist() == [3, 3, 3, 3, 3, 3, 3]
+    assert plan_frame["test_rows"].tolist() == [2, 2, 2, 2, 2, 2, 2]
+    assert pd.Timestamp(plan_frame.loc[0, "train_start"]) == pd.Timestamp("2024-01-01")
+
+
+def test_partition_plan_can_select_iterations_and_materialize() -> None:
+    frame = build_frame(size=12)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size="3D", test_size="2D"),
+        step="1D",
+        strategy="rolling",
+    )
+
+    plan = splitter.plan(frame).select_iterations([1, 3])
+    splits = plan.materialize()
+
+    assert plan.to_frame()["iteration"].tolist() == [1, 3]
+    assert [split.fold for split in splits] == [1, 3]
+
+
+def test_partition_plan_can_select_from_iteration() -> None:
+    frame = build_frame(size=12)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size="3D", test_size="2D"),
+        step="1D",
+        strategy="rolling",
+    )
+
+    plan = splitter.plan(frame).select_from_iteration(2)
+
+    assert plan.to_frame()["iteration"].tolist() == [2, 3, 4, 5, 6]
+
+
+def test_partition_plan_can_exclude_windows_overlapping_train() -> None:
+    frame = build_frame(size=12)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size="3D", test_size="2D"),
+        step="1D",
+        strategy="rolling",
+    )
+
+    filtered = splitter.plan(frame).exclude_windows(
+        train=[("2024-01-02", "2024-01-04")],
+    )
+
+    assert filtered.to_frame()["iteration"].tolist() == [3, 4, 5, 6]
+
+
+def test_partition_plan_exclude_windows_validates_ranges() -> None:
+    frame = build_frame(size=12)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size="3D", test_size="2D"),
+        step="1D",
+        strategy="rolling",
+    )
+
+    with pytest.raises(ValueError, match="end greater than start"):
+        splitter.plan(frame).exclude_windows(train=[("2024-01-05", "2024-01-05")])
+
+
+def test_simulation_plan_can_be_filtered_before_materialization() -> None:
+    frame = build_frame(size=20)
+    simulation = TemporalSimulation(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size="4D", test_size="2D"),
+        step="1D",
+        strategy="rolling",
+        max_folds=5,
+    )
+
+    plan = simulation.plan(frame, title="Planned simulation")
+    trimmed = plan.select_from_iteration(2)
+    result = trimmed.materialize()
+
+    assert isinstance(plan, SimulationPlan)
+    assert plan.to_frame()["iteration"].tolist() == [0, 1, 2, 3, 4]
+    assert trimmed.to_frame()["iteration"].tolist() == [2, 3, 4]
+    assert result.total_folds == 3
+    assert result.summary.title == "Planned simulation"
+
+
+def test_partition_plan_iter_splits_rejects_empty_plan() -> None:
+    frame = build_frame(size=8)
+    empty_plan = PartitionPlan(
+        frame=frame,
+        temporal_semantics=TemporalSemanticsSpec(timeline_col="timestamp"),
+        strategy="rolling",
+        size_kind="duration",
+        folds=[],
+    )
+
+    with pytest.raises(ValueError, match="does not contain any folds"):
+        empty_plan.materialize()
+
+
+def test_planned_fold_properties_are_exposed() -> None:
+    fold = PlannedFold(
+        iteration=3,
+        boundaries={
+            "train": SegmentBoundaries(pd.Timestamp("2024-01-01"), pd.Timestamp("2024-01-03")),
+            "test": SegmentBoundaries(pd.Timestamp("2024-01-03"), pd.Timestamp("2024-01-04")),
+        },
+        counts={"train": 2, "test": 1},
+        metadata={"is_partial": True},
+    )
+
+    assert fold.fold == 3
+    assert fold.is_partial is True
+    assert fold.to_dict()["test_rows"] == 1

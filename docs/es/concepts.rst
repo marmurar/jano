@@ -73,10 +73,46 @@ Salidas
 
 Jano expone dos vistas complementarias:
 
+- ``plan()`` precalcula la geometría de la simulación como un objeto inspeccionable antes de materializar folds
 - ``TemporalSimulation.run()`` materializa una simulación completa y devuelve un resultado reusable
 - ``split()`` entrega tuplas de índices, útil para integración liviana
 - ``iter_splits()`` entrega objetos ``TimeSplit`` con metadata y helpers
 - ``describe_simulation()`` entrega ``SimulationSummary``, HTML o ``SimulationChartData`` para plots custom
+
+Planificación antes de materializar
+-----------------------------------
+
+Jano ahora expone una capa de planning entre la configuración y la ejecución.
+
+Eso significa que primero podés calcular la geometría de todas las particiones futuras, inspeccionarla, filtrarla y recién después materializar los folds que realmente te interesan.
+
+``plan()`` es útil cuando querés:
+
+- inspeccionar la lista completa de iteraciones antes de entrenar nada
+- entender cuántas filas tendría cada segmento
+- arrancar desde la iteración ``N`` en vez del comienzo
+- excluir folds cuyo train o test caen sobre fechas especiales
+- trabajar sobre un plan precomputado en vez de slice del dataset inmediatamente
+
+A nivel low-level:
+
+.. code-block:: python
+
+   plan = splitter.plan(frame)
+   print(plan.to_frame().head())
+
+A nivel high-level:
+
+.. code-block:: python
+
+   plan = simulation.plan(frame, title="Vista previa de la policy")
+   filtered = plan.exclude_windows(
+       train=[("2025-12-20", "2026-01-05")],
+   ).select_from_iteration(10)
+
+   result = filtered.materialize()
+
+El frame del plan incluye una columna explícita ``iteration``, boundaries por segmento y conteos de filas. Eso permite razonar sobre la simulación como objeto de primer nivel, no solo como generador de folds.
 
 Hipótesis temporales
 --------------------

@@ -73,10 +73,49 @@ Outputs
 
 Jano exposes two complementary views:
 
+- ``plan()`` precomputes the simulation geometry as an inspectable object before materializing folds.
 - ``TemporalSimulation.run()`` materializes a full simulation and returns a reusable result object.
 - ``split()`` yields plain index tuples, which keeps usage lightweight and easy to integrate.
 - ``iter_splits()`` yields ``TimeSplit`` objects with segment metadata and helper methods.
 - ``describe_simulation()`` yields either a ``SimulationSummary``, an HTML report string or ``SimulationChartData`` for custom Python plotting.
+
+Planning before materialization
+-------------------------------
+
+Jano now exposes a planning layer between configuration and execution.
+
+That means you can first compute the geometry of all subsequent partitions, inspect it,
+filter it, and only then materialize the folds you actually want.
+
+``plan()`` is useful when you want to:
+
+- inspect the full list of iterations before training anything
+- understand how many rows each segment would contain
+- start from iteration ``N`` instead of the beginning
+- exclude folds whose train or test windows overlap special dates
+- work from a precomputed simulation plan rather than slicing the dataset immediately
+
+At the low level:
+
+.. code-block:: python
+
+   plan = splitter.plan(frame)
+   print(plan.to_frame().head())
+
+At the high level:
+
+.. code-block:: python
+
+   plan = simulation.plan(frame, title="Policy preview")
+   filtered = plan.exclude_windows(
+       train=[("2025-12-20", "2026-01-05")],
+   ).select_from_iteration(10)
+
+   result = filtered.materialize()
+
+The plan frame includes an explicit ``iteration`` column, segment boundaries and row counts.
+That makes it possible to reason about the simulation as a first-class object instead of only
+as a generator of folds.
 
 Temporal hypotheses
 -------------------

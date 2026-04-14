@@ -109,6 +109,22 @@ print(result.summary.to_frame().head())
 print(result.chart_data.segment_stats)
 ```
 
+If you want to inspect the full simulation geometry before materializing folds, plan it first:
+
+```python
+plan = simulation.plan(frame, title="One month in production")
+print(plan.total_folds)
+print(plan.to_frame().head())
+
+filtered = plan.exclude_windows(
+    train=[("2025-12-20", "2026-01-05")],
+).select_from_iteration(5)
+
+result = filtered.materialize()
+```
+
+That plan frame includes the explicit iteration index, segment boundaries and row counts for each fold.
+
 You can also anchor a simulation to a specific date and limit how many folds are materialized:
 
 ```python

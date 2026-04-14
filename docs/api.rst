@@ -28,6 +28,11 @@ Main workflow
    :undoc-members:
    :no-index:
 
+.. autoclass:: jano.planning.SimulationPlan
+   :members:
+   :undoc-members:
+   :no-index:
+
 .. autoclass:: jano.types.TemporalPartitionSpec
    :members:
    :undoc-members:
@@ -44,6 +49,16 @@ Main workflow
    :no-index:
 
 .. autoclass:: jano.splitters.TemporalBacktestSplitter
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.planning.PartitionPlan
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.planning.PlannedFold
    :members:
    :undoc-members:
    :no-index:

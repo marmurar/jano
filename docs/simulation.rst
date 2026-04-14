@@ -68,6 +68,26 @@ Example
    print(html[:120])
    print(chart_data.segment_stats)
 
+If you want to inspect the simulation before materializing folds, use ``plan()``:
+
+.. container:: example-block
+
+   Planned simulation
+
+.. code-block:: python
+
+   plan = simulation.plan(frame, title="Walk-forward plan")
+   print(plan.total_folds)
+   print(plan.to_frame().head())
+
+   filtered = plan.exclude_windows(
+       train=[("2025-12-20", "2026-01-05")],
+   ).select_from_iteration(5)
+
+   result = filtered.materialize()
+
+The plan frame includes the iteration index plus segment boundaries and row counts, so you can inspect the structure first and only materialize the folds you actually want.
+
 You can anchor the simulation to a specific point in time and cap the number of folds:
 
 .. container:: example-block
@@ -177,6 +197,13 @@ When you need direct control over folds or want to integrate with an external tr
 
    for split in splitter.iter_splits(frame):
        print(split.summary())
+
+The same splitter can also precompute the full partition geometry:
+
+.. code-block:: python
+
+   plan = splitter.plan(frame)
+   print(plan.to_frame()[["iteration", "train_start", "train_end", "test_start", "test_end"]])
 
 Fixed cutoff studies
 --------------------

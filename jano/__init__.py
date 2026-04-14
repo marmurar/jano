@@ -1,6 +1,7 @@
 """Public package interface for Jano."""
 
 from ._version import __version__
+from .planning import PartitionPlan, PlannedFold, SimulationPlan
 from .policies import (
     PerformanceDecayPolicy,
     PerformanceDecayResult,
@@ -21,10 +22,13 @@ from .types import (
 
 __all__ = [
     "FeatureLookbackSpec",
+    "PartitionPlan",
     "PerformanceDecayPolicy",
     "PerformanceDecayResult",
+    "PlannedFold",
     "SegmentBoundaries",
     "SimulationChartData",
+    "SimulationPlan",
     "SimulationResult",
     "SimulationSummary",
     "SizeSpec",
