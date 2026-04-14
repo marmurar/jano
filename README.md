@@ -65,6 +65,13 @@ The recommended high-level entry point is `TemporalSimulation`.
 
 `TemporalBacktestSplitter` remains available as the lower-level primitive when you want direct control over folds and manual iteration.
 
+The workflow is intentionally compositional:
+
+- start simple with predefined layouts and strategies,
+- move to `plan()` when you want to inspect or filter iterations before running them,
+- use higher-level policies such as `TrainGrowthPolicy` or `PerformanceDecayPolicy` when the question is already encapsulated,
+- and fall back to manual fold iteration when you want to compose everything yourself: partitions, gaps, feature history and model training logic.
+
 It supports:
 
 - `single`, `rolling` and `expanding` strategies.
