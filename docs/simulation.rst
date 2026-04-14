@@ -11,6 +11,12 @@ The entry point is ``describe_simulation()`` on ``TemporalBacktestSplitter``.
 
 If you want to run a full simulation without manual fold iteration, the recommended interface is ``TemporalSimulation``.
 
+The overall workflow is deliberately layered:
+
+- use high-level classes when the question is already encapsulated,
+- inspect or prune iterations through ``plan()`` when needed,
+- and fall back to manual fold iteration when you want to compose everything yourself.
+
 The same API accepts three tabular inputs:
 
 - ``pandas.DataFrame``
@@ -204,6 +210,8 @@ The same splitter can also precompute the full partition geometry:
 
    plan = splitter.plan(frame)
    print(plan.to_frame()[["iteration", "train_start", "train_end", "test_start", "test_end"]])
+
+This is the fully manual mode. It is the right place when you want to compose the full process yourself: partition layouts, temporal gaps, special date exclusions, feature lookback windows, model training loops or any custom evaluation logic that should not be hidden behind a higher-level helper.
 
 Fixed cutoff studies
 --------------------

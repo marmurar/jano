@@ -36,6 +36,27 @@ Instead of asking for a random share of rows, you define a partition policy:
 - whether there should be temporal gaps,
 - and how the split should move over time.
 
+Compositional workflow
+----------------------
+
+Jano is intentionally compositional.
+
+The intended progression is:
+
+- start with a simple temporal partition,
+- add movement through ``single``, ``rolling`` or ``expanding``,
+- inspect the geometry through ``plan()``,
+- move up to higher-level policies when the question is already encapsulated,
+- and only drop to the fully manual mode when you need total control.
+
+In other words, Jano gives you three levels of usage:
+
+- encapsulated workflows such as ``TemporalSimulation``, ``TrainGrowthPolicy`` or ``PerformanceDecayPolicy``
+- an intermediate planning layer through ``plan()``
+- a manual mode through ``TemporalBacktestSplitter`` and ``iter_splits()`` when you want to compose partitions, gaps, feature history and external training loops exactly as you prefer
+
+That last level matters because not every production evaluation fits a predefined class. Jano should help when the common case is enough, but it should still let you compose your own temporal logic when the problem demands it.
+
 Strategies
 ----------
 

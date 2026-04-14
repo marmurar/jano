@@ -11,6 +11,12 @@ El entry point principal es ``describe_simulation()`` sobre ``TemporalBacktestSp
 
 Si querés correr una simulación completa sin iterar folds manualmente, la interfaz recomendada es ``TemporalSimulation``.
 
+El workflow general está pensado por capas:
+
+- usar clases high-level cuando la pregunta ya está encapsulada
+- inspeccionar o recortar iteraciones con ``plan()`` cuando haga falta
+- y caer al modo manual de folds cuando querés componer todo por tu cuenta
+
 La misma API acepta tres inputs tabulares:
 
 - ``pandas.DataFrame``
@@ -197,6 +203,8 @@ El mismo splitter también puede precalcular la geometría completa de la partic
 
    plan = splitter.plan(frame)
    print(plan.to_frame()[["iteration", "train_start", "train_end", "test_start", "test_end"]])
+
+Este es el modo manual completo. Es el lugar correcto cuando querés componer por tu cuenta todo el proceso: layouts de partición, gaps temporales, exclusión de fechas especiales, lookbacks por grupo de features, training loops del modelo o cualquier lógica de evaluación que no convenga esconder detrás de un helper high-level.
 
 Estudios con cutoff fijo
 ------------------------

@@ -36,6 +36,27 @@ En lugar de pedir un share aleatorio de filas, definís una política de partici
 - si debe haber gaps temporales
 - y cómo debe moverse el split a lo largo del tiempo
 
+Workflow composicional
+----------------------
+
+Jano está pensado como una herramienta composicional.
+
+La progresión buscada es:
+
+- empezar con una partición temporal simple
+- agregar movimiento con ``single``, ``rolling`` o ``expanding``
+- inspeccionar la geometría con ``plan()``
+- subir a policies high-level cuando la pregunta ya está encapsulada
+- y bajar al modo manual completo cuando necesitás control total
+
+En otras palabras, Jano ofrece tres niveles de uso:
+
+- workflows encapsulados como ``TemporalSimulation``, ``TrainGrowthPolicy`` o ``PerformanceDecayPolicy``
+- una capa intermedia de planning con ``plan()``
+- un modo manual a través de ``TemporalBacktestSplitter`` e ``iter_splits()`` cuando querés componer a gusto particiones, gaps, historia de features y loops externos de entrenamiento
+
+Ese último nivel importa porque no toda evaluación productiva entra en una clase predefinida. Jano debería ayudarte cuando el caso común alcanza, pero también dejarte componer tu propia lógica temporal cuando el problema lo exige.
+
 Estrategias
 -----------
 
