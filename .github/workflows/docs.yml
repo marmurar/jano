@@ -38,9 +38,11 @@ jobs:
         run: python -m sphinx -b html docs docs/_build/html
 
       - name: Configure GitHub Pages
+        if: github.ref == 'refs/heads/master'
         uses: actions/configure-pages@v5
 
       - name: Upload Pages artifact
+        if: github.ref == 'refs/heads/master'
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/_build/html

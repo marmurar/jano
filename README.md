@@ -61,15 +61,23 @@ The design goals are:
 
 ## Current API
 
-The recommended high-level entry point is `TemporalSimulation`.
+The recommended high-level surface is intentionally small:
 
-`TemporalBacktestSplitter` remains available as the lower-level primitive when you want direct control over folds and manual iteration.
+- `WalkForwardPolicy` for production-like walk-forward evaluation,
+- `TrainHistoryPolicy` for fixed-test, growing-train questions,
+- `DriftMonitoringPolicy` for fixed-train, moving-test questions.
+
+Those classes sit on top of the lower-level building blocks that remain available:
+
+- `TemporalSimulation` for explicit simulation objects,
+- `TemporalBacktestSplitter` for manual fold iteration,
+- `TrainGrowthPolicy` and `PerformanceDecayPolicy` for lower-level temporal hypothesis primitives.
 
 The workflow is intentionally compositional:
 
 - start simple with predefined layouts and strategies,
 - move to `plan()` when you want to inspect or filter iterations before running them,
-- use higher-level policies such as `TrainGrowthPolicy` or `PerformanceDecayPolicy` when the question is already encapsulated,
+- use the small policy surface when the question is already encapsulated,
 - and fall back to manual fold iteration when you want to compose everything yourself: partitions, gaps, feature history and model training logic.
 
 It supports:
@@ -88,7 +96,7 @@ It supports:
 ```python
 import pandas as pd
 
-from jano import TemporalPartitionSpec, TemporalSimulation
+from jano import TemporalPartitionSpec, WalkForwardPolicy
 
 frame = pd.DataFrame(
     {
@@ -98,7 +106,7 @@ frame = pd.DataFrame(
     }
 )
 
-simulation = TemporalSimulation(
+policy = WalkForwardPolicy(
     time_col="timestamp",
     partition=TemporalPartitionSpec(
         layout="train_test",
@@ -109,7 +117,7 @@ simulation = TemporalSimulation(
     strategy="rolling",
 )
 
-result = simulation.run(frame, title="One month in production")
+result = policy.run(frame, title="One month in production")
 
 print(result.total_folds)
 print(result.summary.to_frame().head())
@@ -119,7 +127,7 @@ print(result.chart_data.segment_stats)
 If you want to inspect the full simulation geometry before materializing folds, plan it first:
 
 ```python
-plan = simulation.plan(frame, title="One month in production")
+plan = policy.plan(frame, title="One month in production")
 print(plan.total_folds)
 print(plan.to_frame().head())
 
@@ -135,7 +143,7 @@ That plan frame includes the explicit iteration index, segment boundaries and ro
 You can also anchor a simulation to a specific date and limit how many folds are materialized:
 
 ```python
-simulation = TemporalSimulation(
+policy = WalkForwardPolicy(
     time_col="timestamp",
     partition=TemporalPartitionSpec(
         layout="train_test",
@@ -148,12 +156,12 @@ simulation = TemporalSimulation(
     max_folds=15,
 )
 
-result = simulation.run(frame, title="15 daily retraining iterations")
+result = policy.run(frame, title="15 daily retraining iterations")
 ```
 
-The high-level simulation layer also supports `end_at` when you want to constrain the simulation to a bounded time window before folds are generated.
+The recommended walk-forward surface also supports `end_at` when you want to constrain the simulation to a bounded time window before folds are generated.
 
-When a single timestamp is not enough, both `TemporalSimulation` and `TemporalBacktestSplitter` can also receive a `TemporalSemanticsSpec`. That lets you keep one column as the reported timeline while using different timestamp columns to decide whether `train`, `validation` or `test` rows are actually eligible. This is useful for production-style leakage control, for example when a target only becomes available at `arrived_at` even if the operational timeline is anchored on `departured_at`.
+When a single timestamp is not enough, `WalkForwardPolicy`, `TemporalSimulation` and `TemporalBacktestSplitter` can also receive a `TemporalSemanticsSpec`. That lets you keep one column as the reported timeline while using different timestamp columns to decide whether `train`, `validation` or `test` rows are actually eligible. This is useful for production-style leakage control, for example when a target only becomes available at `arrived_at` even if the operational timeline is anchored on `departured_at`.
 
 For `numpy.ndarray` inputs, use integer column references:
 
@@ -207,9 +215,9 @@ for split in splitter.iter_splits(frame):
 This is a special use case. It is useful when you want to study whether more training history really improves the same test slice.
 
 ```python
-from jano import TrainGrowthPolicy
+from jano import TrainHistoryPolicy
 
-policy = TrainGrowthPolicy(
+policy = TrainHistoryPolicy(
     "timestamp",
     cutoff="2025-09-15",
     train_sizes=["7D", "14D", "21D", "28D"],
@@ -238,9 +246,9 @@ The opposite special case is also common: keep `train` fixed and move `test` for
 Example of the second pattern:
 
 ```python
-from jano import PerformanceDecayPolicy
+from jano import DriftMonitoringPolicy
 
-policy = PerformanceDecayPolicy(
+policy = DriftMonitoringPolicy(
     "timestamp",
     cutoff="2025-09-15",
     train_size="30D",
@@ -259,6 +267,40 @@ result = policy.evaluate(
 
 print(result.to_frame()[["window", "test_start", "rmse"]])
 print(result.find_drift_onset(metric="rmse", threshold=0.15, baseline="first"))
+```
+
+## Example: optimize training history inside each walk-forward iteration
+
+This is the next-level composed question: if each outer test window is allowed to choose its own optimal training history, how much history is needed on average?
+
+```python
+from jano import RollingTrainHistoryPolicy, TemporalPartitionSpec
+
+policy = RollingTrainHistoryPolicy(
+    "timestamp",
+    partition=TemporalPartitionSpec(
+        layout="train_test",
+        train_size="30D",
+        test_size="1D",
+    ),
+    step="1D",
+    strategy="rolling",
+    max_folds=10,
+    train_sizes=["5D", "10D", "15D", "30D"],
+)
+
+result = policy.evaluate(
+    frame,
+    model=model,
+    target_col="target",
+    feature_cols=["feature_1", "feature_2"],
+    metrics="rmse",
+    metric="rmse",
+    tolerance=0.01,
+)
+
+print(result.to_frame().head())
+print(result.summary())
 ```
 
 ## Example: different feature groups can require different history depths

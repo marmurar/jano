@@ -8,16 +8,21 @@ import pytest
 import polars as pl
 
 from jano import (
+    DriftMonitoringPolicy,
     FeatureLookbackSpec,
     PartitionPlan,
     PerformanceDecayPolicy,
     PlannedFold,
+    RollingTrainHistoryPolicy,
+    RollingTrainHistoryResult,
     SimulationPlan,
     TemporalBacktestSplitter,
     TemporalPartitionSpec,
     TemporalSemanticsSpec,
     TemporalSimulation,
+    TrainHistoryPolicy,
     TrainGrowthPolicy,
+    WalkForwardPolicy,
     __version__,
 )
 from jano.describe import SimulationSummary as LegacySimulationSummary
@@ -1528,3 +1533,122 @@ def test_planned_fold_properties_are_exposed() -> None:
     assert fold.fold == 3
     assert fold.is_partial is True
     assert fold.to_dict()["test_rows"] == 1
+
+
+def test_walk_forward_policy_wraps_temporal_simulation() -> None:
+    frame = build_frame(size=20)
+    policy = WalkForwardPolicy(
+        "timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size="4D", test_size="2D"),
+        step="1D",
+        strategy="rolling",
+        max_folds=3,
+    )
+
+    plan = policy.plan(frame, title="Walk-forward")
+    result = policy.run(frame, title="Walk-forward")
+
+    assert isinstance(plan, SimulationPlan)
+    assert isinstance(result, SimulationResult)
+    assert plan.total_folds == 3
+    assert result.total_folds == 3
+    assert isinstance(policy.as_splitter(), TemporalBacktestSplitter)
+
+
+def test_train_history_policy_wraps_train_growth_policy() -> None:
+    frame = build_frame(size=30)
+    policy = TrainHistoryPolicy(
+        "timestamp",
+        cutoff="2024-01-20",
+        train_sizes=["5D", "10D", "15D"],
+        test_size="3D",
+    )
+
+    result = policy.evaluate(
+        frame,
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        feature_cols=["feature"],
+        metrics="rmse",
+    )
+
+    best = policy.find_optimal_train_size(
+        frame,
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        feature_cols=["feature"],
+        metrics="rmse",
+        metric="rmse",
+        tolerance=0.0,
+    )
+
+    assert isinstance(result, TrainGrowthResult)
+    assert result.to_frame()["train_size"].tolist() == ["5 days 00:00:00", "10 days 00:00:00", "15 days 00:00:00"]
+    assert "train_rows" in best
+
+
+def test_drift_monitoring_policy_wraps_performance_decay_policy() -> None:
+    frame = build_frame(size=40)
+    policy = DriftMonitoringPolicy(
+        "timestamp",
+        cutoff="2024-01-20",
+        train_size="10D",
+        test_size="2D",
+        step="1D",
+        max_windows=4,
+    )
+
+    result = policy.evaluate(
+        frame,
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        feature_cols=["feature"],
+        metrics="rmse",
+    )
+    onset = policy.find_drift_onset(
+        frame,
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        feature_cols=["feature"],
+        metrics="rmse",
+        metric="rmse",
+        threshold=0.0,
+        baseline="first",
+        relative=False,
+    )
+
+    assert isinstance(result, PerformanceDecayResult)
+    assert len(result.to_frame()) == 4
+    assert onset is not None
+
+
+def test_rolling_train_history_policy_optimizes_inner_train_size_per_iteration() -> None:
+    frame = build_frame(size=60)
+    policy = RollingTrainHistoryPolicy(
+        "timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size="15D", test_size="1D"),
+        step="1D",
+        strategy="rolling",
+        max_folds=5,
+        train_sizes=["5D", "10D", "15D"],
+    )
+
+    plan = policy.plan(frame)
+    result = policy.evaluate(
+        frame,
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        feature_cols=["feature"],
+        metrics="rmse",
+        metric="rmse",
+        tolerance=0.0,
+    )
+
+    summary = result.summary()
+
+    assert isinstance(plan, SimulationPlan)
+    assert isinstance(result, RollingTrainHistoryResult)
+    assert result.to_frame()["iteration"].tolist() == [0, 1, 2, 3, 4]
+    assert "optimal_train_size" in result.to_frame().columns
+    assert summary["iterations"] == 5
+    assert summary["metric"] == "rmse"

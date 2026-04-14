@@ -4,9 +4,10 @@ API reference
 .. raw:: html
 
    <p class="api-lead">
-     The API is intentionally compact. Most workflows start with a <code>TemporalPartitionSpec</code>,
-     pass it into <code>TemporalSimulation</code> for a full run, and optionally drop down to
-     <code>TemporalBacktestSplitter</code> when they need manual control over folds.
+     The recommended surface is intentionally small. Most workflows start with
+     <code>WalkForwardPolicy</code>, <code>TrainHistoryPolicy</code> or
+     <code>DriftMonitoringPolicy</code>, then drop down to explicit simulation,
+     planning or splitter objects only when lower-level control is needed.
    </p>
 
    <p class="api-lead">
@@ -17,6 +18,31 @@ API reference
 
 Main workflow
 -------------
+
+.. autoclass:: jano.workflows.WalkForwardPolicy
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.workflows.TrainHistoryPolicy
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.workflows.DriftMonitoringPolicy
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.workflows.RollingTrainHistoryPolicy
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.workflows.RollingTrainHistoryResult
+   :members:
+   :undoc-members:
+   :no-index:
 
 .. autoclass:: jano.simulation.TemporalSimulation
    :members:
