@@ -9,7 +9,13 @@ Jano can describe a temporal simulation over a concrete dataset and expose it in
 
 The entry point is ``describe_simulation()`` on ``TemporalBacktestSplitter``.
 
-If you want to run a full simulation without manual fold iteration, the recommended interface is ``TemporalSimulation``.
+If you want to run a full simulation without manual fold iteration, the recommended interface is ``WalkForwardPolicy``.
+
+The overall workflow is deliberately layered:
+
+- use high-level classes when the question is already encapsulated,
+- inspect or prune iterations through ``plan()`` when needed,
+- and fall back to manual fold iteration when you want to compose everything yourself.
 
 The overall workflow is deliberately layered:
 
@@ -39,7 +45,7 @@ Example
 
    import pandas as pd
 
-   from jano import TemporalPartitionSpec, TemporalSimulation
+   from jano import TemporalPartitionSpec, WalkForwardPolicy
 
    frame = pd.DataFrame(
        {
@@ -49,7 +55,7 @@ Example
        }
    )
 
-   simulation = TemporalSimulation(
+   policy = WalkForwardPolicy(
        time_col="timestamp",
        partition=TemporalPartitionSpec(
            layout="train_test",
@@ -60,7 +66,7 @@ Example
        strategy="rolling",
    )
 
-   result = simulation.run(
+   result = policy.run(
        frame,
        title="Walk-forward simulation",
    )
@@ -82,7 +88,7 @@ If you want to inspect the simulation before materializing folds, use ``plan()``
 
 .. code-block:: python
 
-   plan = simulation.plan(frame, title="Walk-forward plan")
+   plan = policy.plan(frame, title="Walk-forward plan")
    print(plan.total_folds)
    print(plan.to_frame().head())
 
@@ -102,7 +108,7 @@ You can anchor the simulation to a specific point in time and cap the number of 
 
 .. code-block:: python
 
-   simulation = TemporalSimulation(
+   policy = WalkForwardPolicy(
        time_col="timestamp",
        partition=TemporalPartitionSpec(
            layout="train_test",
@@ -115,9 +121,9 @@ You can anchor the simulation to a specific point in time and cap the number of 
        max_folds=15,
    )
 
-   result = simulation.run(frame, title="15 daily retraining iterations")
+   result = policy.run(frame, title="15 daily retraining iterations")
 
-``TemporalSimulation`` also accepts ``end_at`` if you want to constrain the simulation to a bounded time window before folds are generated.
+``WalkForwardPolicy`` also accepts ``end_at`` if you want to constrain the simulation to a bounded time window before folds are generated.
 
 If your source data is a NumPy array, reference the time column by integer position:
 
@@ -226,9 +232,9 @@ Jano now exposes them as dedicated temporal policies instead of leaving them as 
 
 .. code-block:: python
 
-   from jano import TrainGrowthPolicy
+   from jano import TrainHistoryPolicy
 
-   policy = TrainGrowthPolicy(
+   policy = TrainHistoryPolicy(
        "timestamp",
        cutoff="2025-09-15",
        train_sizes=["7D", "14D", "21D", "28D"],
@@ -265,9 +271,9 @@ In other words:
 
 .. code-block:: python
 
-   from jano import PerformanceDecayPolicy
+   from jano import DriftMonitoringPolicy
 
-   policy = PerformanceDecayPolicy(
+   policy = DriftMonitoringPolicy(
        "timestamp",
        cutoff="2025-09-15",
        train_size="30D",
@@ -288,6 +294,49 @@ In other words:
    print(result.find_drift_onset(metric="rmse", threshold=0.15, baseline="first"))
 
 This keeps the same training history fixed while the evaluation window moves forward over time. It is the right shape when you want to estimate how long an object can stay in production before retraining becomes necessary.
+
+Composed policy: optimize train history inside each walk-forward iteration
+--------------------------------------------------------------------------
+
+When the question is more complex, you can still stay on the recommended surface.
+
+``RollingTrainHistoryPolicy`` runs an outer walk-forward loop and, inside each iteration,
+chooses the smallest train window that stays within tolerance of the best score for that
+iteration's fixed test slice.
+
+.. container:: example-block
+
+   Walk-forward with inner train-history optimization
+
+.. code-block:: python
+
+   from jano import RollingTrainHistoryPolicy, TemporalPartitionSpec
+
+   policy = RollingTrainHistoryPolicy(
+       "timestamp",
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="30D",
+           test_size="1D",
+       ),
+       step="1D",
+       strategy="rolling",
+       max_folds=10,
+       train_sizes=["5D", "10D", "15D", "30D"],
+   )
+
+   result = policy.evaluate(
+       frame,
+       model=model,
+       target_col="target",
+       feature_cols=["feature_1", "feature_2"],
+       metrics="rmse",
+       metric="rmse",
+       tolerance=0.01,
+   )
+
+   print(result.to_frame().head())
+   print(result.summary())
 
 Temporal semantics and leakage control
 --------------------------------------

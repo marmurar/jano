@@ -19,13 +19,23 @@ from .types import (
     TemporalPartitionSpec,
     TemporalSemanticsSpec,
 )
+from .workflows import (
+    DriftMonitoringPolicy,
+    RollingTrainHistoryPolicy,
+    RollingTrainHistoryResult,
+    TrainHistoryPolicy,
+    WalkForwardPolicy,
+)
 
 __all__ = [
     "FeatureLookbackSpec",
+    "DriftMonitoringPolicy",
     "PartitionPlan",
     "PerformanceDecayPolicy",
     "PerformanceDecayResult",
     "PlannedFold",
+    "RollingTrainHistoryPolicy",
+    "RollingTrainHistoryResult",
     "SegmentBoundaries",
     "SimulationChartData",
     "SimulationPlan",
@@ -36,8 +46,10 @@ __all__ = [
     "TemporalBacktestSplitter",
     "TemporalPartitionSpec",
     "TemporalSemanticsSpec",
+    "TrainHistoryPolicy",
     "TrainGrowthPolicy",
     "TrainGrowthResult",
     "TimeSplit",
+    "WalkForwardPolicy",
     "__version__",
 ]

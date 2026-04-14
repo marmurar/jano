@@ -51,7 +51,8 @@ The intended progression is:
 
 In other words, Jano gives you three levels of usage:
 
-- encapsulated workflows such as ``TemporalSimulation``, ``TrainGrowthPolicy`` or ``PerformanceDecayPolicy``
+- a small recommended surface such as ``WalkForwardPolicy``, ``TrainHistoryPolicy`` or ``DriftMonitoringPolicy``
+- explicit lower-level workflows such as ``TemporalSimulation``, ``TrainGrowthPolicy`` or ``PerformanceDecayPolicy``
 - an intermediate planning layer through ``plan()``
 - a manual mode through ``TemporalBacktestSplitter`` and ``iter_splits()`` when you want to compose partitions, gaps, feature history and external training loops exactly as you prefer
 
@@ -150,9 +151,9 @@ The progression is meant to stay incremental:
 - then run walk-forward simulations,
 - and finally test operational hypotheses about history sufficiency or performance decay.
 
-Two core hypothesis policies are now part of the package.
+Two core hypothesis policies are now part of the package, and each also has a smaller recommended wrapper.
 
-``TrainGrowthPolicy``
+``TrainHistoryPolicy`` / ``TrainGrowthPolicy``
   Keep the same test window fixed and expand train backward in time.
 
   This answers questions such as:
@@ -163,9 +164,9 @@ Two core hypothesis policies are now part of the package.
 
   .. code-block:: python
 
-     from jano import TrainGrowthPolicy
+     from jano import TrainHistoryPolicy
 
-     policy = TrainGrowthPolicy(
+     policy = TrainHistoryPolicy(
          "timestamp",
          cutoff="2025-09-15",
          train_sizes=["7D", "14D", "21D", "28D"],
@@ -182,7 +183,7 @@ Two core hypothesis policies are now part of the package.
 
      best = result.find_optimal_train_size(metric="rmse", tolerance=0.01)
 
-``PerformanceDecayPolicy``
+``DriftMonitoringPolicy`` / ``PerformanceDecayPolicy``
   Keep train fixed and shift test forward over time.
 
   This answers questions such as:
@@ -193,9 +194,9 @@ Two core hypothesis policies are now part of the package.
 
   .. code-block:: python
 
-     from jano import PerformanceDecayPolicy
+     from jano import DriftMonitoringPolicy
 
-     policy = PerformanceDecayPolicy(
+     policy = DriftMonitoringPolicy(
          "timestamp",
          cutoff="2025-09-15",
          train_size="30D",
@@ -220,6 +221,47 @@ temporal questions about the system under evaluation:
 - walk-forward simulation asks how the system would have behaved over time under a retraining policy
 - train growth asks whether more historical data is actually worth using
 - performance decay asks how long the current train set remains operationally safe
+
+There is also a composed hypothesis built on top of those pieces.
+
+``RollingTrainHistoryPolicy``
+  Run a walk-forward outer loop and choose the optimal train-history size inside each iteration.
+
+  This answers questions such as:
+
+  - how much training history is required on average over time?
+  - does the optimal train window stay stable or drift across iterations?
+  - can the system reduce training cost by adapting history depth instead of always using the maximum window?
+
+  .. code-block:: python
+
+     from jano import RollingTrainHistoryPolicy, TemporalPartitionSpec
+
+     policy = RollingTrainHistoryPolicy(
+         "timestamp",
+         partition=TemporalPartitionSpec(
+             layout="train_test",
+             train_size="30D",
+             test_size="1D",
+         ),
+         step="1D",
+         strategy="rolling",
+         max_folds=10,
+         train_sizes=["5D", "10D", "15D", "30D"],
+     )
+
+     result = policy.evaluate(
+         frame,
+         model=model,
+         target_col="target",
+         feature_cols=["feature_1", "feature_2"],
+         metrics="rmse",
+         metric="rmse",
+         tolerance=0.01,
+     )
+
+     print(result.to_frame().head())
+     print(result.summary())
 
 Feature lookback policies
 -------------------------

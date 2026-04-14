@@ -51,7 +51,8 @@ La progresión buscada es:
 
 En otras palabras, Jano ofrece tres niveles de uso:
 
-- workflows encapsulados como ``TemporalSimulation``, ``TrainGrowthPolicy`` o ``PerformanceDecayPolicy``
+- una superficie recomendada y chica como ``WalkForwardPolicy``, ``TrainHistoryPolicy`` o ``DriftMonitoringPolicy``
+- workflows explícitos de nivel más bajo como ``TemporalSimulation``, ``TrainGrowthPolicy`` o ``PerformanceDecayPolicy``
 - una capa intermedia de planning con ``plan()``
 - un modo manual a través de ``TemporalBacktestSplitter`` e ``iter_splits()`` cuando querés componer a gusto particiones, gaps, historia de features y loops externos de entrenamiento
 
@@ -147,9 +148,9 @@ La progresión está pensada para ser incremental:
 - luego simulaciones walk-forward
 - finalmente hipótesis operativas sobre suficiencia de historia o degradación temporal
 
-Dos policies centrales ya forman parte del paquete.
+Dos policies centrales ya forman parte del paquete, y cada una además tiene un wrapper recomendado más chico.
 
-``TrainGrowthPolicy``
+``TrainHistoryPolicy`` / ``TrainGrowthPolicy``
   Mantiene fijo el mismo test y expande train hacia atrás en el tiempo.
 
   Responde preguntas como:
@@ -158,7 +159,7 @@ Dos policies centrales ya forman parte del paquete.
   - ¿puede una muestra más chica igualar la mejor calidad observada?
   - ¿dónde deja de ser útil seguir sumando historia?
 
-``PerformanceDecayPolicy``
+``DriftMonitoringPolicy`` / ``PerformanceDecayPolicy``
   Mantiene train fijo y desplaza test hacia adelante.
 
   Responde preguntas como:
@@ -172,6 +173,17 @@ Estas policies no son sólo variaciones visuales del splitter. Encapsulan pregun
 - la simulación walk-forward pregunta cómo se habría comportado el sistema bajo una política de retraining
 - el crecimiento de train pregunta si realmente vale la pena usar más historia
 - la degradación temporal pregunta cuánto tiempo sigue siendo operativamente seguro el train actual
+
+También hay una hipótesis compuesta construida encima de esas piezas.
+
+``RollingTrainHistoryPolicy``
+  Ejecuta un loop walk-forward externo y elige el tamaño óptimo de train dentro de cada iteración.
+
+  Esto responde preguntas como:
+
+  - ¿cuánta historia de entrenamiento necesito en promedio a lo largo del tiempo?
+  - ¿el tamaño óptimo de train se mantiene estable o cambia entre iteraciones?
+  - ¿se puede bajar costo de entrenamiento adaptando la profundidad histórica en lugar de usar siempre la ventana máxima?
 
 Policies de lookback por features
 ---------------------------------
