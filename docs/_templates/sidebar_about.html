@@ -1,5 +1,14 @@
 <div class="sidebar-about">
   <span class="sidebar-kicker">Project</span>
   <p>Temporal partitions, walk-forward backtesting and simulation reporting for time-correlated datasets.</p>
-  <a class="sidebar-link" href="{{ pathto('about') }}">About Marcos</a>
+  {% if pagename.startswith('es/') %}
+  <a class="sidebar-link" href="{{ pathto('es/about') }}">Sobre mí</a>
+  {% else %}
+  <a class="sidebar-link" href="{{ pathto('about') }}">About Me</a>
+  {% endif %}
+  <p class="sidebar-languages">
+    <a href="{{ pathto('index') }}">English</a>
+    <span>·</span>
+    <a href="{{ pathto('es/index') }}">Español</a>
+  </p>
 </div>

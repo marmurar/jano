@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict
 
-from .types import SizeSpec, TemporalPartitionSpec
+from .types import SizeSpec, TemporalPartitionSpec, TemporalSemanticsSpec
 
 
 @dataclass(frozen=True)
@@ -13,6 +13,7 @@ class ValidatedPartitionSpec:
     layout: str
     segments: Dict[str, SizeSpec]
     gaps: Dict[str, SizeSpec]
+    tail_gap: SizeSpec | None
     size_kind: str
 
 
@@ -31,6 +32,9 @@ def validate_partition_spec(partition: TemporalPartitionSpec) -> ValidatedPartit
 
     segments = {"train": SizeSpec.from_value(partition.train_size)}
     gaps = {}
+
+    if partition.gap_before_train is not None:
+        gaps["train"] = SizeSpec.from_value(partition.gap_before_train)
 
     if partition.layout == "train_test":
         if partition.test_size is None:
@@ -52,6 +56,8 @@ def validate_partition_spec(partition: TemporalPartitionSpec) -> ValidatedPartit
 
     kinds = {spec.kind for spec in segments.values()}
     kinds.update(spec.kind for spec in gaps.values())
+    if partition.gap_after_test is not None:
+        kinds.add(SizeSpec.from_value(partition.gap_after_test).kind)
 
     if len(kinds) > 1:
         raise ValueError(
@@ -59,9 +65,30 @@ def validate_partition_spec(partition: TemporalPartitionSpec) -> ValidatedPartit
         )
 
     size_kind = kinds.pop()
+    tail_gap = None
+    if partition.gap_after_test is not None:
+        tail_gap = SizeSpec.from_value(partition.gap_after_test)
+
     return ValidatedPartitionSpec(
         layout=partition.layout,
         segments=segments,
         gaps=gaps,
+        tail_gap=tail_gap,
         size_kind=size_kind,
     )
+
+
+def validate_temporal_semantics(semantics: TemporalSemanticsSpec) -> TemporalSemanticsSpec:
+    """Validate a temporal semantics configuration."""
+    if semantics.timeline_col is None:
+        raise ValueError("timeline_col must not be None")
+    if semantics.effective_order_col is None:
+        raise ValueError("order_col must resolve to a non-null column reference")
+
+    for name, column in semantics.segment_time_cols.items():
+        if not name:
+            raise ValueError("segment_time_cols keys must be non-empty strings")
+        if column is None:
+            raise ValueError("segment_time_cols values must be non-null column references")
+
+    return semantics

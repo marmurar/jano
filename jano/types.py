@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Union
+from dataclasses import dataclass, field
+from typing import Mapping, Sequence, Union
 
 import pandas as pd
 
 SizeValue = Union[str, int, float, pd.Timedelta]
+ColumnRef = Union[str, int]
 
 
 @dataclass(frozen=True)
@@ -59,8 +60,76 @@ class TemporalPartitionSpec:
     train_size: SizeValue
     test_size: SizeValue | None = None
     validation_size: SizeValue | None = None
+    gap_before_train: SizeValue | None = None
     gap_before_validation: SizeValue | None = None
     gap_before_test: SizeValue | None = None
+    gap_after_test: SizeValue | None = None
+
+
+@dataclass(frozen=True)
+class TemporalSemanticsSpec:
+    """Temporal semantics for ordering, reporting and segment eligibility.
+
+    Attributes:
+        timeline_col: Column used to anchor the global simulation timeline and reports.
+        order_col: Optional column used to sort the dataset internally. Defaults to
+            ``timeline_col``.
+        segment_time_cols: Optional per-segment timestamp mapping. Use this when a
+            segment should be sliced by a different temporal column than the global
+            timeline. For example, train can be filtered by ``arrived_at`` while test
+            stays anchored on ``departured_at``.
+    """
+
+    timeline_col: ColumnRef
+    order_col: ColumnRef | None = None
+    segment_time_cols: Mapping[str, ColumnRef] = field(default_factory=dict)
+
+    @property
+    def effective_order_col(self) -> ColumnRef:
+        """Return the ordering column used by the engine."""
+        return self.order_col or self.timeline_col
+
+    def column_for_segment(self, name: str) -> ColumnRef:
+        """Return the timestamp column used to assign rows to ``name``."""
+        return self.segment_time_cols.get(name, self.timeline_col)
+
+
+@dataclass(frozen=True)
+class FeatureLookbackSpec:
+    """Lookback requirements for feature groups within the same fold.
+
+    Attributes:
+        default_lookback: Optional fallback lookback applied to features that do not
+            belong to an explicit group.
+        group_lookbacks: Mapping from feature-group name to the temporal lookback
+            needed to build that group.
+        feature_groups: Mapping from group name to the feature columns that belong to it.
+
+    All lookbacks must use duration-based sizes.
+    """
+
+    default_lookback: SizeValue | None = None
+    group_lookbacks: Mapping[str, SizeValue] = field(default_factory=dict)
+    feature_groups: Mapping[str, Sequence[ColumnRef]] = field(default_factory=dict)
+
+    def normalized_group_lookbacks(self) -> dict[str, SizeSpec]:
+        """Return validated duration lookbacks for each explicit feature group."""
+        normalized: dict[str, SizeSpec] = {}
+        for name, value in self.group_lookbacks.items():
+            spec = SizeSpec.from_value(value)
+            if spec.kind != "duration":
+                raise ValueError("Feature lookbacks must use duration-based sizes")
+            normalized[name] = spec
+        return normalized
+
+    def normalized_default_lookback(self) -> SizeSpec | None:
+        """Return the validated duration lookback for ungrouped features."""
+        if self.default_lookback is None:
+            return None
+        spec = SizeSpec.from_value(self.default_lookback)
+        if spec.kind != "duration":
+            raise ValueError("Feature lookbacks must use duration-based sizes")
+        return spec
 
 
 @dataclass(frozen=True)

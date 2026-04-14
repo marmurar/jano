@@ -1,22 +1,23 @@
-API reference
-=============
+Referencia de API
+=================
 
 .. raw:: html
 
    <p class="api-lead">
-     The API is intentionally compact. Most workflows start with a <code>TemporalPartitionSpec</code>,
-     pass it into <code>TemporalSimulation</code> for a full run, and optionally drop down to
-     <code>TemporalBacktestSplitter</code> when they need manual control over folds.
+     La API es deliberadamente compacta. La mayoría de los workflows empiezan con un
+     <code>TemporalPartitionSpec</code>, lo pasan a <code>TemporalSimulation</code> para
+     una corrida completa, y opcionalmente bajan a <code>TemporalBacktestSplitter</code>
+     cuando necesitan control manual de folds.
    </p>
 
    <p class="api-lead">
-     Public inputs can come from <code>pandas</code>, <code>numpy</code> or
-     <code>polars</code>. When the source is not pandas, Jano normalizes it at the boundary
-     and keeps the same split and reporting surface.
+     Los inputs públicos pueden venir de <code>pandas</code>, <code>numpy</code> o
+     <code>polars</code>. Cuando la fuente no es pandas, Jano la normaliza en el borde
+     y mantiene la misma superficie de split y reporting.
    </p>
 
-Main workflow
--------------
+Workflow principal
+------------------
 
 .. autoclass:: jano.simulation.TemporalSimulation
    :members:
@@ -63,8 +64,8 @@ Main workflow
    :undoc-members:
    :no-index:
 
-Temporal policies
------------------
+Policies temporales
+-------------------
 
 .. autoclass:: jano.policies.TrainGrowthPolicy
    :members:
@@ -86,16 +87,16 @@ Temporal policies
    :undoc-members:
    :no-index:
 
-Fold objects
-------------
+Objetos de fold
+---------------
 
 .. autoclass:: jano.splits.TimeSplit
    :members:
    :undoc-members:
    :no-index:
 
-Reporting objects
------------------
+Objetos de reporting
+--------------------
 
 .. autoclass:: jano.reporting.SimulationSummary
    :members:
@@ -107,8 +108,8 @@ Reporting objects
    :undoc-members:
    :no-index:
 
-Type and validation helpers
----------------------------
+Helpers de tipos y validación
+-----------------------------
 
 .. autoclass:: jano.types.SizeSpec
    :members:

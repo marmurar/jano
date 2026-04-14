@@ -1,7 +1,7 @@
 # Jano
 
 <p align="center">
-  <img src="./imgs/jano_logo.png" alt="Jano logo" width="260" />
+  <img src="https://raw.githubusercontent.com/marmurar/jano/master/imgs/jano_logo.png" alt="Jano logo" width="260" />
 </p>
 
 [![CI](https://github.com/marmurar/jano/actions/workflows/ci.yml/badge.svg)](https://github.com/marmurar/jano/actions/workflows/ci.yml)
@@ -10,13 +10,21 @@
 
 Jano is a Python library for defining temporal partitions and backtesting schemes over time-correlated datasets.
 
+The missing layer between ML models and production temporal validation.
+
 Documentation: [marmurar.github.io/jano](https://marmurar.github.io/jano/)
 
 It is designed for cases where a plain `train_test_split()` is not enough: transactional data, production simulations, repeated retraining, walk-forward validation, model monitoring, rule evaluation, or any experiment where the ordering of time matters.
 
+The core accepts `pandas.DataFrame`, `numpy.ndarray` and `polars.DataFrame` inputs. `pandas` remains the internal execution engine, while NumPy and Polars inputs are normalized at the boundary so the split/reporting API stays consistent.
+
 The project is named after Janus, the Roman god of beginnings, transitions and thresholds. That framing fits the library well: Jano helps define how a dataset moves from training periods into evaluation periods, fold after fold.
 
 ## Why Jano exists
+
+Many machine learning datasets are not just tabular; they are structured over time and often across multiple entities such as users, routes, sellers or products. In those settings, a more faithful view of the data is not "a bag of independent rows" but a temporally ordered process.
+
+Standard evaluation tooling usually assumes observations are i.i.d. enough that a static split is acceptable. That assumption breaks quickly when time matters: future information leaks into training, performance estimates become optimistic, and offline validation stops reflecting what really happens in production.
 
 Most train/test utilities answer a simple question:
 
@@ -25,6 +33,8 @@ Most train/test utilities answer a simple question:
 Jano is meant to answer a richer one:
 
 "How would this system have behaved over time if I had trained, retrained and evaluated it under a specific temporal policy?"
+
+That difference is the core of the project. Jano treats evaluation as a temporal simulation rather than a static partition. Instead of defining one split, it defines a policy over time: train window, evaluation horizon, shift between iterations and optional leakage-control gaps. Running that policy produces a sequence of causally valid folds rather than one aggregate estimate.
 
 That also makes it a useful way to evidence drift in simulation results, because temporal shifts in behavior, performance or calibration become visible fold after fold.
 
@@ -99,6 +109,22 @@ print(result.summary.to_frame().head())
 print(result.chart_data.segment_stats)
 ```
 
+If you want to inspect the full simulation geometry before materializing folds, plan it first:
+
+```python
+plan = simulation.plan(frame, title="One month in production")
+print(plan.total_folds)
+print(plan.to_frame().head())
+
+filtered = plan.exclude_windows(
+    train=[("2025-12-20", "2026-01-05")],
+).select_from_iteration(5)
+
+result = filtered.materialize()
+```
+
+That plan frame includes the explicit iteration index, segment boundaries and row counts for each fold.
+
 You can also anchor a simulation to a specific date and limit how many folds are materialized:
 
 ```python
@@ -120,6 +146,34 @@ result = simulation.run(frame, title="15 daily retraining iterations")
 
 The high-level simulation layer also supports `end_at` when you want to constrain the simulation to a bounded time window before folds are generated.
 
+When a single timestamp is not enough, both `TemporalSimulation` and `TemporalBacktestSplitter` can also receive a `TemporalSemanticsSpec`. That lets you keep one column as the reported timeline while using different timestamp columns to decide whether `train`, `validation` or `test` rows are actually eligible. This is useful for production-style leakage control, for example when a target only becomes available at `arrived_at` even if the operational timeline is anchored on `departured_at`.
+
+For `numpy.ndarray` inputs, use integer column references:
+
+```python
+import numpy as np
+
+values = np.array(
+    [
+        ["2025-09-01", 1.2, 10],
+        ["2025-09-02", 1.5, 11],
+        ["2025-09-03", 1.1, 12],
+    ],
+    dtype=object,
+)
+
+splitter = TemporalBacktestSplitter(
+    time_col=0,
+    partition=TemporalPartitionSpec(
+        layout="train_test",
+        train_size="2D",
+        test_size="1D",
+    ),
+    step="1D",
+    strategy="single",
+)
+```
+
 ## Example: manual control with the low-level splitter
 
 ```python
@@ -140,6 +194,94 @@ splitter = TemporalBacktestSplitter(
 for split in splitter.iter_splits(frame):
     print(split.summary())
 ```
+
+## Example: keep the same test window and grow train backward
+
+This is a special use case. It is useful when you want to study whether more training history really improves the same test slice.
+
+```python
+from jano import TrainGrowthPolicy
+
+policy = TrainGrowthPolicy(
+    "timestamp",
+    cutoff="2025-09-15",
+    train_sizes=["7D", "14D", "21D", "28D"],
+    test_size="4D",
+)
+
+result = policy.evaluate(
+    frame,
+    model=model,
+    target_col="target",
+    feature_cols=["feature_1", "feature_2"],
+    metrics=["mae", "rmse"],
+)
+
+print(result.to_frame()[["train_size", "rmse"]])
+print(result.find_optimal_train_size(metric="rmse", tolerance=0.01))
+```
+
+That pattern keeps `test` fixed while `train` expands toward the past. It is a practical way to study data efficiency or to estimate how much history is actually needed.
+
+The opposite special case is also common: keep `train` fixed and move `test` forward day by day to estimate how long a model or rule keeps its performance without retraining. The two patterns answer different questions:
+
+- fixed `test` + growing `train`: how much history do I actually need?
+- fixed `train` + moving `test`: for how long does performance hold after deployment?
+
+Example of the second pattern:
+
+```python
+from jano import PerformanceDecayPolicy
+
+policy = PerformanceDecayPolicy(
+    "timestamp",
+    cutoff="2025-09-15",
+    train_size="30D",
+    test_size="3D",
+    step="1D",
+    max_windows=10,
+)
+
+result = policy.evaluate(
+    frame,
+    model=model,
+    target_col="target",
+    feature_cols=["feature_1", "feature_2"],
+    metrics=["mae", "rmse"],
+)
+
+print(result.to_frame()[["window", "test_start", "rmse"]])
+print(result.find_drift_onset(metric="rmse", threshold=0.15, baseline="first"))
+```
+
+## Example: different feature groups can require different history depths
+
+The supervised fold can stay fixed while feature engineering still asks for different
+lookback windows per feature group.
+
+```python
+from jano import FeatureLookbackSpec
+
+split = next(splitter.iter_splits(frame))
+lookbacks = FeatureLookbackSpec(
+    default_lookback="15D",
+    group_lookbacks={"lag_features": "65D"},
+    feature_groups={"lag_features": ["lag_30", "lag_60"]},
+)
+
+history = split.slice_feature_history(
+    frame,
+    lookbacks,
+    time_col="timestamp",
+    segment_name="train",
+)
+
+recent_context = history["__default__"]
+lag_context = history["lag_features"]
+```
+
+This is useful when recent features only need a short window while lagged or seasonal
+features need much deeper historical context for the same model.
 
 ## Example: describe a simulation as HTML
 
@@ -163,7 +305,17 @@ The generated report shows each fold across the dataset timeline, with richer su
 
 ## Installation
 
-Once published, the package will be installable from PyPI.
+After the first PyPI release, install the package with:
+
+```bash
+python -m pip install jano
+```
+
+To use Polars inputs directly:
+
+```bash
+python -m pip install "jano[polars]"
+```
 
 For local development:
 
@@ -172,6 +324,23 @@ python -m pip install -e ".[dev]"
 python -m pytest --cov=jano --cov-report=term-missing
 python -m sphinx -b html docs docs/_build/html
 ```
+
+Jano also exposes its runtime version through `jano.__version__`.
+
+## Release flow
+
+The repository includes a dedicated GitHub Actions workflow for PyPI publication through trusted publishing.
+
+The release path is:
+
+1. Update `jano/_version.py`.
+2. Run `python -m pytest -q`.
+3. Run `python -m build` and `python -m twine check dist/*`.
+4. Push a tag like `v0.3.0`.
+
+That tag triggers the `Publish` workflow, which builds the wheel and source distribution and publishes them to PyPI.
+
+In parallel, the repository also includes a `GitHub Release` workflow that can create a GitHub Release and attach the built wheel and source distribution for any `v*` tag. That gives the project a distribution channel even while PyPI access is still being recovered.
 
 ## Continuous integration and coverage
 

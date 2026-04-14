@@ -68,6 +68,26 @@ Example
    print(html[:120])
    print(chart_data.segment_stats)
 
+If you want to inspect the simulation before materializing folds, use ``plan()``:
+
+.. container:: example-block
+
+   Planned simulation
+
+.. code-block:: python
+
+   plan = simulation.plan(frame, title="Walk-forward plan")
+   print(plan.total_folds)
+   print(plan.to_frame().head())
+
+   filtered = plan.exclude_windows(
+       train=[("2025-12-20", "2026-01-05")],
+   ).select_from_iteration(5)
+
+   result = filtered.materialize()
+
+The plan frame includes the iteration index plus segment boundaries and row counts, so you can inspect the structure first and only materialize the folds you actually want.
+
 You can anchor the simulation to a specific point in time and cap the number of folds:
 
 .. container:: example-block
@@ -178,18 +198,19 @@ When you need direct control over folds or want to integrate with an external tr
    for split in splitter.iter_splits(frame):
        print(split.summary())
 
+The same splitter can also precompute the full partition geometry:
+
+.. code-block:: python
+
+   plan = splitter.plan(frame)
+   print(plan.to_frame()[["iteration", "train_start", "train_end", "test_start", "test_end"]])
+
 Fixed cutoff studies
 --------------------
 
-This is a special use case rather than the default simulation pattern.
+These are special use cases on top of the basic simulation workflow.
 
-One useful variant is to keep the same test window fixed and repeatedly expand the train window backward in time. That is helpful when you want to answer questions such as:
-
-- does adding more historical data actually improve test performance?
-- can a smaller train sample match the same test quality?
-- where does extra history stop being useful?
-
-The current API does not expose that study as a dedicated class yet, but you can express it directly with a fixed cutoff and manual iteration over train sizes.
+Jano now exposes them as dedicated temporal policies instead of leaving them as manual recipes.
 
 .. container:: example-block
 
@@ -197,32 +218,27 @@ The current API does not expose that study as a dedicated class yet, but you can
 
 .. code-block:: python
 
-   import pandas as pd
+   from jano import TrainGrowthPolicy
 
-   frame = pd.DataFrame(
-       {
-           "timestamp": pd.date_range("2025-08-01", periods=80, freq="D"),
-           "feature": range(80),
-           "target": range(200, 280),
-       }
+   policy = TrainGrowthPolicy(
+       "timestamp",
+       cutoff="2025-09-15",
+       train_sizes=["7D", "14D", "21D", "28D"],
+       test_size="4D",
    )
 
-   cutoff = pd.Timestamp("2025-09-15")
-   test_start = cutoff
-   test_end = cutoff + pd.Timedelta(days=4)
-   train_sizes = ["7D", "14D", "21D", "28D"]
+   result = policy.evaluate(
+       frame,
+       model=model,
+       target_col="target",
+       feature_cols=["feature_1", "feature_2"],
+       metrics=["mae", "rmse"],
+   )
 
-   for train_size in train_sizes:
-       train_start = test_start - pd.to_timedelta(train_size)
-       train_mask = (frame["timestamp"] >= train_start) & (frame["timestamp"] < test_start)
-       test_mask = (frame["timestamp"] >= test_start) & (frame["timestamp"] < test_end)
+   print(result.to_frame()[["train_size", "mae", "rmse"]])
+   print(result.find_optimal_train_size(metric="rmse", tolerance=0.01))
 
-       train = frame.loc[train_mask]
-       test = frame.loc[test_mask]
-
-       print(train_size, len(train), len(test))
-
-This keeps the same test slice fixed while you expand the train window toward the past. If the target becomes available later than the event timestamp, combine the same idea with ``TemporalSemanticsSpec`` so train eligibility follows the true availability column.
+This keeps the same test slice fixed while train expands toward the past. It is the right shape for questions about training-history sufficiency, data efficiency and whether more historical data is really worth carrying into production training jobs.
 
 The opposite special case is also common: keep train fixed, move test forward day by day and measure for how long a model or rule keeps its performance without retraining. That pattern answers a different operational question:
 
@@ -241,21 +257,27 @@ In other words:
 
 .. code-block:: python
 
-   import pandas as pd
+   from jano import PerformanceDecayPolicy
 
-   train_start = pd.Timestamp("2025-08-01")
-   train_end = pd.Timestamp("2025-09-01")
-   test_size = pd.Timedelta(days=3)
-   evaluation_days = 10
+   policy = PerformanceDecayPolicy(
+       "timestamp",
+       cutoff="2025-09-15",
+       train_size="30D",
+       test_size="3D",
+       step="1D",
+       max_windows=10,
+   )
 
-   train = frame.loc[(frame["timestamp"] >= train_start) & (frame["timestamp"] < train_end)]
+   result = policy.evaluate(
+       frame,
+       model=model,
+       target_col="target",
+       feature_cols=["feature_1", "feature_2"],
+       metrics=["mae", "rmse"],
+   )
 
-   for offset in range(evaluation_days):
-       test_start = train_end + pd.Timedelta(days=offset)
-       test_end = test_start + test_size
-       test = frame.loc[(frame["timestamp"] >= test_start) & (frame["timestamp"] < test_end)]
-
-       print(test_start.date(), len(train), len(test))
+   print(result.to_frame()[["window", "test_start", "rmse"]])
+   print(result.find_drift_onset(metric="rmse", threshold=0.15, baseline="first"))
 
 This keeps the same training history fixed while the evaluation window moves forward over time. It is the right shape when you want to estimate how long an object can stay in production before retraining becomes necessary.
 
@@ -297,6 +319,36 @@ That matters in production-like datasets where availability and event time diffe
    )
 
 In that configuration, the simulation is reported over the ``departured_at`` timeline, while the train set only includes rows whose ``arrived_at`` falls inside the train window. This prevents rows from entering train before the target would actually be available in production.
+
+Feature-specific lookback windows
+---------------------------------
+
+Some pipelines need another layer beyond the fold definition itself: different feature groups
+may need different amounts of past data even when the supervised ``train`` segment is fixed.
+
+.. code-block:: python
+
+   from jano import FeatureLookbackSpec
+
+   split = next(splitter.iter_splits(frame))
+   lookbacks = FeatureLookbackSpec(
+       default_lookback="15D",
+       group_lookbacks={"lag_features": "65D"},
+       feature_groups={"lag_features": ["lag_30", "lag_60"]},
+   )
+
+   history = split.slice_feature_history(
+       frame,
+       lookbacks,
+       time_col="timestamp",
+       segment_name="train",
+   )
+
+   recent_context = history["__default__"]
+   lag_context = history["lag_features"]
+
+This is useful when recent features only need a short context window while lagged or
+seasonal features need a much deeper historical slice for the same model.
 
 Simple HTML preview
 -------------------

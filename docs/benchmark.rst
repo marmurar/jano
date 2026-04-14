@@ -29,6 +29,8 @@ The same splitter configuration was used for every backend:
 
 The benchmark was run locally on the current implementation, where pandas is still the internal execution engine. That means the ``numpy`` and ``polars`` timings include the cost of normalizing those inputs to pandas before splitting.
 
+So this benchmark should be read as an end-to-end benchmark of the public API as it behaves today, not as a native backend-versus-backend comparison.
+
 Results
 -------
 
@@ -214,4 +216,10 @@ The current benchmark should be read as:
 - numpy and polars are compatible public inputs, but not yet native optimized execution backends,
 - their extra cost mostly comes from boundary normalization into pandas before fold generation.
 
-So, if raw split speed matters most today, the best-performing input remains ``pandas.DataFrame``.
+More explicitly:
+
+- ``pandas`` measures the direct execution path,
+- ``numpy`` measures conversion to pandas plus partition generation,
+- ``polars`` measures conversion to pandas plus partition generation.
+
+So, if raw split speed matters most today, the best-performing input remains ``pandas.DataFrame``. The current numbers are useful for understanding actual user-facing cost today, but they should not be interpreted as proof that pandas is intrinsically faster than a hypothetical native Polars or NumPy execution path that Jano does not implement yet.

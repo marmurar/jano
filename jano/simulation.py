@@ -6,6 +6,7 @@ from typing import Iterator, List
 
 import pandas as pd
 
+from .planning import SimulationPlan
 from .reporting import (
     SimulationChartData,
     SimulationSummary,
@@ -13,7 +14,7 @@ from .reporting import (
 )
 from .splitters import TemporalBacktestSplitter
 from .splits import TimeSplit
-from .types import TemporalPartitionSpec
+from .types import TemporalPartitionSpec, TemporalSemanticsSpec
 
 
 @dataclass(frozen=True)
@@ -66,7 +67,8 @@ class TemporalSimulation:
     """High-level interface for executing a complete temporal simulation.
 
     Args:
-        time_col: Name of the timestamp column used to order the dataset.
+        time_col: Either the name of the timeline column or a ``TemporalSemanticsSpec``
+            describing the timeline, ordering column and per-segment eligibility columns.
         partition: High-level definition of the train/test or train/validation/test layout.
         step: Amount by which the simulation advances after each fold.
         strategy: Simulation policy. Use ``"single"``, ``"rolling"`` or ``"expanding"``.
@@ -81,7 +83,7 @@ class TemporalSimulation:
 
     def __init__(
         self,
-        time_col: str,
+        time_col: str | TemporalSemanticsSpec,
         partition: TemporalPartitionSpec,
         step,
         strategy: str = "rolling",
@@ -104,14 +106,19 @@ class TemporalSimulation:
         self.max_folds = max_folds
 
     @property
-    def time_col(self) -> str:
-        """Return the timestamp column configured for the simulation."""
+    def time_col(self):
+        """Return the timeline column configured for the simulation."""
         return self.splitter.time_col
 
     @property
     def partition(self):
         """Return the validated partition configuration used by the simulation."""
         return self.splitter.partition
+
+    @property
+    def temporal_semantics(self) -> TemporalSemanticsSpec:
+        """Return the temporal semantics used by the simulation."""
+        return self.splitter.temporal_semantics
 
     def as_splitter(self) -> TemporalBacktestSplitter:
         """Return the underlying low-level splitter."""
@@ -126,7 +133,8 @@ class TemporalSimulation:
         """Execute the configured simulation over ``X`` and materialize its folds.
 
         Args:
-            X: Input dataset as a pandas ``DataFrame``.
+            X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
+                ``polars.DataFrame``.
             output_path: Optional filesystem path where the rendered HTML report should
                 be written.
             title: Optional title used in the returned report outputs.
@@ -150,12 +158,26 @@ class TemporalSimulation:
             summary.write_html(output_path)
         return SimulationResult(frame=frame, splits=splits, summary=summary)
 
+    def plan(
+        self,
+        X: pd.DataFrame,
+        title: str | None = None,
+    ) -> SimulationPlan:
+        """Precompute the simulation geometry before materializing any folds."""
+        frame = self._select_frame(X)
+        plan = self.splitter.plan(frame)
+        if self.max_folds is not None:
+            plan = plan.select_until_iteration(self.max_folds - 1)
+        if plan.total_folds == 0:
+            raise ValueError("The current configuration did not produce any valid folds")
+        return SimulationPlan(partition_plan=plan, title=title or "Jano simulation summary")
+
     def _select_frame(self, X: pd.DataFrame) -> pd.DataFrame:
         frame = self.splitter._coerce_frame(X)
         if self.start_at is None and self.end_at is None:
             return frame
 
-        timestamps = pd.to_datetime(frame[self.time_col])
+        timestamps = pd.to_datetime(frame[self.temporal_semantics.timeline_col])
         mask = pd.Series(True, index=frame.index)
         if self.start_at is not None:
             mask &= timestamps >= self.start_at

@@ -4,43 +4,58 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "jano"
-version = "0.2.0"
+dynamic = ["version"]
 description = "Temporal partitioning and backtesting utilities for time-correlated datasets."
-readme = "README.md"
-license = { file = "LICENSE.txt" }
+readme = { file = "README.md", content-type = "text/markdown" }
+license = "MIT"
+license-files = ["LICENSE.txt"]
 requires-python = ">=3.9"
 authors = [
-  { name = "Marcos Manuel Muraro" }
+  { name = "Marcos Manuel Muraro", email = "mmmuraro@gmail.com" }
 ]
-keywords = ["backtesting", "time-series", "walk-forward-validation", "model-selection", "temporal-validation", "pandas"]
-urls = { Homepage = "https://github.com/marmurar/jano", Documentation = "https://marmurar.github.io/jano/", Repository = "https://github.com/marmurar/jano", Issues = "https://github.com/marmurar/jano/issues" }
+maintainers = [
+  { name = "Marcos Manuel Muraro", email = "mmmuraro@gmail.com" }
+]
+keywords = ["backtesting", "time-series", "walk-forward-validation", "model-selection", "temporal-validation", "pandas", "time-series-validation", "simulation"]
+urls = { Homepage = "https://github.com/marmurar/jano", Documentation = "https://marmurar.github.io/jano/", Repository = "https://github.com/marmurar/jano", Issues = "https://github.com/marmurar/jano/issues", Changelog = "https://github.com/marmurar/jano/releases" }
 dependencies = [
   "pandas>=2.0",
   "numpy>=1.24"
 ]
 classifiers = [
   "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3 :: Only",
   "Programming Language :: Python :: 3.9",
   "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
-  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Topic :: Scientific/Engineering",
+  "Topic :: Scientific/Engineering :: Information Analysis",
+  "Topic :: Software Development :: Testing",
 ]
 
 [project.optional-dependencies]
+polars = [
+  "polars>=1.0",
+]
 dev = [
   "build>=1.2",
+  "polars>=1.0",
   "pytest>=8.0",
   "pytest-cov>=5.0",
   "sphinx>=7.4",
+  "twine>=5.1",
 ]
 
 [tool.setuptools.packages.find]
 include = ["jano*"]
+
+[tool.setuptools.dynamic]
+version = { attr = "jano._version.__version__" }
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
