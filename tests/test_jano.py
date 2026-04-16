@@ -27,6 +27,8 @@ from jano import (
 )
 from jano.describe import SimulationSummary as LegacySimulationSummary
 from jano.jano import TemporalBacktestSplitter as LegacyTemporalBacktestSplitter
+from jano.mcp_server import build_server
+from jano.mcp_tools import load_dataset_frame, plan_walk_forward, preview_dataset, run_walk_forward
 from jano.policies import PerformanceDecayResult, TrainGrowthResult
 from jano.reporting import SimulationChartData, SimulationSummary
 from jano.simulation import SimulationResult
@@ -42,6 +44,12 @@ def build_frame(size: int = 12) -> pd.DataFrame:
             "target": range(100, 100 + size),
         }
     )
+
+
+def write_csv_frame(tmp_path, frame: pd.DataFrame, name: str = "frame.csv") -> str:
+    path = tmp_path / name
+    frame.to_csv(path, index=False)
+    return str(path)
 
 
 class SimpleLinearRegressor:
@@ -103,6 +111,59 @@ def test_rolling_duration_splits_with_gap() -> None:
     assert splits[0].boundaries["test"].start == pd.Timestamp("2024-01-05")
     assert len(splits[0].segments["train"]) == 3
     assert len(splits[0].segments["test"]) == 2
+
+
+def test_duration_splits_can_align_to_calendar_days() -> None:
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.to_datetime(
+                [
+                    "2024-01-01 05:21",
+                    "2024-01-01 12:00",
+                    "2024-01-02 06:00",
+                    "2024-01-02 18:00",
+                    "2024-01-03 07:00",
+                ]
+            ),
+            "feature": range(5),
+            "target": range(5),
+        }
+    )
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="1D",
+            test_size="1D",
+            calendar_frequency="D",
+        ),
+        step="1D",
+        strategy="single",
+    )
+
+    split = next(splitter.iter_splits(frame))
+
+    assert split.boundaries["train"].start == pd.Timestamp("2024-01-01 00:00")
+    assert split.boundaries["train"].end == pd.Timestamp("2024-01-02 00:00")
+    assert split.boundaries["test"].start == pd.Timestamp("2024-01-02 00:00")
+    assert split.boundaries["test"].end == pd.Timestamp("2024-01-03 00:00")
+    assert split.segments["train"].tolist() == [0, 1]
+    assert split.segments["test"].tolist() == [2, 3]
+
+
+def test_calendar_frequency_requires_duration_partitions() -> None:
+    with pytest.raises(ValueError, match="duration-based"):
+        TemporalBacktestSplitter(
+            time_col="timestamp",
+            partition=TemporalPartitionSpec(
+                layout="train_test",
+                train_size=5,
+                test_size=2,
+                calendar_frequency="D",
+            ),
+            step=1,
+            strategy="single",
+        )
 
 
 def test_expanding_train_val_test_layout() -> None:
@@ -1533,6 +1594,68 @@ def test_planned_fold_properties_are_exposed() -> None:
     assert fold.fold == 3
     assert fold.is_partial is True
     assert fold.to_dict()["test_rows"] == 1
+
+
+def test_mcp_preview_dataset_reads_local_csv(tmp_path) -> None:
+    path = write_csv_frame(tmp_path, build_frame(size=6))
+
+    result = preview_dataset(path, sample_rows=3)
+
+    assert result["sample_rows"] == 3
+    assert result["columns"] == ["timestamp", "feature", "target"]
+    assert len(result["preview"]) == 3
+
+
+def test_mcp_load_dataset_frame_supports_csv(tmp_path) -> None:
+    path = write_csv_frame(tmp_path, build_frame(size=5))
+
+    frame = load_dataset_frame(path)
+
+    assert list(frame.columns) == ["timestamp", "feature", "target"]
+    assert len(frame) == 5
+
+
+def test_mcp_plan_walk_forward_returns_preview_rows(tmp_path) -> None:
+    path = write_csv_frame(tmp_path, build_frame(size=20))
+
+    result = plan_walk_forward(
+        path,
+        partition={"layout": "train_test", "train_size": "4D", "test_size": "2D"},
+        step="1D",
+        time_col="timestamp",
+        max_folds=4,
+    )
+
+    assert result["total_folds"] == 4
+    assert "iteration" in result["columns"]
+    assert len(result["preview"]) == 4
+
+
+def test_mcp_run_walk_forward_returns_summary_and_html(tmp_path) -> None:
+    path = write_csv_frame(tmp_path, build_frame(size=18))
+
+    result = run_walk_forward(
+        path,
+        partition={"layout": "train_test", "train_size": "4D", "test_size": "2D"},
+        step="1D",
+        time_col="timestamp",
+        max_folds=3,
+        title="MCP simulation",
+    )
+
+    assert result["total_folds"] == 3
+    assert len(result["summary_preview"]) == 3
+    assert "<html" in result["html"].lower()
+    assert "segment_stats" in result["chart_data"]
+
+
+def test_mcp_server_build_is_lazy_about_optional_dependency() -> None:
+    try:
+        server = build_server()
+    except RuntimeError as exc:
+        assert "optional MCP dependency" in str(exc)
+    else:
+        assert server is not None
 
 
 def test_walk_forward_policy_wraps_temporal_simulation() -> None:

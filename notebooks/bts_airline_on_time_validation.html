@@ -1,0 +1,836 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/><title>Jano BTS Airline On-Time Validation Notebook</title><style>
+:root{--ink:#162018;--muted:#5f6c61;--paper:#fbfaf4;--line:#d9d3c4;--accent:#2f6f5e;--code:#17221d;--out:#fffdf6}body{margin:0;background:linear-gradient(135deg,#fbfaf4,#f0eadc);color:var(--ink);font:16px/1.6 Charter,Georgia,serif}main{max-width:1100px;margin:0 auto;padding:48px 24px 72px}h1{font-size:42px;line-height:1.1;margin:0 0 18px;letter-spacing:-.03em}h2{font-size:28px;margin:42px 0 12px;letter-spacing:-.02em}h3{font-size:20px;margin:28px 0 8px}p,li{color:var(--muted)}a{color:var(--accent)}code{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;background:#ece6d8;padding:2px 5px;border-radius:5px;color:#21362e}pre.code,pre{overflow:auto;background:var(--code);color:#e9f0e7;padding:18px;border-radius:14px;border:1px solid #243b33;box-shadow:0 18px 40px rgba(31,39,32,.12)}pre code{background:transparent;color:inherit;padding:0}pre.output{background:var(--out);color:#26352c;border-color:var(--line);box-shadow:none}pre.error{background:#2b1414;color:#ffe9e9}section{margin:0 0 18px}.code-cell{margin:18px 0 36px}.prompt{color:#7d876f;font:13px ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;margin:0 0 6px}.markdown:first-child{padding:30px;border:1px solid var(--line);border-radius:22px;background:rgba(255,255,255,.55);box-shadow:0 20px 60px rgba(31,39,32,.08)}.html-output{overflow:auto;margin-top:12px;padding:12px;border:1px solid var(--line);border-radius:14px;background:#fffdf6}.html-output table{border-collapse:collapse;font-size:13px;width:100%}.html-output th,.html-output td{border:1px solid #ddd4c4;padding:6px 8px;text-align:left}.html-output th{background:#eee7d7;color:#22352d}
+</style></head><body><main><section class="markdown"><h1>Jano on BTS Airline On-Time Performance</h1>
+<p>This notebook uses a real extract from the U.S. Bureau of Transportation Statistics (BTS) Airline On-Time Performance data to show how <a href="https://marmurar.github.io/jano/">Jano</a> works on an operational, time-dependent dataset.</p>
+<p>Official source:</p>
+<ul>
+<li>BTS On-Time Performance overview: <a href="https://www.transtats.bts.gov/ontime/">https://www.transtats.bts.gov/ontime/</a></li>
+<li>BTS table download page: <a href="https://www.transtats.bts.gov/DL_SelectFields.aspx?QO_fu146_anzr=b0-gvzr&amp;gnoyr_VQ=FGJ">https://www.transtats.bts.gov/DL_SelectFields.aspx?QO_fu146_anzr=b0-gvzr&amp;gnoyr_VQ=FGJ</a></li>
+<li>Direct January 2024 PREZIP file used here: <a href="https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_1.zip">https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_1.zip</a></li>
+</ul>
+<p>The dataset contains flight-level records reported by U.S. carriers, including scheduled departure time, actual departure time, actual arrival time, origin/destination airports, delay indicators and cancellation/diversion flags. That makes it useful for Jano because it has multiple operational timestamps and a realistic leakage problem: a flight can be scheduled or departed before its final arrival outcome is known.</p>
+<p>This example uses the January 2024 monthly zip extract and filters it to flights departing from ATL so the notebook stays fast while still using real data.</p>
+<p>It focuses on:</p>
+<ul>
+<li>loading a real monthly airline dataset from a local zip file,</li>
+<li>building leakage-aware temporal semantics with <a href="https://marmurar.github.io/jano/simulation.html#temporal-semantics-and-leakage-control"><code>TemporalSemanticsSpec</code></a>,</li>
+<li>inspecting a walk-forward <a href="https://marmurar.github.io/jano/concepts.html#planning-before-materialization"><code>plan()</code></a> before materializing folds, including calendar-aligned daily windows,</li>
+<li>excluding special dates from the plan,</li>
+<li>and running temporal hypothesis policies on the same data.</li>
+</ul>
+<p>Expected local file:</p>
+<ul>
+<li><code>data/bts/bts_ontime_2024_01.zip</code></li>
+</ul>
+<p>Important: the BTS zip/CSV is intentionally kept out of git because it is a large external dataset. The repository ignores <code>data/</code>, so the notebook is versioned but the downloaded dataset is not.</p></section><section class="code-cell"><div class="prompt">In [1]</div><pre class="code"><code>from pathlib import Path
+from urllib.request import urlretrieve
+import zipfile
+
+import numpy as np
+import pandas as pd
+
+from jano import (
+    DriftMonitoringPolicy,
+    TemporalPartitionSpec,
+    TemporalSemanticsSpec,
+    TrainHistoryPolicy,
+    WalkForwardPolicy,
+)
+
+BTS_ZIP_URL = &quot;https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_1.zip&quot;
+DATA_PATH = Path(&quot;../data/bts/bts_ontime_2024_01.zip&quot;)
+if not DATA_PATH.exists():
+    DATA_PATH = Path(&quot;data/bts/bts_ontime_2024_01.zip&quot;)
+
+
+def ensure_bts_zip(path: Path = DATA_PATH, url: str = BTS_ZIP_URL) -&gt; Path:
+    &quot;&quot;&quot;Download the BTS monthly zip only when it is missing locally.&quot;&quot;&quot;
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        print(f&quot;Downloading BTS sample to {path}...&quot;)
+        urlretrieve(url, path)
+    return path
+
+
+DATA_PATH = ensure_bts_zip()
+DATA_PATH
+</code></pre><pre class="output"><code>PosixPath(&#x27;data/bts/bts_ontime_2024_01.zip&#x27;)</code></pre></section><section class="markdown"><h2>Load and prepare a workable sample</h2>
+<p>The monthly BTS file is large enough to demonstrate realistic fold planning. For notebook speed, we keep only flights departing from ATL and a compact set of columns.</p></section><section class="code-cell"><div class="prompt">In [2]</div><pre class="code"><code>def _hhmm_to_timedelta(value):
+    if pd.isna(value):
+        return pd.NaT
+    value = int(value)
+    hours, minutes = divmod(value, 100)
+    return pd.Timedelta(hours=hours, minutes=minutes)
+
+
+def _combine_flight_datetime(date_series, hhmm_series):
+    base = pd.to_datetime(date_series)
+    deltas = hhmm_series.map(_hhmm_to_timedelta)
+    values = []
+    for day, delta in zip(base, deltas):
+        if pd.isna(delta):
+            values.append(pd.NaT)
+        else:
+            values.append(day + delta)
+    return pd.to_datetime(values)
+
+
+def load_bts_sample(path: Path, origin: str = &quot;ATL&quot;, max_rows: int = 25000) -&gt; pd.DataFrame:
+    with zipfile.ZipFile(path) as zf:
+        csv_name = next(name for name in zf.namelist() if name.endswith(&quot;.csv&quot;))
+        columns = [
+            &quot;FlightDate&quot;,
+            &quot;Reporting_Airline&quot;,
+            &quot;Origin&quot;,
+            &quot;Dest&quot;,
+            &quot;DayOfWeek&quot;,
+            &quot;Distance&quot;,
+            &quot;Cancelled&quot;,
+            &quot;Diverted&quot;,
+            &quot;CRSDepTime&quot;,
+            &quot;DepTime&quot;,
+            &quot;CRSArrTime&quot;,
+            &quot;ArrTime&quot;,
+            &quot;ArrDel15&quot;,
+            &quot;DepDelayMinutes&quot;,
+            &quot;ArrDelayMinutes&quot;,
+        ]
+        frame = pd.read_csv(zf.open(csv_name), usecols=columns)
+
+    frame = frame.loc[(frame[&quot;Origin&quot;] == origin) &amp; (frame[&quot;Cancelled&quot;] == 0) &amp; (frame[&quot;Diverted&quot;] == 0)].copy()
+    frame[&quot;scheduled_departure_at&quot;] = _combine_flight_datetime(frame[&quot;FlightDate&quot;], frame[&quot;CRSDepTime&quot;])
+    frame[&quot;actual_departure_at&quot;] = _combine_flight_datetime(frame[&quot;FlightDate&quot;], frame[&quot;DepTime&quot;])
+    frame[&quot;actual_arrival_at&quot;] = _combine_flight_datetime(frame[&quot;FlightDate&quot;], frame[&quot;ArrTime&quot;])
+    rollover = frame[&quot;actual_arrival_at&quot;] &lt; frame[&quot;actual_departure_at&quot;]
+    frame.loc[rollover, &quot;actual_arrival_at&quot;] = frame.loc[rollover, &quot;actual_arrival_at&quot;] + pd.Timedelta(days=1)
+    frame[&quot;scheduled_dep_hour&quot;] = (frame[&quot;CRSDepTime&quot;].fillna(0).astype(int) // 100).astype(int)
+    frame[&quot;is_arrival_delayed&quot;] = frame[&quot;ArrDel15&quot;].fillna(0).astype(int)
+    frame = frame.dropna(subset=[&quot;scheduled_departure_at&quot;, &quot;actual_arrival_at&quot;, &quot;Distance&quot;, &quot;DayOfWeek&quot;])
+    frame = frame.sort_values(&quot;scheduled_departure_at&quot;).head(max_rows).reset_index(drop=True)
+    return frame
+
+
+flights = load_bts_sample(DATA_PATH)
+flights[[&quot;scheduled_departure_at&quot;, &quot;actual_arrival_at&quot;, &quot;Origin&quot;, &quot;Dest&quot;, &quot;Reporting_Airline&quot;, &quot;is_arrival_delayed&quot;]].head()</code></pre><div class="html-output"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>scheduled_departure_at</th>
+      <th>actual_arrival_at</th>
+      <th>Origin</th>
+      <th>Dest</th>
+      <th>Reporting_Airline</th>
+      <th>is_arrival_delayed</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>2024-01-01 05:21:00</td>
+      <td>2024-01-01 07:22:00</td>
+      <td>ATL</td>
+      <td>FLL</td>
+      <td>NK</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>2024-01-01 05:35:00</td>
+      <td>2024-01-01 07:36:00</td>
+      <td>ATL</td>
+      <td>LGA</td>
+      <td>NK</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2024-01-01 05:36:00</td>
+      <td>2024-01-01 07:13:00</td>
+      <td>ATL</td>
+      <td>MIA</td>
+      <td>AA</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>2024-01-01 05:47:00</td>
+      <td>2024-01-01 07:34:00</td>
+      <td>ATL</td>
+      <td>DFW</td>
+      <td>AA</td>
+      <td>0</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>2024-01-01 05:50:00</td>
+      <td>2024-01-01 07:34:00</td>
+      <td>ATL</td>
+      <td>MCO</td>
+      <td>F9</td>
+      <td>0</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></section><section class="markdown"><h2>Leakage-aware temporal semantics</h2>
+<p>The operational timeline is the scheduled departure. But supervised training should only see flights whose arrival outcome is already known.</p>
+<p>That makes this a good fit for <code>TemporalSemanticsSpec</code>:</p>
+<ul>
+<li>timeline for reporting: <code>scheduled_departure_at</code></li>
+<li>train eligibility: <code>actual_arrival_at</code></li>
+<li>test eligibility: <code>scheduled_departure_at</code></li>
+</ul></section><section class="code-cell"><div class="prompt">In [3]</div><pre class="code"><code>semantics = TemporalSemanticsSpec(
+    timeline_col=&quot;scheduled_departure_at&quot;,
+    segment_time_cols={
+        &quot;train&quot;: &quot;actual_arrival_at&quot;,
+        &quot;test&quot;: &quot;scheduled_departure_at&quot;,
+    },
+)
+
+walk_forward = WalkForwardPolicy(
+    time_col=semantics,
+    partition=TemporalPartitionSpec(
+        layout=&quot;train_test&quot;,
+        train_size=&quot;7D&quot;,
+        test_size=&quot;1D&quot;,
+        calendar_frequency=&quot;D&quot;,
+    ),
+    step=&quot;1D&quot;,
+    strategy=&quot;rolling&quot;,
+    max_folds=8,
+)
+walk_forward</code></pre><pre class="output"><code>&lt;jano.workflows.WalkForwardPolicy object at 0x10b90ab50&gt;</code></pre></section><section class="markdown"><h2>Inspect the simulation plan before materializing folds</h2>
+<p>In Jano, a <a href="https://marmurar.github.io/jano/concepts.html#planning-before-materialization"><code>plan()</code></a> is the precomputed geometry of a simulation. It tells you what the future folds *would* look like before Jano materializes any <code>train</code> or <code>test</code> slices.</p>
+<p>That matters because you can inspect the temporal design before training anything:</p>
+<ul>
+<li>how many iterations the policy creates,</li>
+<li>the start/end boundaries of each segment,</li>
+<li>how many rows each <code>train</code> and <code>test</code> window contains,</li>
+<li>whether the configuration creates sparse or empty periods,</li>
+<li>and which iterations should be excluded before materialization.</li>
+</ul>
+<p>This is the main difference between planning and execution: the plan is a table of temporal intent; materialization turns that intent into actual fold objects and row indices.</p>
+<p>Here we set <code>calendar_frequency=&quot;D&quot;</code>, so duration windows are aligned to complete calendar days. Jano treats segment boundaries as closed-open intervals: <code>[start, end)</code>. A <code>train_end</code> of <code>2024-01-08 00:00:00</code> means train includes rows before Jan 8, while test starts exactly at Jan 8.</p></section><section class="code-cell"><div class="prompt">In [4]</div><pre class="code"><code>plan = walk_forward.plan(flights, title=&quot;ATL January 2024 walk-forward plan&quot;)
+plan_df = plan.to_frame()
+plan_df.head(10)</code></pre><div class="html-output"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>iteration</th>
+      <th>fold</th>
+      <th>simulation_start</th>
+      <th>simulation_end</th>
+      <th>is_partial</th>
+      <th>train_start</th>
+      <th>train_end</th>
+      <th>train_rows</th>
+      <th>test_start</th>
+      <th>test_end</th>
+      <th>test_rows</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>0</td>
+      <td>2024-01-01</td>
+      <td>2024-01-09</td>
+      <td>False</td>
+      <td>2024-01-01</td>
+      <td>2024-01-08</td>
+      <td>5720</td>
+      <td>2024-01-08</td>
+      <td>2024-01-09</td>
+      <td>829</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>1</td>
+      <td>2024-01-02</td>
+      <td>2024-01-10</td>
+      <td>False</td>
+      <td>2024-01-02</td>
+      <td>2024-01-09</td>
+      <td>5829</td>
+      <td>2024-01-09</td>
+      <td>2024-01-10</td>
+      <td>792</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>2</td>
+      <td>2024-01-03</td>
+      <td>2024-01-11</td>
+      <td>False</td>
+      <td>2024-01-03</td>
+      <td>2024-01-10</td>
+      <td>5754</td>
+      <td>2024-01-10</td>
+      <td>2024-01-11</td>
+      <td>817</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>3</td>
+      <td>2024-01-04</td>
+      <td>2024-01-12</td>
+      <td>False</td>
+      <td>2024-01-04</td>
+      <td>2024-01-11</td>
+      <td>5738</td>
+      <td>2024-01-11</td>
+      <td>2024-01-12</td>
+      <td>853</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>4</td>
+      <td>2024-01-05</td>
+      <td>2024-01-13</td>
+      <td>False</td>
+      <td>2024-01-05</td>
+      <td>2024-01-12</td>
+      <td>5773</td>
+      <td>2024-01-12</td>
+      <td>2024-01-13</td>
+      <td>827</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>5</td>
+      <td>5</td>
+      <td>2024-01-06</td>
+      <td>2024-01-14</td>
+      <td>False</td>
+      <td>2024-01-06</td>
+      <td>2024-01-13</td>
+      <td>5737</td>
+      <td>2024-01-13</td>
+      <td>2024-01-14</td>
+      <td>759</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>6</td>
+      <td>6</td>
+      <td>2024-01-07</td>
+      <td>2024-01-15</td>
+      <td>False</td>
+      <td>2024-01-07</td>
+      <td>2024-01-14</td>
+      <td>5725</td>
+      <td>2024-01-14</td>
+      <td>2024-01-15</td>
+      <td>780</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>7</td>
+      <td>7</td>
+      <td>2024-01-08</td>
+      <td>2024-01-16</td>
+      <td>False</td>
+      <td>2024-01-08</td>
+      <td>2024-01-15</td>
+      <td>5655</td>
+      <td>2024-01-15</td>
+      <td>2024-01-16</td>
+      <td>842</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></section><section class="markdown"><p>The plan frame already exposes iteration ids, boundaries and row counts. That makes it possible to reason about the simulation before slicing any fold objects.</p>
+<p>For example, you can use this table to choose a specific iteration, start from the middle of the simulation, or remove folds that overlap events that would bias training.</p></section><section class="code-cell"><div class="prompt">In [5]</div><pre class="code"><code>plan_df[[&quot;iteration&quot;, &quot;train_start&quot;, &quot;train_end&quot;, &quot;test_start&quot;, &quot;test_end&quot;, &quot;train_rows&quot;, &quot;test_rows&quot;]]</code></pre><div class="html-output"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>iteration</th>
+      <th>train_start</th>
+      <th>train_end</th>
+      <th>test_start</th>
+      <th>test_end</th>
+      <th>train_rows</th>
+      <th>test_rows</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>2024-01-01</td>
+      <td>2024-01-08</td>
+      <td>2024-01-08</td>
+      <td>2024-01-09</td>
+      <td>5720</td>
+      <td>829</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>2024-01-02</td>
+      <td>2024-01-09</td>
+      <td>2024-01-09</td>
+      <td>2024-01-10</td>
+      <td>5829</td>
+      <td>792</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>2024-01-03</td>
+      <td>2024-01-10</td>
+      <td>2024-01-10</td>
+      <td>2024-01-11</td>
+      <td>5754</td>
+      <td>817</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>2024-01-04</td>
+      <td>2024-01-11</td>
+      <td>2024-01-11</td>
+      <td>2024-01-12</td>
+      <td>5738</td>
+      <td>853</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>2024-01-05</td>
+      <td>2024-01-12</td>
+      <td>2024-01-12</td>
+      <td>2024-01-13</td>
+      <td>5773</td>
+      <td>827</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>5</td>
+      <td>2024-01-06</td>
+      <td>2024-01-13</td>
+      <td>2024-01-13</td>
+      <td>2024-01-14</td>
+      <td>5737</td>
+      <td>759</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>6</td>
+      <td>2024-01-07</td>
+      <td>2024-01-14</td>
+      <td>2024-01-14</td>
+      <td>2024-01-15</td>
+      <td>5725</td>
+      <td>780</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>7</td>
+      <td>2024-01-08</td>
+      <td>2024-01-15</td>
+      <td>2024-01-15</td>
+      <td>2024-01-16</td>
+      <td>5655</td>
+      <td>842</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></section><section class="markdown"><h2>Exclude special dates from the plan</h2>
+<p>As an example, exclude folds whose train segment overlaps Martin Luther King Jr. Day.</p></section><section class="code-cell"><div class="prompt">In [6]</div><pre class="code"><code>filtered_plan = plan.exclude_windows(train=[(&quot;2024-01-15&quot;, &quot;2024-01-16&quot;)])
+filtered_plan.to_frame()[[&quot;iteration&quot;, &quot;train_start&quot;, &quot;train_end&quot;, &quot;test_start&quot;, &quot;test_end&quot;]]</code></pre><div class="html-output"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>iteration</th>
+      <th>train_start</th>
+      <th>train_end</th>
+      <th>test_start</th>
+      <th>test_end</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>2024-01-01</td>
+      <td>2024-01-08</td>
+      <td>2024-01-08</td>
+      <td>2024-01-09</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>2024-01-02</td>
+      <td>2024-01-09</td>
+      <td>2024-01-09</td>
+      <td>2024-01-10</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>2024-01-03</td>
+      <td>2024-01-10</td>
+      <td>2024-01-10</td>
+      <td>2024-01-11</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>2024-01-04</td>
+      <td>2024-01-11</td>
+      <td>2024-01-11</td>
+      <td>2024-01-12</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>2024-01-05</td>
+      <td>2024-01-12</td>
+      <td>2024-01-12</td>
+      <td>2024-01-13</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>5</td>
+      <td>2024-01-06</td>
+      <td>2024-01-13</td>
+      <td>2024-01-13</td>
+      <td>2024-01-14</td>
+    </tr>
+    <tr>
+      <th>6</th>
+      <td>6</td>
+      <td>2024-01-07</td>
+      <td>2024-01-14</td>
+      <td>2024-01-14</td>
+      <td>2024-01-15</td>
+    </tr>
+    <tr>
+      <th>7</th>
+      <td>7</td>
+      <td>2024-01-08</td>
+      <td>2024-01-15</td>
+      <td>2024-01-15</td>
+      <td>2024-01-16</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></section><section class="markdown"><h2>Materialize the filtered simulation</h2></section><section class="code-cell"><div class="prompt">In [7]</div><pre class="code"><code>simulation_result = filtered_plan.materialize()
+simulation_result.total_folds, simulation_result.to_frame().head()</code></pre><pre class="output"><code>(8,    fold simulation_start simulation_end  ... test_start   test_end  test_rows
+0     0       2024-01-01     2024-01-09  ... 2024-01-08 2024-01-09        829
+1     1       2024-01-02     2024-01-10  ... 2024-01-09 2024-01-10        792
+2     2       2024-01-03     2024-01-11  ... 2024-01-10 2024-01-11        817
+3     3       2024-01-04     2024-01-12  ... 2024-01-11 2024-01-12        853
+4     4       2024-01-05     2024-01-13  ... 2024-01-12 2024-01-13        827
+
+[5 rows x 9 columns])</code></pre></section><section class="markdown"><h2>A minimal model for temporal hypothesis policies</h2>
+<p>To keep this notebook self-contained, use a simple historical delay-rate classifier keyed by route, airline, day of week and scheduled departure hour.</p></section><section class="code-cell"><div class="prompt">In [8]</div><pre class="code"><code>class SimpleDelayRateClassifier:
+    def fit(self, X: pd.DataFrame, y: pd.Series):
+        keys = self._keys(X)
+        grouped = pd.DataFrame({&quot;key&quot;: keys, &quot;target&quot;: y.to_numpy()}).groupby(&quot;key&quot;)[&quot;target&quot;].mean()
+        self.rate_by_key = grouped.to_dict()
+        self.global_rate = float(np.mean(y.to_numpy()))
+        return self
+
+    def predict(self, X: pd.DataFrame) -&gt; np.ndarray:
+        keys = self._keys(X)
+        return np.array([
+            1 if self.rate_by_key.get(key, self.global_rate) &gt;= 0.5 else 0
+            for key in keys
+        ])
+
+    @staticmethod
+    def _keys(X: pd.DataFrame) -&gt; pd.Series:
+        return (
+            X[[&quot;Origin&quot;, &quot;Dest&quot;, &quot;Reporting_Airline&quot;, &quot;DayOfWeek&quot;, &quot;scheduled_dep_hour&quot;]]
+            .astype(str)
+            .agg(&quot;|&quot;.join, axis=1)
+        )
+
+
+feature_cols = [&quot;Origin&quot;, &quot;Dest&quot;, &quot;Reporting_Airline&quot;, &quot;DayOfWeek&quot;, &quot;scheduled_dep_hour&quot;, &quot;Distance&quot;]
+model = SimpleDelayRateClassifier()</code></pre></section><section class="markdown"><h2>Train history question</h2>
+<p>How much historical data is enough to classify delayed arrivals on the same test day?</p></section><section class="code-cell"><div class="prompt">In [9]</div><pre class="code"><code>train_history = TrainHistoryPolicy(
+    semantics,
+    cutoff=plan_df.iloc[3][&quot;train_end&quot;],
+    train_sizes=[&quot;2D&quot;, &quot;4D&quot;, &quot;6D&quot;, &quot;7D&quot;],
+    test_size=&quot;1D&quot;,
+)
+
+train_history_result = train_history.evaluate(
+    flights,
+    model=model,
+    target_col=&quot;is_arrival_delayed&quot;,
+    feature_cols=feature_cols,
+    metrics=&quot;accuracy&quot;,
+)
+
+train_history_result.to_frame()</code></pre><div class="html-output"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>variant</th>
+      <th>train_size</th>
+      <th>train_start</th>
+      <th>train_end</th>
+      <th>test_start</th>
+      <th>test_end</th>
+      <th>train_rows</th>
+      <th>test_rows</th>
+      <th>accuracy</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>2 days 00:00:00</td>
+      <td>2024-01-09</td>
+      <td>2024-01-11</td>
+      <td>2024-01-11</td>
+      <td>2024-01-12</td>
+      <td>1615</td>
+      <td>853</td>
+      <td>0.855803</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>4 days 00:00:00</td>
+      <td>2024-01-07</td>
+      <td>2024-01-11</td>
+      <td>2024-01-11</td>
+      <td>2024-01-12</td>
+      <td>3279</td>
+      <td>853</td>
+      <td>0.855803</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>6 days 00:00:00</td>
+      <td>2024-01-05</td>
+      <td>2024-01-11</td>
+      <td>2024-01-11</td>
+      <td>2024-01-12</td>
+      <td>4908</td>
+      <td>853</td>
+      <td>0.853458</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>7 days 00:00:00</td>
+      <td>2024-01-04</td>
+      <td>2024-01-11</td>
+      <td>2024-01-11</td>
+      <td>2024-01-12</td>
+      <td>5738</td>
+      <td>853</td>
+      <td>0.831184</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></section><section class="code-cell"><div class="prompt">In [10]</div><pre class="code"><code>train_history_result.find_optimal_train_size(metric=&quot;accuracy&quot;, tolerance=0.0, relative=False)</code></pre><pre class="output"><code>{&#x27;variant&#x27;: 0, &#x27;train_size&#x27;: &#x27;2 days 00:00:00&#x27;, &#x27;train_start&#x27;: Timestamp(&#x27;2024-01-09 00:00:00&#x27;), &#x27;train_end&#x27;: Timestamp(&#x27;2024-01-11 00:00:00&#x27;), &#x27;test_start&#x27;: Timestamp(&#x27;2024-01-11 00:00:00&#x27;), &#x27;test_end&#x27;: Timestamp(&#x27;2024-01-12 00:00:00&#x27;), &#x27;train_rows&#x27;: 1615, &#x27;test_rows&#x27;: 853, &#x27;accuracy&#x27;: 0.8558030480656507}</code></pre></section><section class="markdown"><h2>Drift monitoring question</h2>
+<p>If we freeze the train window, when does accuracy begin to degrade as test moves forward?</p></section><section class="code-cell"><div class="prompt">In [11]</div><pre class="code"><code>drift_monitor = DriftMonitoringPolicy(
+    semantics,
+    cutoff=plan_df.iloc[3][&quot;train_end&quot;],
+    train_size=&quot;7D&quot;,
+    test_size=&quot;1D&quot;,
+    step=&quot;1D&quot;,
+    max_windows=6,
+)
+
+drift_result = drift_monitor.evaluate(
+    flights,
+    model=model,
+    target_col=&quot;is_arrival_delayed&quot;,
+    feature_cols=feature_cols,
+    metrics=&quot;accuracy&quot;,
+)
+
+drift_result.to_frame()</code></pre><div class="html-output"><div>
+<style scoped>
+    .dataframe tbody tr th:only-of-type {
+        vertical-align: middle;
+    }
+
+    .dataframe tbody tr th {
+        vertical-align: top;
+    }
+
+    .dataframe thead th {
+        text-align: right;
+    }
+</style>
+<table border="1" class="dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th></th>
+      <th>window</th>
+      <th>train_size</th>
+      <th>train_start</th>
+      <th>train_end</th>
+      <th>test_start</th>
+      <th>test_end</th>
+      <th>train_rows</th>
+      <th>test_rows</th>
+      <th>accuracy</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <th>0</th>
+      <td>0</td>
+      <td>7 days 00:00:00</td>
+      <td>2024-01-04</td>
+      <td>2024-01-11</td>
+      <td>2024-01-11</td>
+      <td>2024-01-12</td>
+      <td>5738</td>
+      <td>853</td>
+      <td>0.831184</td>
+    </tr>
+    <tr>
+      <th>1</th>
+      <td>1</td>
+      <td>7 days 00:00:00</td>
+      <td>2024-01-04</td>
+      <td>2024-01-11</td>
+      <td>2024-01-12</td>
+      <td>2024-01-13</td>
+      <td>5738</td>
+      <td>827</td>
+      <td>0.637243</td>
+    </tr>
+    <tr>
+      <th>2</th>
+      <td>2</td>
+      <td>7 days 00:00:00</td>
+      <td>2024-01-04</td>
+      <td>2024-01-11</td>
+      <td>2024-01-13</td>
+      <td>2024-01-14</td>
+      <td>5738</td>
+      <td>759</td>
+      <td>0.689065</td>
+    </tr>
+    <tr>
+      <th>3</th>
+      <td>3</td>
+      <td>7 days 00:00:00</td>
+      <td>2024-01-04</td>
+      <td>2024-01-11</td>
+      <td>2024-01-14</td>
+      <td>2024-01-15</td>
+      <td>5738</td>
+      <td>780</td>
+      <td>0.723077</td>
+    </tr>
+    <tr>
+      <th>4</th>
+      <td>4</td>
+      <td>7 days 00:00:00</td>
+      <td>2024-01-04</td>
+      <td>2024-01-11</td>
+      <td>2024-01-15</td>
+      <td>2024-01-16</td>
+      <td>5738</td>
+      <td>842</td>
+      <td>0.595012</td>
+    </tr>
+    <tr>
+      <th>5</th>
+      <td>5</td>
+      <td>7 days 00:00:00</td>
+      <td>2024-01-04</td>
+      <td>2024-01-11</td>
+      <td>2024-01-16</td>
+      <td>2024-01-17</td>
+      <td>5738</td>
+      <td>824</td>
+      <td>0.514563</td>
+    </tr>
+  </tbody>
+</table>
+</div></div></section><section class="code-cell"><div class="prompt">In [12]</div><pre class="code"><code>drift_result.find_drift_onset(metric=&quot;accuracy&quot;, threshold=0.05, baseline=&quot;first&quot;, relative=False)</code></pre><pre class="output"><code>{&#x27;window&#x27;: 1, &#x27;train_size&#x27;: &#x27;7 days 00:00:00&#x27;, &#x27;train_start&#x27;: Timestamp(&#x27;2024-01-04 00:00:00&#x27;), &#x27;train_end&#x27;: Timestamp(&#x27;2024-01-11 00:00:00&#x27;), &#x27;test_start&#x27;: Timestamp(&#x27;2024-01-12 00:00:00&#x27;), &#x27;test_end&#x27;: Timestamp(&#x27;2024-01-13 00:00:00&#x27;), &#x27;train_rows&#x27;: 5738, &#x27;test_rows&#x27;: 827, &#x27;accuracy&#x27;: 0.6372430471584039}</code></pre></section><section class="markdown"><h2>Notes</h2>
+<ul>
+<li>This notebook is intentionally pragmatic: it shows how to use Jano on a real airline dataset rather than trying to build a production-grade flight delay model.</li>
+<li>The main Jano-specific point is the temporal geometry and leakage-aware semantics, not the classifier sophistication.</li>
+<li>For heavier experimentation, keep the same temporal setup and replace the toy classifier with your own pipeline.</li>
+</ul></section></main></body></html>

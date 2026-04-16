@@ -20,6 +20,50 @@ The core accepts `pandas.DataFrame`, `numpy.ndarray` and `polars.DataFrame` inpu
 
 The project is named after Janus, the Roman god of beginnings, transitions and thresholds. That framing fits the library well: Jano helps define how a dataset moves from training periods into evaluation periods, fold after fold.
 
+## MCP server
+
+Jano also ships an optional local MCP server so AI agents can use the library through a small, explicit tool surface instead of generating Python ad hoc.
+
+Current MCP tools:
+
+- `preview_local_dataset`
+- `plan_walk_forward_simulation`
+- `run_walk_forward_simulation`
+
+Install it in a Python 3.10+ environment:
+
+```bash
+python -m pip install "jano[mcp]"
+```
+
+Run it locally over stdio:
+
+```bash
+jano-mcp
+```
+
+Or use the module entrypoint:
+
+```bash
+python -m jano.mcp_server
+```
+
+Example MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "jano": {
+      "command": "jano-mcp"
+    }
+  }
+}
+```
+
+The MCP layer is intentionally opinionated: it exposes planning and walk-forward simulation first, while the full Python library remains available when you need custom composition.
+
+This is meant for MCP-aware coding assistants such as Claude Code, Claude Desktop, Cursor, Codex runtimes with MCP support, and other local agent environments. The server runs locally and reads only the file paths you provide to its tools; Jano does not upload datasets anywhere by itself.
+
 ## Why Jano exists
 
 Many machine learning datasets are not just tabular; they are structured over time and often across multiple entities such as users, routes, sellers or products. In those settings, a more faithful view of the data is not "a bag of independent rows" but a temporally ordered process.
@@ -92,6 +136,7 @@ It supports:
 - `single`, `rolling` and `expanding` strategies.
 - `train_test` and `train_val_test` layouts.
 - Segment sizes defined as durations like `"30D"`, row counts like `5000`, or fractions like `0.7`.
+- Calendar-aligned duration windows with `calendar_frequency="D"` when you want complete days instead of elapsed-time windows anchored at the first timestamp.
 - Optional gaps before validation or test segments.
 - Plain index output through `split()`.
 - Rich fold objects through `iter_splits()`.

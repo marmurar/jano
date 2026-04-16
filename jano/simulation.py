@@ -67,7 +67,7 @@ class TemporalSimulation:
     """High-level interface for executing a complete temporal simulation.
 
     Args:
-        time_col: Either the name of the timeline column or a ``TemporalSemanticsSpec``
+        time_col: Timeline column name, column position or ``TemporalSemanticsSpec``
             describing the timeline, ordering column and per-segment eligibility columns.
         partition: High-level definition of the train/test or train/validation/test layout.
         step: Amount by which the simulation advances after each fold.
@@ -83,7 +83,7 @@ class TemporalSimulation:
 
     def __init__(
         self,
-        time_col: str | TemporalSemanticsSpec,
+        time_col: str | int | TemporalSemanticsSpec,
         partition: TemporalPartitionSpec,
         step,
         strategy: str = "rolling",
@@ -163,7 +163,16 @@ class TemporalSimulation:
         X: pd.DataFrame,
         title: str | None = None,
     ) -> SimulationPlan:
-        """Precompute the simulation geometry before materializing any folds."""
+        """Precompute the simulation geometry before materializing any folds.
+
+        Args:
+            X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
+                ``polars.DataFrame``.
+            title: Optional title used when the plan is later described or rendered.
+
+        Returns:
+            A ``SimulationPlan`` with fold boundaries and row counts.
+        """
         frame = self._select_frame(X)
         plan = self.splitter.plan(frame)
         if self.max_folds is not None:

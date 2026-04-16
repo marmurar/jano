@@ -32,7 +32,14 @@ def _overlaps(boundary: SegmentBoundaries, window: tuple[pd.Timestamp, pd.Timest
 
 @dataclass(frozen=True)
 class PlannedFold:
-    """Precomputed temporal geometry for one simulation iteration."""
+    """Precomputed temporal geometry for one simulation iteration.
+
+    Attributes:
+        iteration: Zero-based simulation iteration.
+        boundaries: Mapping from segment name to closed-open temporal boundaries.
+        counts: Mapping from segment name to the number of rows in that segment.
+        metadata: Additional planning metadata such as ``is_partial``.
+    """
 
     iteration: int
     boundaries: Dict[str, SegmentBoundaries]
@@ -58,6 +65,7 @@ class PlannedFold:
         return last.end
 
     def to_dict(self) -> dict[str, object]:
+        """Return the fold as one serializable row for DataFrame/report output."""
         row: dict[str, object] = {
             "iteration": self.iteration,
             "fold": self.fold,
@@ -74,7 +82,19 @@ class PlannedFold:
 
 @dataclass(frozen=True)
 class PartitionPlan:
-    """Precomputed temporal plan that can be inspected and materialized later."""
+    """Precomputed temporal plan that can be inspected and materialized later.
+
+    A plan contains fold boundaries and row counts before the actual train/test slices
+    are materialized. This makes it cheap to inspect, filter or subset a simulation.
+
+    Attributes:
+        frame: Source dataset used to compute row counts and later materialize folds.
+        temporal_semantics: Timeline, ordering and per-segment timestamp semantics.
+        strategy: Movement strategy used to generate folds.
+        size_kind: Unit family used by the partition: ``"duration"``, ``"rows"`` or
+            ``"fraction"``.
+        folds: Precomputed fold geometry.
+    """
 
     frame: pd.DataFrame
     temporal_semantics: TemporalSemanticsSpec
@@ -91,18 +111,22 @@ class PartitionPlan:
         return self.temporal_semantics.timeline_col
 
     def to_frame(self) -> pd.DataFrame:
+        """Return one row per planned fold with boundaries and row counts."""
         return pd.DataFrame([fold.to_dict() for fold in self.folds])
 
     def select_iterations(self, iterations: Sequence[int]) -> "PartitionPlan":
+        """Return a plan containing only the selected iteration numbers."""
         wanted = set(iterations)
         selected = [fold for fold in self.folds if fold.iteration in wanted]
         return self._clone_with(selected)
 
     def select_from_iteration(self, iteration: int) -> "PartitionPlan":
+        """Return a plan containing iterations greater than or equal to ``iteration``."""
         selected = [fold for fold in self.folds if fold.iteration >= iteration]
         return self._clone_with(selected)
 
     def select_until_iteration(self, iteration: int) -> "PartitionPlan":
+        """Return a plan containing iterations less than or equal to ``iteration``."""
         selected = [fold for fold in self.folds if fold.iteration <= iteration]
         return self._clone_with(selected)
 
@@ -113,6 +137,13 @@ class PartitionPlan:
         validation: Sequence[tuple[object, object]] | None = None,
         test: Sequence[tuple[object, object]] | None = None,
     ) -> "PartitionPlan":
+        """Return a plan with folds removed when segment boundaries overlap exclusions.
+
+        Args:
+            train: Optional excluded windows applied to train segment boundaries.
+            validation: Optional excluded windows applied to validation boundaries.
+            test: Optional excluded windows applied to test segment boundaries.
+        """
         excluded: Mapping[str, list[tuple[pd.Timestamp, pd.Timestamp]]] = {
             "train": _normalize_windows(train),
             "validation": _normalize_windows(validation),
@@ -133,6 +164,7 @@ class PartitionPlan:
         return self._clone_with(kept)
 
     def materialize(self) -> list[TimeSplit]:
+        """Materialize the planned fold boundaries into ``TimeSplit`` objects."""
         if not self.folds:
             raise ValueError("The current plan does not contain any folds")
         indexer = TimeIndexer(frame=self.frame, semantics=self.temporal_semantics)
@@ -153,6 +185,7 @@ class PartitionPlan:
         return splits
 
     def iter_splits(self) -> Iterator[TimeSplit]:
+        """Iterate over materialized ``TimeSplit`` objects."""
         return iter(self.materialize())
 
     def _clone_with(self, folds: list[PlannedFold]) -> "PartitionPlan":
@@ -167,7 +200,12 @@ class PartitionPlan:
 
 @dataclass(frozen=True)
 class SimulationPlan:
-    """High-level simulation plan with helpers for reporting and materialization."""
+    """High-level simulation plan with helpers for reporting and materialization.
+
+    Attributes:
+        partition_plan: Lower-level partition plan with fold boundaries and counts.
+        title: Report title used when the plan is described or written as HTML.
+    """
 
     partition_plan: PartitionPlan
     title: str
@@ -177,15 +215,19 @@ class SimulationPlan:
         return self.partition_plan.total_folds
 
     def to_frame(self) -> pd.DataFrame:
+        """Return one row per planned fold with boundaries and row counts."""
         return self.partition_plan.to_frame()
 
     def select_iterations(self, iterations: Sequence[int]) -> "SimulationPlan":
+        """Return a simulation plan containing only the selected iteration numbers."""
         return SimulationPlan(self.partition_plan.select_iterations(iterations), self.title)
 
     def select_from_iteration(self, iteration: int) -> "SimulationPlan":
+        """Return a simulation plan starting at ``iteration``."""
         return SimulationPlan(self.partition_plan.select_from_iteration(iteration), self.title)
 
     def select_until_iteration(self, iteration: int) -> "SimulationPlan":
+        """Return a simulation plan ending at ``iteration``."""
         return SimulationPlan(self.partition_plan.select_until_iteration(iteration), self.title)
 
     def exclude_windows(
@@ -195,6 +237,7 @@ class SimulationPlan:
         validation: Sequence[tuple[object, object]] | None = None,
         test: Sequence[tuple[object, object]] | None = None,
     ) -> "SimulationPlan":
+        """Return a simulation plan after removing folds that overlap excluded windows."""
         return SimulationPlan(
             self.partition_plan.exclude_windows(
                 train=train,
@@ -205,6 +248,7 @@ class SimulationPlan:
         )
 
     def materialize(self) -> "SimulationResult":
+        """Materialize the plan into a ``SimulationResult``."""
         from .simulation import SimulationResult
 
         splits = self.partition_plan.materialize()
@@ -221,7 +265,9 @@ class SimulationPlan:
         )
 
     def describe(self) -> SimulationSummary:
+        """Materialize the plan and return its structured summary."""
         return self.materialize().summary
 
     def write_html(self, path: str | Path) -> Path:
+        """Materialize the plan and write its rendered HTML report."""
         return self.materialize().write_html(path)

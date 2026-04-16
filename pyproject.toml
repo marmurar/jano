@@ -39,17 +39,24 @@ classifiers = [
 ]
 
 [project.optional-dependencies]
+mcp = [
+  "mcp[cli]>=1.0,<2; python_version >= '3.10'",
+]
 polars = [
   "polars>=1.0",
 ]
 dev = [
   "build>=1.2",
+  "mcp[cli]>=1.0,<2; python_version >= '3.10'",
   "polars>=1.0",
   "pytest>=8.0",
   "pytest-cov>=5.0",
   "sphinx>=7.4",
   "twine>=5.1",
 ]
+
+[project.scripts]
+jano-mcp = "jano.mcp_server:main"
 
 [tool.setuptools.packages.find]
 include = ["jano*"]

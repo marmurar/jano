@@ -125,6 +125,36 @@ You can anchor the simulation to a specific point in time and cap the number of 
 
 ``WalkForwardPolicy`` also accepts ``end_at`` if you want to constrain the simulation to a bounded time window before folds are generated.
 
+Calendar-aligned duration windows
+---------------------------------
+
+By default, duration windows start from the first observed timestamp. If the first row is
+``2024-01-01 05:21`` and ``train_size="7D"``, the first train window ends at
+``2024-01-08 05:21``.
+
+Sometimes that is not the desired behavior. In operational datasets, you may want whole
+calendar days instead: train through Jan 7 and test from Jan 8.
+
+Use ``calendar_frequency="D"`` in ``TemporalPartitionSpec`` for that:
+
+.. code-block:: python
+
+   simulation = WalkForwardPolicy(
+       time_col="timestamp",
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="7D",
+           test_size="1D",
+           calendar_frequency="D",
+       ),
+       step="1D",
+       strategy="rolling",
+   )
+
+Jano uses closed-open boundaries: ``[start, end)``. A train boundary ending at
+``2024-01-08 00:00:00`` means the train segment contains rows before Jan 8, while the
+test segment can start exactly at Jan 8.
+
 If your source data is a NumPy array, reference the time column by integer position:
 
 .. container:: example-block

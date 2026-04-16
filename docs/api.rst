@@ -133,6 +133,21 @@ Reporting objects
    :undoc-members:
    :no-index:
 
+MCP helper functions
+--------------------
+
+These functions power the optional local MCP server and are useful for understanding
+the exact tool contract exposed to AI clients.
+
+.. autofunction:: jano.mcp_tools.preview_dataset
+   :no-index:
+
+.. autofunction:: jano.mcp_tools.plan_walk_forward
+   :no-index:
+
+.. autofunction:: jano.mcp_tools.run_walk_forward
+   :no-index:
+
 Type and validation helpers
 ---------------------------
 

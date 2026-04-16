@@ -32,7 +32,7 @@ class TemporalBacktestSplitter:
     """Flexible temporal splitter for single or repeated temporal backtests.
 
     Args:
-        time_col: Either the name of the timeline column or a ``TemporalSemanticsSpec``
+        time_col: Timeline column name, column position or ``TemporalSemanticsSpec``
             describing the timeline, ordering column and per-segment eligibility columns.
         partition: High-level definition of the train/test or train/validation/test layout.
         step: Amount by which the simulation advances after each fold. It must use the
@@ -45,7 +45,7 @@ class TemporalBacktestSplitter:
 
     def __init__(
         self,
-        time_col: str | TemporalSemanticsSpec,
+        time_col: str | int | TemporalSemanticsSpec,
         partition: TemporalPartitionSpec,
         step,
         strategy: str = "rolling",
@@ -130,7 +130,15 @@ class TemporalBacktestSplitter:
         return sum(1 for _ in self.iter_splits(X, y=y, groups=groups))
 
     def plan(self, X) -> PartitionPlan:
-        """Precompute the temporal geometry of the simulation without materializing slices."""
+        """Precompute the temporal geometry without materializing train/test slices.
+
+        Args:
+            X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
+                ``polars.DataFrame``.
+
+        Returns:
+            A ``PartitionPlan`` containing fold boundaries and row counts.
+        """
         frame = self._coerce_frame(X)
         indexer = TimeIndexer(frame=frame, semantics=self.temporal_semantics)
         if self.partition.size_kind == "duration":
@@ -219,7 +227,7 @@ class TemporalBacktestSplitter:
         gap_sizes = self.partition.gaps
         tail_gap = self.partition.tail_gap
 
-        start = indexer.min_time
+        start = self._initial_duration_start(indexer)
         fold = 0
 
         while True:
@@ -278,6 +286,11 @@ class TemporalBacktestSplitter:
             if self.strategy == "single":
                 break
             start = start + self.step.value
+
+    def _initial_duration_start(self, indexer: TimeIndexer) -> pd.Timestamp:
+        if self.partition.calendar_frequency is None:
+            return indexer.min_time
+        return indexer.min_time.floor(self.partition.calendar_frequency)
 
     def _iter_positional_splits(self, indexer: TimeIndexer) -> Iterator[TimeSplit]:
         for planned in self._plan_positional_splits(indexer):

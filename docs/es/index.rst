@@ -70,6 +70,7 @@ Backends soportados:
    overview
    concepts
    simulation
+   mcp
    benchmark
    api
    release

@@ -90,6 +90,11 @@ Jano currently accepts three unit families:
 
 Within a partition, sizes and gaps should belong to the same unit family.
 
+For duration-based partitions, windows use elapsed time by default. If you need complete
+calendar buckets, set ``calendar_frequency`` on ``TemporalPartitionSpec``. For example,
+``calendar_frequency="D"`` aligns duration windows to midnight-to-midnight days instead
+of anchoring them at the first observed timestamp.
+
 Outputs
 -------
 

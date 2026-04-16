@@ -21,7 +21,13 @@ from .types import ColumnRef, TemporalPartitionSpec, TemporalSemanticsSpec
 
 @dataclass(frozen=True)
 class RollingTrainHistoryResult:
-    """Per-iteration optimal training-history choices over a walk-forward plan."""
+    """Per-iteration optimal training-history choices over a walk-forward plan.
+
+    Attributes:
+        records: DataFrame with one row per outer walk-forward iteration and the
+            selected train-history window for that iteration.
+        metric: Metric used to choose the optimal train-history size.
+    """
 
     records: pd.DataFrame
     metric: str
@@ -46,7 +52,22 @@ class RollingTrainHistoryResult:
 
 
 class WalkForwardPolicy:
-    """Recommended high-level entry point for production-like walk-forward evaluation."""
+    """Recommended high-level entry point for production-like walk-forward evaluation.
+
+    Args:
+        time_col: Timeline column name, column position, or ``TemporalSemanticsSpec``.
+            Use ``TemporalSemanticsSpec`` when ordering, reporting and segment
+            eligibility need different timestamp columns.
+        partition: Train/test or train/validation/test layout to move through time.
+        step: Amount by which the simulation advances after each fold. It must use the
+            same unit family as ``partition`` sizes.
+        strategy: Movement strategy: ``"single"``, ``"rolling"`` or ``"expanding"``.
+        allow_partial: Whether to keep a final fold whose last segment exceeds the
+            available timeline.
+        start_at: Optional lower timestamp bound applied before folds are planned.
+        end_at: Optional upper timestamp bound applied before folds are planned.
+        max_folds: Optional maximum number of folds to keep.
+    """
 
     def __init__(
         self,
@@ -72,7 +93,17 @@ class WalkForwardPolicy:
         )
 
     def plan(self, X, title: str | None = None) -> SimulationPlan:
-        """Return the precomputed walk-forward geometry."""
+        """Return the precomputed walk-forward geometry.
+
+        Args:
+            X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
+                ``polars.DataFrame``.
+            title: Optional title attached to the returned plan.
+
+        Returns:
+            A ``SimulationPlan`` with fold boundaries and row counts, but without
+            materialized train/test slices.
+        """
         return self._simulation.plan(X, title=title)
 
     def run(
@@ -81,7 +112,18 @@ class WalkForwardPolicy:
         output_path: str | None = None,
         title: str | None = None,
     ) -> SimulationResult:
-        """Materialize the walk-forward simulation."""
+        """Materialize the walk-forward simulation.
+
+        Args:
+            X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
+                ``polars.DataFrame``.
+            output_path: Optional filesystem path for the HTML report.
+            title: Optional title used in reports.
+
+        Returns:
+            A ``SimulationResult`` with materialized folds, tabular summary, chart
+            data and rendered HTML.
+        """
         return self._simulation.run(X, output_path=output_path, title=title)
 
     def as_splitter(self) -> TemporalBacktestSplitter:
@@ -95,7 +137,17 @@ class WalkForwardPolicy:
 
 
 class TrainHistoryPolicy:
-    """Recommended entry point for fixed-test, growing-train history studies."""
+    """Recommended entry point for fixed-test, growing-train history studies.
+
+    Args:
+        time_col: Timeline column name, column position, or ``TemporalSemanticsSpec``.
+        cutoff: Boundary where train ends and the fixed test horizon begins after any
+            ``gap_before_test``.
+        train_sizes: Candidate duration windows to evaluate by looking backward from
+            ``cutoff``.
+        test_size: Duration of the fixed test window.
+        gap_before_test: Optional duration gap between the train end and test start.
+    """
 
     def __init__(
         self,
@@ -123,7 +175,19 @@ class TrainHistoryPolicy:
         feature_cols: Sequence[ColumnRef] | None = None,
         metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None,
     ) -> TrainGrowthResult:
-        """Evaluate all configured train-history variants against one fixed test slice."""
+        """Evaluate all configured train-history variants against one fixed test slice.
+
+        Args:
+            X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
+                ``polars.DataFrame``.
+            model: Estimator with ``fit`` and ``predict`` methods.
+            target_col: Target column name or position.
+            feature_cols: Optional feature column names or positions. If omitted, all
+                non-temporal, non-target columns are used.
+            metrics: Metric name, list of metric names or mapping of custom metric
+                functions. Built-ins include ``"mae"``, ``"mse"``, ``"rmse"`` and
+                ``"accuracy"``.
+        """
         return self._policy.evaluate(
             X,
             model=model,
@@ -138,7 +202,17 @@ class TrainHistoryPolicy:
 
 
 class DriftMonitoringPolicy:
-    """Recommended entry point for fixed-train, moving-test decay monitoring."""
+    """Recommended entry point for fixed-train, moving-test decay monitoring.
+
+    Args:
+        time_col: Timeline column name, column position, or ``TemporalSemanticsSpec``.
+        cutoff: Boundary where the fixed train window ends.
+        train_size: Duration of the fixed train window looking backward from ``cutoff``.
+        test_size: Duration of each forward test window.
+        step: Duration by which the test window advances after each evaluation.
+        gap_before_test: Optional duration gap between train end and first test start.
+        max_windows: Optional maximum number of test windows to evaluate.
+    """
 
     def __init__(
         self,
@@ -170,7 +244,18 @@ class DriftMonitoringPolicy:
         feature_cols: Sequence[ColumnRef] | None = None,
         metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None,
     ) -> PerformanceDecayResult:
-        """Evaluate how performance evolves as the test window moves forward."""
+        """Evaluate how performance evolves as the test window moves forward.
+
+        Args:
+            X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
+                ``polars.DataFrame``.
+            model: Estimator with ``fit`` and ``predict`` methods.
+            target_col: Target column name or position.
+            feature_cols: Optional feature column names or positions. If omitted, all
+                non-temporal, non-target columns are used.
+            metrics: Metric name, list of metric names or mapping of custom metric
+                functions.
+        """
         return self._policy.evaluate(
             X,
             model=model,
@@ -189,6 +274,19 @@ class RollingTrainHistoryPolicy:
 
     This policy answers questions such as: how much training history is required on
     average if the optimal train window is allowed to vary over time?
+
+    Args:
+        time_col: Timeline column name, column position, or ``TemporalSemanticsSpec``.
+        partition: Outer walk-forward partition that defines the moving train/test
+            windows.
+        step: Amount by which the outer walk-forward process advances.
+        train_sizes: Candidate train-history durations tested inside each outer fold.
+        strategy: Outer movement strategy: ``"single"``, ``"rolling"`` or
+            ``"expanding"``.
+        allow_partial: Whether the outer plan can keep a final partial fold.
+        start_at: Optional lower timestamp bound for the outer plan.
+        end_at: Optional upper timestamp bound for the outer plan.
+        max_folds: Optional maximum number of outer folds.
     """
 
     def __init__(
@@ -235,7 +333,21 @@ class RollingTrainHistoryPolicy:
         relative: bool = True,
         title: str | None = None,
     ) -> RollingTrainHistoryResult:
-        """Choose an optimal train-history size for each outer walk-forward iteration."""
+        """Choose an optimal train-history size for each outer walk-forward iteration.
+
+        Args:
+            X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
+                ``polars.DataFrame``.
+            model: Estimator with ``fit`` and ``predict`` methods.
+            target_col: Target column name or position.
+            feature_cols: Optional feature column names or positions.
+            metrics: Metric name, list of metric names or mapping of custom metric
+                functions.
+            metric: Metric column used to choose the optimal train size.
+            tolerance: Allowed distance from the best score.
+            relative: Whether ``tolerance`` is proportional instead of absolute.
+            title: Optional title attached to the outer plan.
+        """
         plan = self._walk_forward.plan(X, title=title)
         rows: list[dict[str, object]] = []
 

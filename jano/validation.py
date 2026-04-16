@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict
 
+import pandas as pd
+
 from .types import SizeSpec, TemporalPartitionSpec, TemporalSemanticsSpec
 
 
@@ -15,6 +17,7 @@ class ValidatedPartitionSpec:
     gaps: Dict[str, SizeSpec]
     tail_gap: SizeSpec | None
     size_kind: str
+    calendar_frequency: str | None = None
 
 
 def validate_strategy(strategy: str) -> str:
@@ -69,12 +72,22 @@ def validate_partition_spec(partition: TemporalPartitionSpec) -> ValidatedPartit
     if partition.gap_after_test is not None:
         tail_gap = SizeSpec.from_value(partition.gap_after_test)
 
+    calendar_frequency = partition.calendar_frequency
+    if calendar_frequency is not None:
+        if size_kind != "duration":
+            raise ValueError("calendar_frequency can only be used with duration-based partitions")
+        try:
+            pd.Timestamp("2024-01-01").floor(calendar_frequency)
+        except ValueError as exc:
+            raise ValueError("calendar_frequency must be a valid fixed pandas frequency") from exc
+
     return ValidatedPartitionSpec(
         layout=partition.layout,
         segments=segments,
         gaps=gaps,
         tail_gap=tail_gap,
         size_kind=size_kind,
+        calendar_frequency=calendar_frequency,
     )
 
 

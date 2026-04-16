@@ -83,6 +83,7 @@ Supported input backends:
    overview
    concepts
    simulation
+   mcp
    benchmark
    api
    release

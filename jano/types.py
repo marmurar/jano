@@ -52,8 +52,13 @@ class TemporalPartitionSpec:
         train_size: Size of the train segment.
         test_size: Size of the test segment when present.
         validation_size: Size of the validation segment when present.
+        gap_before_train: Optional gap inserted before train.
         gap_before_validation: Optional gap inserted before validation.
         gap_before_test: Optional gap inserted before test.
+        gap_after_test: Optional trailing gap after test.
+        calendar_frequency: Optional pandas-compatible frequency used to align duration
+            windows to calendar boundaries. For example, ``"D"`` makes daily windows run
+            from midnight to midnight instead of from the first observed timestamp.
     """
 
     layout: str
@@ -64,6 +69,7 @@ class TemporalPartitionSpec:
     gap_before_validation: SizeValue | None = None
     gap_before_test: SizeValue | None = None
     gap_after_test: SizeValue | None = None
+    calendar_frequency: str | None = None
 
 
 @dataclass(frozen=True)

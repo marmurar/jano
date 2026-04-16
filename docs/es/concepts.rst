@@ -90,6 +90,11 @@ Jano acepta hoy tres familias de unidades:
 
 Dentro de una misma partición, tamaños y gaps deben pertenecer a la misma familia de unidades.
 
+En particiones basadas en duración, las ventanas usan tiempo transcurrido por defecto. Si
+necesitás buckets calendario completos, configurá ``calendar_frequency`` en
+``TemporalPartitionSpec``. Por ejemplo, ``calendar_frequency="D"`` alinea las ventanas a
+días de medianoche a medianoche, en lugar de anclarlas al primer timestamp observado.
+
 Salidas
 -------
 

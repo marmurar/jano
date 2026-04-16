@@ -145,7 +145,14 @@ def _prepare_supervised_frame(
 
 @dataclass(frozen=True)
 class TrainGrowthResult:
-    """Evaluated records for a fixed-test, growing-train temporal hypothesis."""
+    """Evaluated records for a fixed-test, growing-train temporal hypothesis.
+
+    Attributes:
+        records: DataFrame with one row per candidate train window and metric columns.
+        metric_directions: Mapping from metric name to optimization direction:
+            ``"min"`` for lower-is-better metrics and ``"max"`` for higher-is-better
+            metrics.
+    """
 
     records: pd.DataFrame
     metric_directions: dict[str, str]
@@ -190,7 +197,12 @@ class TrainGrowthResult:
 
 @dataclass(frozen=True)
 class PerformanceDecayResult:
-    """Evaluated records for a fixed-train, moving-test temporal hypothesis."""
+    """Evaluated records for a fixed-train, moving-test temporal hypothesis.
+
+    Attributes:
+        records: DataFrame with one row per moving test window and metric columns.
+        metric_directions: Mapping from metric name to optimization direction.
+    """
 
     records: pd.DataFrame
     metric_directions: dict[str, str]
@@ -257,6 +269,14 @@ class TrainGrowthPolicy:
     This policy keeps the test window fixed and grows the train window backward in time.
     It is useful when you want to understand how much historical data is actually needed
     to match the best achievable test performance.
+
+    Args:
+        time_col: Timeline column name, column position, or ``TemporalSemanticsSpec``.
+        cutoff: Boundary where candidate train windows end and the fixed test horizon
+            begins after any configured gap.
+        train_sizes: Candidate duration windows evaluated backward from ``cutoff``.
+        test_size: Duration of the fixed test window.
+        gap_before_test: Optional duration gap between train end and test start.
     """
 
     def __init__(
@@ -289,7 +309,21 @@ class TrainGrowthPolicy:
         feature_cols: Sequence[ColumnRef] | None = None,
         metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None,
     ) -> TrainGrowthResult:
-        """Run the fixed-test evaluation over all configured train sizes."""
+        """Run the fixed-test evaluation over all configured train sizes.
+
+        Args:
+            X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
+                ``polars.DataFrame``.
+            model: Estimator with ``fit`` and ``predict`` methods.
+            target_col: Target column name or position.
+            feature_cols: Optional feature column names or positions. If omitted, all
+                non-temporal, non-target columns are used.
+            metrics: Metric name, sequence of metric names or mapping of custom metric
+                functions.
+
+        Returns:
+            A ``TrainGrowthResult`` containing one metric row per candidate train size.
+        """
         frame, semantics, resolved_features, target_name = _prepare_supervised_frame(
             X,
             time_col=self.temporal_semantics,
@@ -341,7 +375,18 @@ class TrainGrowthPolicy:
         return TrainGrowthResult(records=pd.DataFrame(records), metric_directions=metric_directions)
 
     def find_optimal_train_size(self, X, *, model, target_col: ColumnRef, feature_cols: Sequence[ColumnRef] | None = None, metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None, metric: str = "rmse", tolerance: float = 0.0, relative: bool = True) -> dict[str, object]:
-        """Convenience wrapper around ``evaluate(...).find_optimal_train_size(...)``."""
+        """Return the smallest train size that stays within tolerance of the best score.
+
+        Args:
+            X: Input dataset.
+            model: Estimator with ``fit`` and ``predict`` methods.
+            target_col: Target column name or position.
+            feature_cols: Optional feature column names or positions.
+            metrics: Metric name, sequence of metric names or custom metric mapping.
+            metric: Metric column used to choose the optimal train size.
+            tolerance: Allowed distance from the best score.
+            relative: Whether ``tolerance`` is proportional instead of absolute.
+        """
         result = self.evaluate(
             X,
             model=model,
@@ -358,6 +403,15 @@ class PerformanceDecayPolicy:
     This policy keeps train fixed and repeatedly shifts the test window into the future.
     It is useful when you want to estimate when performance decay or drift becomes
     operationally relevant without retraining the model at every step.
+
+    Args:
+        time_col: Timeline column name, column position, or ``TemporalSemanticsSpec``.
+        cutoff: Boundary where the fixed train window ends.
+        train_size: Duration of the fixed train window looking backward from ``cutoff``.
+        test_size: Duration of each test window.
+        step: Duration by which the test window advances.
+        gap_before_test: Optional duration gap between train end and first test start.
+        max_windows: Optional maximum number of test windows to evaluate.
     """
 
     def __init__(
@@ -394,7 +448,21 @@ class PerformanceDecayPolicy:
         feature_cols: Sequence[ColumnRef] | None = None,
         metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None,
     ) -> PerformanceDecayResult:
-        """Run the fixed-train evaluation over moving test windows."""
+        """Run the fixed-train evaluation over moving test windows.
+
+        Args:
+            X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
+                ``polars.DataFrame``.
+            model: Estimator with ``fit`` and ``predict`` methods.
+            target_col: Target column name or position.
+            feature_cols: Optional feature column names or positions. If omitted, all
+                non-temporal, non-target columns are used.
+            metrics: Metric name, sequence of metric names or mapping of custom metric
+                functions.
+
+        Returns:
+            A ``PerformanceDecayResult`` containing one metric row per test window.
+        """
         frame, semantics, resolved_features, target_name = _prepare_supervised_frame(
             X,
             time_col=self.temporal_semantics,
@@ -455,7 +523,19 @@ class PerformanceDecayPolicy:
         )
 
     def find_drift_onset(self, X, *, model, target_col: ColumnRef, feature_cols: Sequence[ColumnRef] | None = None, metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None, metric: str = "rmse", threshold: float = 0.1, baseline: str | float = "first", relative: bool = True) -> dict[str, object] | None:
-        """Convenience wrapper around ``evaluate(...).find_drift_onset(...)``."""
+        """Return the first test window whose metric crosses the degradation threshold.
+
+        Args:
+            X: Input dataset.
+            model: Estimator with ``fit`` and ``predict`` methods.
+            target_col: Target column name or position.
+            feature_cols: Optional feature column names or positions.
+            metrics: Metric name, sequence of metric names or custom metric mapping.
+            metric: Metric column used to detect degradation.
+            threshold: Allowed degradation before a window is flagged.
+            baseline: ``"first"``, ``"best"`` or an explicit numeric baseline.
+            relative: Whether ``threshold`` is proportional instead of absolute.
+        """
         result = self.evaluate(
             X,
             model=model,

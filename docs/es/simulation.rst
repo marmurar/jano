@@ -118,6 +118,36 @@ Podés anclar la simulación a un punto de tiempo específico y limitar el núme
 
 ``WalkForwardPolicy`` también acepta ``end_at`` cuando querés restringir la simulación a una ventana temporal acotada.
 
+Alineación a días calendario
+----------------------------
+
+Por defecto, las ventanas por duración arrancan desde el primer timestamp observado. Si la
+primera fila es ``2024-01-01 05:21`` y ``train_size="7D"``, la primera ventana de train
+termina en ``2024-01-08 05:21``.
+
+A veces eso no es lo buscado. En datasets operativos, podés querer días calendario completos:
+train hasta Jan 7 y test desde Jan 8.
+
+Usá ``calendar_frequency="D"`` en ``TemporalPartitionSpec`` para eso:
+
+.. code-block:: python
+
+   simulation = WalkForwardPolicy(
+       time_col="timestamp",
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="7D",
+           test_size="1D",
+           calendar_frequency="D",
+       ),
+       step="1D",
+       strategy="rolling",
+   )
+
+Jano usa boundaries cerrados-abiertos: ``[start, end)``. Un train que termina en
+``2024-01-08 00:00:00`` contiene filas anteriores a Jan 8, mientras que test puede empezar
+exactamente en Jan 8.
+
 Si el source data es un array NumPy, referenciá la columna temporal por posición entera:
 
 .. container:: example-block

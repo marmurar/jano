@@ -133,6 +133,21 @@ Objetos de reporting
    :undoc-members:
    :no-index:
 
+Funciones helper MCP
+--------------------
+
+Estas funciones sostienen el servidor MCP local opcional y sirven para entender el
+contrato exacto de tools que se expone a clientes de IA.
+
+.. autofunction:: jano.mcp_tools.preview_dataset
+   :no-index:
+
+.. autofunction:: jano.mcp_tools.plan_walk_forward
+   :no-index:
+
+.. autofunction:: jano.mcp_tools.run_walk_forward
+   :no-index:
+
 Helpers de tipos y validación
 -----------------------------
 
