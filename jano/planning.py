@@ -2,11 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, Iterator, List, Mapping, Sequence
+from typing import Any, Dict, Iterator, List, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
 
+from .engines import PartitionEngine, PartitionEngineMetadata
 from .reporting import SimulationSummary, build_simulation_summary
 from .slicing import TimeIndexer
 from .splits import TimeSplit
@@ -94,13 +95,16 @@ class PartitionPlan:
         size_kind: Unit family used by the partition: ``"duration"``, ``"rows"`` or
             ``"fraction"``.
         folds: Precomputed fold geometry.
+        engine: Internal partition engine used to materialize folds. When omitted,
+            Jano builds one from ``frame`` for backward compatibility.
     """
 
-    frame: pd.DataFrame
+    frame: Any
     temporal_semantics: TemporalSemanticsSpec
     strategy: str
     size_kind: str
     folds: List[PlannedFold]
+    engine: PartitionEngine | None = None
 
     @property
     def total_folds(self) -> int:
@@ -167,7 +171,8 @@ class PartitionPlan:
         """Materialize the planned fold boundaries into ``TimeSplit`` objects."""
         if not self.folds:
             raise ValueError("The current plan does not contain any folds")
-        indexer = TimeIndexer(frame=self.frame, semantics=self.temporal_semantics)
+        engine = self._engine
+        indexer = TimeIndexer(engine=engine, semantics=self.temporal_semantics)
         splits: list[TimeSplit] = []
         for fold in self.folds:
             segments = {
@@ -195,7 +200,21 @@ class PartitionPlan:
             strategy=self.strategy,
             size_kind=self.size_kind,
             folds=folds,
+            engine=self.engine,
         )
+
+    @property
+    def _engine(self) -> PartitionEngine:
+        return self.engine or PartitionEngine.from_input(self.frame)
+
+    @property
+    def engine_metadata(self) -> PartitionEngineMetadata:
+        """Return the internal engine metadata used by the plan."""
+        return self._engine.metadata
+
+    def source_frame(self) -> pd.DataFrame:
+        """Return the source data as pandas for reporting and user-facing slices."""
+        return self._engine.to_pandas()
 
 
 @dataclass(frozen=True)
@@ -252,16 +271,18 @@ class SimulationPlan:
         from .simulation import SimulationResult
 
         splits = self.partition_plan.materialize()
+        frame = self.partition_plan.source_frame()
         summary = build_simulation_summary(
             splits=splits,
-            frame=self.partition_plan.frame,
+            frame=frame,
             time_col=self.partition_plan.time_col,
             title=self.title,
         )
         return SimulationResult(
-            frame=self.partition_plan.frame,
+            frame=frame,
             splits=splits,
             summary=summary,
+            engine_metadata=self.partition_plan.engine_metadata,
         )
 
     def describe(self) -> SimulationSummary:

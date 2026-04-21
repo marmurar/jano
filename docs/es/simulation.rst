@@ -210,6 +210,34 @@ Si el source data es un frame de Polars, la misma configuración funciona con co
 
    result = simulation.run(frame)
 
+Elegir el motor de particionado
+-------------------------------
+
+Todas las APIs de simulación de alto nivel aceptan ``engine``. El default,
+``engine="auto"``, elige la representación interna usada para calcular boundaries
+temporales e índices de filas:
+
+.. code-block:: python
+
+   simulation = TemporalSimulation(
+       time_col="timestamp",
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="7D",
+           test_size="1D",
+       ),
+       step="1D",
+       strategy="rolling",
+       engine="auto",
+   )
+
+   result = simulation.run(frame)
+   print(result.engine_metadata.to_dict())
+
+``engine="auto"`` mantiene inputs Polars y NumPy nativos para planning cuando es seguro.
+Usá ``engine="pandas"`` para forzar el camino pandas estable, o ``engine="polars"`` /
+``engine="numpy"`` cuando quieras forzar un motor específico de particionado.
+
 Control manual low-level
 ------------------------
 

@@ -50,6 +50,7 @@ def build_server():
         time_col: str,
         strategy: str = "rolling",
         allow_partial: bool = False,
+        engine: str = "auto",
         start_at: str | None = None,
         end_at: str | None = None,
         max_folds: int | None = None,
@@ -71,6 +72,8 @@ def build_server():
             time_col: Timeline column used to anchor the simulation.
             strategy: Movement strategy: ``"single"``, ``"rolling"`` or ``"expanding"``.
             allow_partial: Whether to keep a final partial fold.
+            engine: Internal partition engine preference: ``"auto"``, ``"pandas"``,
+                ``"polars"`` or ``"numpy"``.
             start_at: Optional lower timestamp bound.
             end_at: Optional upper timestamp bound.
             max_folds: Optional maximum number of folds.
@@ -89,6 +92,7 @@ def build_server():
             time_col=time_col,
             strategy=strategy,
             allow_partial=allow_partial,
+            engine=engine,
             start_at=start_at,
             end_at=end_at,
             max_folds=max_folds,
@@ -109,6 +113,7 @@ def build_server():
         time_col: str,
         strategy: str = "rolling",
         allow_partial: bool = False,
+        engine: str = "auto",
         start_at: str | None = None,
         end_at: str | None = None,
         max_folds: int | None = None,
@@ -129,6 +134,8 @@ def build_server():
             time_col: Timeline column used to anchor the simulation.
             strategy: Movement strategy: ``"single"``, ``"rolling"`` or ``"expanding"``.
             allow_partial: Whether to keep a final partial fold.
+            engine: Internal partition engine preference: ``"auto"``, ``"pandas"``,
+                ``"polars"`` or ``"numpy"``.
             start_at: Optional lower timestamp bound.
             end_at: Optional upper timestamp bound.
             max_folds: Optional maximum number of folds.
@@ -147,6 +154,7 @@ def build_server():
             time_col=time_col,
             strategy=strategy,
             allow_partial=allow_partial,
+            engine=engine,
             start_at=start_at,
             end_at=end_at,
             max_folds=max_folds,

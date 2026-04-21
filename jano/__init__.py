@@ -1,6 +1,7 @@
 """Public package interface for Jano."""
 
 from ._version import __version__
+from .engines import PartitionEngineMetadata
 from .planning import PartitionPlan, PlannedFold, SimulationPlan
 from .policies import (
     PerformanceDecayPolicy,
@@ -31,6 +32,7 @@ __all__ = [
     "FeatureLookbackSpec",
     "DriftMonitoringPolicy",
     "PartitionPlan",
+    "PartitionEngineMetadata",
     "PerformanceDecayPolicy",
     "PerformanceDecayResult",
     "PlannedFold",

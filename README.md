@@ -141,7 +141,7 @@ It supports:
 - Plain index output through `split()`.
 - Rich fold objects through `iter_splits()`.
 - Simulation summaries, HTML timeline reports and plot-ready chart data through `describe_simulation()`.
-- A numpy-first internal indexing path to reduce split overhead on large datasets.
+- An adaptive partition engine that keeps pandas, NumPy and Polars inputs native for planning when it is safe, and falls back to pandas when stability is more important.
 
 ## Example: run a full simulation without manual iteration
 
@@ -172,9 +172,15 @@ policy = WalkForwardPolicy(
 result = policy.run(frame, title="One month in production")
 
 print(result.total_folds)
+print(result.engine_metadata.to_dict())
 print(result.summary.to_frame().head())
 print(result.chart_data.segment_stats)
 ```
+
+By default, `engine="auto"` lets Jano choose the safest fast path for partitioning:
+pandas inputs stay pandas, Polars inputs use Polars column extraction, and NumPy arrays
+use array indexing. You can force a path with `engine="pandas"`, `engine="polars"` or
+`engine="numpy"` when you need deterministic behavior for a pipeline.
 
 If you want to inspect the full simulation geometry before materializing folds, plan it first:
 

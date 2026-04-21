@@ -64,6 +64,9 @@ class WalkForwardPolicy:
         strategy: Movement strategy: ``"single"``, ``"rolling"`` or ``"expanding"``.
         allow_partial: Whether to keep a final fold whose last segment exceeds the
             available timeline.
+        engine: Internal partition engine preference. ``"auto"`` keeps native Polars
+            and NumPy paths when safe; ``"pandas"``, ``"polars"`` and ``"numpy"`` force
+            a specific engine.
         start_at: Optional lower timestamp bound applied before folds are planned.
         end_at: Optional upper timestamp bound applied before folds are planned.
         max_folds: Optional maximum number of folds to keep.
@@ -77,6 +80,7 @@ class WalkForwardPolicy:
         step,
         strategy: str = "rolling",
         allow_partial: bool = False,
+        engine: str = "auto",
         start_at: object | None = None,
         end_at: object | None = None,
         max_folds: int | None = None,
@@ -87,6 +91,7 @@ class WalkForwardPolicy:
             step=step,
             strategy=strategy,
             allow_partial=allow_partial,
+            engine=engine,
             start_at=start_at,
             end_at=end_at,
             max_folds=max_folds,
@@ -284,6 +289,7 @@ class RollingTrainHistoryPolicy:
         strategy: Outer movement strategy: ``"single"``, ``"rolling"`` or
             ``"expanding"``.
         allow_partial: Whether the outer plan can keep a final partial fold.
+        engine: Internal partition engine preference for the outer plan.
         start_at: Optional lower timestamp bound for the outer plan.
         end_at: Optional upper timestamp bound for the outer plan.
         max_folds: Optional maximum number of outer folds.
@@ -298,6 +304,7 @@ class RollingTrainHistoryPolicy:
         train_sizes: Sequence[object],
         strategy: str = "rolling",
         allow_partial: bool = False,
+        engine: str = "auto",
         start_at: object | None = None,
         end_at: object | None = None,
         max_folds: int | None = None,
@@ -308,6 +315,7 @@ class RollingTrainHistoryPolicy:
             step=step,
             strategy=strategy,
             allow_partial=allow_partial,
+            engine=engine,
             start_at=start_at,
             end_at=end_at,
             max_folds=max_folds,

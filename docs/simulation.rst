@@ -217,6 +217,33 @@ If your source data is a Polars frame, the same configuration works with named c
 
    result = simulation.run(frame)
 
+Choosing the partition engine
+-----------------------------
+
+All high-level simulation APIs accept ``engine``. The default, ``engine="auto"``, chooses
+the internal representation used to compute temporal boundaries and row indices:
+
+.. code-block:: python
+
+   simulation = TemporalSimulation(
+       time_col="timestamp",
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="7D",
+           test_size="1D",
+       ),
+       step="1D",
+       strategy="rolling",
+       engine="auto",
+   )
+
+   result = simulation.run(frame)
+   print(result.engine_metadata.to_dict())
+
+``engine="auto"`` keeps Polars and NumPy inputs native for planning when safe. Use
+``engine="pandas"`` to force the stable pandas path, or ``engine="polars"`` /
+``engine="numpy"`` when you want to force a specific partition engine.
+
 Low-level manual control
 ------------------------
 

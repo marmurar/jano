@@ -143,9 +143,10 @@ def build_simulation_summary(
     time_col: object,
     title: str,
 ) -> SimulationSummary:
-    dataset_start = pd.to_datetime(frame[time_col]).min()
-    dataset_end = pd.to_datetime(frame[time_col]).max()
-    time_col_label = str(time_col)
+    resolved_time_col = frame.columns[time_col] if isinstance(time_col, int) else time_col
+    dataset_start = pd.to_datetime(frame[resolved_time_col]).min()
+    dataset_end = pd.to_datetime(frame[resolved_time_col]).max()
+    time_col_label = str(resolved_time_col)
     segment_order = list(splits[0].segments.keys()) if splits else []
     fold_rows = [
         _build_fold_summary(split=split, segment_order=segment_order) for split in splits

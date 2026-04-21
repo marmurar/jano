@@ -7,6 +7,7 @@ from typing import Callable, Mapping, Sequence
 import numpy as np
 import pandas as pd
 
+from .engines import PartitionEngine
 from .io import coerce_tabular_input
 from .slicing import TimeIndexer
 from .types import ColumnRef, SizeSpec, TemporalSemanticsSpec
@@ -330,7 +331,10 @@ class TrainGrowthPolicy:
             target_col=target_col,
             feature_cols=feature_cols,
         )
-        indexer = TimeIndexer(frame=frame, semantics=semantics)
+        indexer = TimeIndexer(
+            engine=PartitionEngine.from_input(frame),
+            semantics=semantics,
+        )
         metric_mapping, metric_directions = _normalize_metric_mapping(metrics)
 
         gap = self.gap_before_test.value if self.gap_before_test is not None else pd.Timedelta(0)
@@ -469,7 +473,10 @@ class PerformanceDecayPolicy:
             target_col=target_col,
             feature_cols=feature_cols,
         )
-        indexer = TimeIndexer(frame=frame, semantics=semantics)
+        indexer = TimeIndexer(
+            engine=PartitionEngine.from_input(frame),
+            semantics=semantics,
+        )
         metric_mapping, metric_directions = _normalize_metric_mapping(metrics)
 
         train_start = self.cutoff - self.train_size.value

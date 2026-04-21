@@ -864,6 +864,64 @@ def test_numpy_array_input_is_supported_with_integer_time_column() -> None:
     assert test_idx.tolist() == [3, 4]
 
 
+def test_pandas_integer_time_column_uses_position_not_label() -> None:
+    frame = build_frame(size=8)
+    splitter = TemporalBacktestSplitter(
+        time_col=0,
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="3D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="single",
+    )
+
+    split = next(splitter.iter_splits(frame))
+    result = TemporalSimulation(
+        time_col=0,
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="3D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="single",
+        start_at="2024-01-01",
+    ).run(frame)
+
+    assert split.segments["train"].tolist() == [0, 1, 2]
+    assert result.summary.time_col == "timestamp"
+
+
+def test_auto_engine_keeps_numpy_input_native_for_planning() -> None:
+    frame = build_frame(size=8)
+    values = np.column_stack(
+        [
+            frame["timestamp"].astype("datetime64[ns]").astype(str).to_numpy(),
+            frame["feature"].to_numpy(),
+            frame["target"].to_numpy(),
+        ]
+    )
+    splitter = TemporalBacktestSplitter(
+        time_col=0,
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="3D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="single",
+    )
+
+    plan = splitter.plan(values)
+
+    assert plan.engine_metadata.engine == "numpy"
+    assert plan.engine_metadata.input_backend == "numpy"
+    assert plan.engine_metadata.converted is False
+    assert plan.to_frame()["train_rows"].tolist() == [3]
+
+
 def test_polars_input_is_supported() -> None:
     frame = pl.DataFrame(build_frame(size=8))
     splitter = TemporalBacktestSplitter(
@@ -881,6 +939,49 @@ def test_polars_input_is_supported() -> None:
 
     assert split.segments["train"].tolist() == [0, 1, 2]
     assert split.segments["test"].tolist() == [3, 4]
+
+
+def test_auto_engine_keeps_polars_input_native_for_planning() -> None:
+    frame = pl.DataFrame(build_frame(size=8))
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="3D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="single",
+    )
+
+    plan = splitter.plan(frame)
+    materialized = plan.materialize()
+
+    assert plan.engine_metadata.engine == "polars"
+    assert plan.engine_metadata.input_backend == "polars"
+    assert plan.engine_metadata.converted is False
+    assert materialized[0].segments["train"].tolist() == [0, 1, 2]
+
+
+def test_engine_can_force_stable_pandas_path_for_polars_input() -> None:
+    frame = pl.DataFrame(build_frame(size=8))
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="3D",
+            test_size="2D",
+        ),
+        step="1D",
+        strategy="single",
+        engine="pandas",
+    )
+
+    plan = splitter.plan(frame)
+
+    assert plan.engine_metadata.engine == "pandas"
+    assert plan.engine_metadata.input_backend == "polars"
+    assert plan.engine_metadata.converted is True
 
 
 def test_temporal_simulation_accepts_numpy_input() -> None:
@@ -907,6 +1008,7 @@ def test_temporal_simulation_accepts_numpy_input() -> None:
 
     assert result.total_folds == 6
     assert result.frame.columns.tolist() == [0, 1, 2]
+    assert result.engine_metadata.engine == "numpy"
 
 
 def test_gap_before_train_and_gap_after_test_are_respected() -> None:
@@ -1627,6 +1729,11 @@ def test_mcp_plan_walk_forward_returns_preview_rows(tmp_path) -> None:
     )
 
     assert result["total_folds"] == 4
+    assert result["engine"] == {
+        "engine": "pandas",
+        "input_backend": "pandas",
+        "converted": False,
+    }
     assert "iteration" in result["columns"]
     assert len(result["preview"]) == 4
 
@@ -1644,6 +1751,11 @@ def test_mcp_run_walk_forward_returns_summary_and_html(tmp_path) -> None:
     )
 
     assert result["total_folds"] == 3
+    assert result["engine"] == {
+        "engine": "pandas",
+        "input_backend": "pandas",
+        "converted": False,
+    }
     assert len(result["summary_preview"]) == 3
     assert "<html" in result["html"].lower()
     assert "segment_stats" in result["chart_data"]

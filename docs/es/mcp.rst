@@ -59,10 +59,15 @@ Tools MCP disponibles
   Lee un CSV local, un Parquet o un ZIP con CSV y devuelve una preview compacta.
 
 ``plan_walk_forward_simulation``
-  Construye un ``plan()`` walk-forward y devuelve boundaries por iteración junto con conteos de filas.
+  Construye un ``plan()`` walk-forward y devuelve boundaries por iteración, conteos de filas
+  y metadata del motor de particionado elegido.
 
 ``run_walk_forward_simulation``
-  Materializa una simulación walk-forward y devuelve un resumen compacto más el HTML renderizado.
+  Materializa una simulación walk-forward y devuelve un resumen compacto, metadata del motor
+  de particionado elegido y el HTML renderizado.
+
+Ambas tools aceptan ``engine`` con los mismos valores que la API Python: ``"auto"``,
+``"pandas"``, ``"polars"`` o ``"numpy"``.
 
 Ejemplo de configuración del cliente MCP
 ----------------------------------------

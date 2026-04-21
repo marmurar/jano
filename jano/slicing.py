@@ -6,6 +6,7 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
+from .engines import PartitionEngine, missing_columns
 from .types import TemporalSemanticsSpec
 
 
@@ -13,32 +14,36 @@ from .types import TemporalSemanticsSpec
 class TimeIndexer:
     """Index helper that keeps temporal ordering and positional mappings."""
 
-    frame: pd.DataFrame
+    engine: PartitionEngine
     semantics: TemporalSemanticsSpec
 
     def __post_init__(self) -> None:
         self._sorted_arrays: dict[str, tuple[np.ndarray, np.ndarray]] = {}
         required_columns = set(self._referenced_columns())
-        missing = sorted(required_columns.difference(self.frame.columns))
+        missing = missing_columns(required_columns, self.engine.columns)
         if missing:
             raise ValueError(
                 "Temporal semantics reference columns that were not found in the dataset: "
-                + ", ".join(missing)
+                + ", ".join(str(column) for column in missing)
             )
 
         order_col = self.semantics.effective_order_col
-        ordered_timestamps = pd.to_datetime(self.frame[order_col]).to_numpy(dtype="datetime64[ns]")
+        ordered_timestamps = pd.to_datetime(self.engine.column_values(order_col)).to_numpy(
+            dtype="datetime64[ns]"
+        )
         order = np.argsort(ordered_timestamps, kind="mergesort")
 
-        self.position_array = np.arange(len(self.frame), dtype=np.int64)[order]
+        self.position_array = np.arange(self.engine.total_rows, dtype=np.int64)[order]
         self.total_rows = len(self.position_array)
 
         for column in required_columns:
-            timestamps = pd.to_datetime(self.frame[column]).to_numpy(dtype="datetime64[ns]")
+            timestamps = pd.to_datetime(self.engine.column_values(column)).to_numpy(
+                dtype="datetime64[ns]"
+            )
             column_order = np.argsort(timestamps, kind="mergesort")
             self._sorted_arrays[column] = (
                 timestamps[column_order],
-                np.arange(len(self.frame), dtype=np.int64)[column_order],
+                np.arange(self.engine.total_rows, dtype=np.int64)[column_order],
             )
 
         self.timeline_array = self._sorted_arrays[self.semantics.timeline_col][0]

@@ -151,6 +151,11 @@ contrato exacto de tools que se expone a clientes de IA.
 Helpers de tipos y validación
 -----------------------------
 
+.. autoclass:: jano.engines.PartitionEngineMetadata
+   :members:
+   :undoc-members:
+   :no-index:
+
 .. autoclass:: jano.types.SizeSpec
    :members:
    :undoc-members:

@@ -1,125 +1,267 @@
 Benchmark
 =========
 
-This page summarizes a local benchmark of temporal partition generation across the currently supported tabular backends.
+This page summarizes a local benchmark of Jano's adaptive partition engine.
 
-What was measured
+The goal is to measure the cost of temporal partitioning itself: computing fold
+boundaries, row counts and split indices. It does not include model training time.
+
+What Was Measured
 -----------------
 
-The benchmark measures the total time needed to materialize all folds from:
+Two operations were measured:
 
 .. code-block:: python
 
-   list(splitter.iter_splits(data))
+   splitter.plan(data)
+   sum(1 for _ in splitter.split(data))
 
-Configuration used
+``plan()`` precomputes fold geometry and row counts. ``split()`` yields the positional
+index arrays for every fold.
+
+Configuration Used
 ------------------
 
-The same splitter configuration was used for every backend:
+The same splitter configuration was used for every input backend:
 
 - strategy: ``rolling``
 - layout: ``train_test``
-- ``train_size="3D"``
+- ``train_size="2D"``
 - ``test_size="12h"``
-- ``gap_before_test="30min"``
-- ``step="6h"``
+- ``step="12h"``
 - dataset frequency: one row per minute
-- metric: wall-clock runtime over the full split iteration
-- repetitions: 3 per backend and dataset size
+- repetitions: median of 7 timed runs after 2 warmups
+- dataset sizes: 10k, 100k and 500k rows
 
-The benchmark was run locally on the current implementation, where pandas is still the internal execution engine. That means the ``numpy`` and ``polars`` timings include the cost of normalizing those inputs to pandas before splitting.
+The benchmark compares:
 
-So this benchmark should be read as an end-to-end benchmark of the public API as it behaves today, not as a native backend-versus-backend comparison.
+- ``engine="auto"``: Jano chooses the native safe path for the input.
+- ``engine="pandas"``: Jano forces the stable pandas path.
 
-Results
--------
+For Polars and NumPy inputs, ``engine="pandas"`` is a useful baseline for the previous
+behavior because it includes converting the input to pandas before partitioning.
+
+Raw Results
+-----------
 
 .. list-table::
    :header-rows: 1
 
-   * - Backend
-     - Rows
+   * - Rows
+     - Input
+     - Engine arg
+     - Selected engine
+     - Converted
      - Folds
-     - Mean ms
-     - Min ms
-     - Max ms
-   * - pandas
-     - 10,000
-     - 14
-     - 7.581
-     - 5.478
-     - 11.634
-   * - numpy
-     - 10,000
-     - 14
-     - 4.536
-     - 4.208
-     - 5.181
-   * - polars
-     - 10,000
-     - 14
-     - 10.767
-     - 10.657
-     - 10.825
-   * - pandas
-     - 100,000
-     - 264
-     - 10.544
-     - 8.264
-     - 14.778
-   * - numpy
-     - 100,000
-     - 264
-     - 19.789
-     - 18.930
-     - 20.940
-   * - polars
-     - 100,000
-     - 264
-     - 65.366
-     - 62.823
-     - 69.806
-   * - pandas
-     - 500,000
-     - 1,375
-     - 24.592
-     - 22.083
-     - 29.403
-   * - numpy
-     - 500,000
-     - 1,375
-     - 94.801
-     - 91.859
-     - 97.771
-   * - polars
-     - 500,000
-     - 1,375
-     - 294.843
-     - 289.612
-     - 299.288
-   * - pandas
-     - 1,000,000
-     - 2,764
-     - 44.719
-     - 38.910
-     - 47.781
-   * - numpy
-     - 1,000,000
-     - 2,764
-     - 183.353
-     - 177.574
-     - 190.390
-   * - polars
-     - 1,000,000
-     - 2,764
-     - 587.886
-     - 583.358
-     - 592.276
+     - Plan ms
+     - Split ms
+   * - 10,000
+     - pandas
+     - auto
+     - pandas
+     - no
+     - 9
+     - 0.26
+     - 0.33
+   * - 10,000
+     - pandas
+     - pandas
+     - pandas
+     - no
+     - 9
+     - 0.26
+     - 0.32
+   * - 10,000
+     - polars
+     - auto
+     - polars
+     - no
+     - 9
+     - 0.26
+     - 0.32
+   * - 10,000
+     - polars
+     - pandas
+     - pandas
+     - yes
+     - 9
+     - 6.09
+     - 6.07
+   * - 10,000
+     - numpy
+     - auto
+     - numpy
+     - no
+     - 9
+     - 0.26
+     - 0.31
+   * - 10,000
+     - numpy
+     - pandas
+     - pandas
+     - yes
+     - 9
+     - 0.36
+     - 0.41
+   * - 100,000
+     - pandas
+     - auto
+     - pandas
+     - no
+     - 134
+     - 1.71
+     - 2.53
+   * - 100,000
+     - pandas
+     - pandas
+     - pandas
+     - no
+     - 134
+     - 1.70
+     - 2.53
+   * - 100,000
+     - polars
+     - auto
+     - polars
+     - no
+     - 134
+     - 1.71
+     - 2.51
+   * - 100,000
+     - polars
+     - pandas
+     - pandas
+     - yes
+     - 134
+     - 56.82
+     - 58.95
+   * - 100,000
+     - numpy
+     - auto
+     - numpy
+     - no
+     - 134
+     - 1.86
+     - 2.59
+   * - 100,000
+     - numpy
+     - pandas
+     - pandas
+     - yes
+     - 134
+     - 1.90
+     - 2.72
+   * - 500,000
+     - pandas
+     - auto
+     - pandas
+     - no
+     - 690
+     - 8.65
+     - 12.40
+   * - 500,000
+     - pandas
+     - pandas
+     - pandas
+     - no
+     - 690
+     - 8.61
+     - 12.33
+   * - 500,000
+     - polars
+     - auto
+     - polars
+     - no
+     - 690
+     - 8.58
+     - 12.37
+   * - 500,000
+     - polars
+     - pandas
+     - pandas
+     - yes
+     - 690
+     - 296.48
+     - 304.73
+   * - 500,000
+     - numpy
+     - auto
+     - numpy
+     - no
+     - 690
+     - 9.14
+     - 13.00
+   * - 500,000
+     - numpy
+     - pandas
+     - pandas
+     - yes
+     - 690
+     - 9.42
+     - 13.40
 
-Visual summary
+Speedup Versus Forced Pandas
+----------------------------
+
+.. list-table::
+   :header-rows: 1
+
+   * - Rows
+     - Input
+     - Plan speedup
+     - Split speedup
+     - Engine path
+   * - 10,000
+     - pandas
+     - 0.98x
+     - 0.98x
+     - pandas -> pandas
+   * - 10,000
+     - polars
+     - 23.28x
+     - 19.17x
+     - pandas -> polars
+   * - 10,000
+     - numpy
+     - 1.38x
+     - 1.32x
+     - pandas -> numpy
+   * - 100,000
+     - pandas
+     - 0.99x
+     - 1.00x
+     - pandas -> pandas
+   * - 100,000
+     - polars
+     - 33.29x
+     - 23.45x
+     - pandas -> polars
+   * - 100,000
+     - numpy
+     - 1.02x
+     - 1.05x
+     - pandas -> numpy
+   * - 500,000
+     - pandas
+     - 1.00x
+     - 0.99x
+     - pandas -> pandas
+   * - 500,000
+     - polars
+     - 34.57x
+     - 24.64x
+     - pandas -> polars
+   * - 500,000
+     - numpy
+     - 1.03x
+     - 1.03x
+     - pandas -> numpy
+
+Visual Summary
 --------------
 
-Below, each bar shows the mean runtime for a given dataset size. The scale is relative within each row so the shape remains readable.
+The bars below show split-time speedup for ``engine="auto"`` against the forced pandas
+baseline. Higher is better.
 
 .. raw:: html
 
@@ -129,18 +271,18 @@ Below, each bar shows the mean runtime for a given dataset size. The scale is re
        <div class="benchmark-bars">
          <div class="benchmark-bar">
            <span class="benchmark-name">pandas</span>
-           <span class="benchmark-track"><span class="benchmark-fill pandas" style="width: 70.4%;"></span></span>
-           <span class="benchmark-value">7.6 ms</span>
+           <span class="benchmark-track"><span class="benchmark-fill pandas" style="width: 5.1%;"></span></span>
+           <span class="benchmark-value">0.98x</span>
          </div>
          <div class="benchmark-bar">
            <span class="benchmark-name">numpy</span>
-           <span class="benchmark-track"><span class="benchmark-fill numpy" style="width: 42.1%;"></span></span>
-           <span class="benchmark-value">4.5 ms</span>
+           <span class="benchmark-track"><span class="benchmark-fill numpy" style="width: 6.9%;"></span></span>
+           <span class="benchmark-value">1.32x</span>
          </div>
          <div class="benchmark-bar">
            <span class="benchmark-name">polars</span>
            <span class="benchmark-track"><span class="benchmark-fill polars" style="width: 100%;"></span></span>
-           <span class="benchmark-value">10.8 ms</span>
+           <span class="benchmark-value">19.17x</span>
          </div>
        </div>
      </div>
@@ -149,18 +291,18 @@ Below, each bar shows the mean runtime for a given dataset size. The scale is re
        <div class="benchmark-bars">
          <div class="benchmark-bar">
            <span class="benchmark-name">pandas</span>
-           <span class="benchmark-track"><span class="benchmark-fill pandas" style="width: 16.1%;"></span></span>
-           <span class="benchmark-value">10.5 ms</span>
+           <span class="benchmark-track"><span class="benchmark-fill pandas" style="width: 4.3%;"></span></span>
+           <span class="benchmark-value">1.00x</span>
          </div>
          <div class="benchmark-bar">
            <span class="benchmark-name">numpy</span>
-           <span class="benchmark-track"><span class="benchmark-fill numpy" style="width: 30.3%;"></span></span>
-           <span class="benchmark-value">19.8 ms</span>
+           <span class="benchmark-track"><span class="benchmark-fill numpy" style="width: 4.5%;"></span></span>
+           <span class="benchmark-value">1.05x</span>
          </div>
          <div class="benchmark-bar">
            <span class="benchmark-name">polars</span>
            <span class="benchmark-track"><span class="benchmark-fill polars" style="width: 100%;"></span></span>
-           <span class="benchmark-value">65.4 ms</span>
+           <span class="benchmark-value">23.45x</span>
          </div>
        </div>
      </div>
@@ -169,57 +311,37 @@ Below, each bar shows the mean runtime for a given dataset size. The scale is re
        <div class="benchmark-bars">
          <div class="benchmark-bar">
            <span class="benchmark-name">pandas</span>
-           <span class="benchmark-track"><span class="benchmark-fill pandas" style="width: 8.3%;"></span></span>
-           <span class="benchmark-value">24.6 ms</span>
+           <span class="benchmark-track"><span class="benchmark-fill pandas" style="width: 4.0%;"></span></span>
+           <span class="benchmark-value">0.99x</span>
          </div>
          <div class="benchmark-bar">
            <span class="benchmark-name">numpy</span>
-           <span class="benchmark-track"><span class="benchmark-fill numpy" style="width: 32.2%;"></span></span>
-           <span class="benchmark-value">94.8 ms</span>
+           <span class="benchmark-track"><span class="benchmark-fill numpy" style="width: 4.2%;"></span></span>
+           <span class="benchmark-value">1.03x</span>
          </div>
          <div class="benchmark-bar">
            <span class="benchmark-name">polars</span>
            <span class="benchmark-track"><span class="benchmark-fill polars" style="width: 100%;"></span></span>
-           <span class="benchmark-value">294.8 ms</span>
-         </div>
-       </div>
-     </div>
-     <div class="benchmark-row">
-       <div class="benchmark-label">1M rows</div>
-       <div class="benchmark-bars">
-         <div class="benchmark-bar">
-           <span class="benchmark-name">pandas</span>
-           <span class="benchmark-track"><span class="benchmark-fill pandas" style="width: 7.6%;"></span></span>
-           <span class="benchmark-value">44.7 ms</span>
-         </div>
-         <div class="benchmark-bar">
-           <span class="benchmark-name">numpy</span>
-           <span class="benchmark-track"><span class="benchmark-fill numpy" style="width: 31.2%;"></span></span>
-           <span class="benchmark-value">183.4 ms</span>
-         </div>
-         <div class="benchmark-bar">
-           <span class="benchmark-name">polars</span>
-           <span class="benchmark-track"><span class="benchmark-fill polars" style="width: 100%;"></span></span>
-           <span class="benchmark-value">587.9 ms</span>
+           <span class="benchmark-value">24.64x</span>
          </div>
        </div>
      </div>
    </div>
 
-How to read these results
+How To Read These Results
 -------------------------
 
-The current benchmark should be read as:
+The main improvement is for Polars inputs. Before the adaptive engine, Polars inputs had
+to be fully converted to pandas before partitioning. With ``engine="auto"``, Jano keeps
+Polars column extraction native for planning and split-index generation.
 
-- the partition engine itself is fast on large datasets,
-- pandas is currently the fastest path end to end,
-- numpy and polars are compatible public inputs, but not yet native optimized execution backends,
-- their extra cost mostly comes from boundary normalization into pandas before fold generation.
+The pandas path is intentionally unchanged. Pandas remains the stable baseline and the
+engine selected for pandas input.
 
-More explicitly:
+The NumPy path improves modestly in this benchmark because the measured structured-array
+input already converts cheaply. NumPy remains useful as a low-overhead input path, but the
+largest observed gain is avoiding the Polars-to-pandas conversion on larger datasets.
 
-- ``pandas`` measures the direct execution path,
-- ``numpy`` measures conversion to pandas plus partition generation,
-- ``polars`` measures conversion to pandas plus partition generation.
-
-So, if raw split speed matters most today, the best-performing input remains ``pandas.DataFrame``. The current numbers are useful for understanding actual user-facing cost today, but they should not be interpreted as proof that pandas is intrinsically faster than a hypothetical native Polars or NumPy execution path that Jano does not implement yet.
+These timings are local and should be read as directional. They are most useful for
+understanding partition-engine overhead; full model simulations will also include feature
+engineering, model fitting and prediction time.

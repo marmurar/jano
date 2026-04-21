@@ -84,7 +84,7 @@ Segment sizes
 
 Jano currently accepts three unit families:
 
-- durations such as ``"30D"`` or ``"12H"``,
+- durations such as ``"30D"`` or ``"12h"``,
 - row counts such as ``5000``,
 - fractions such as ``0.7``.
 
@@ -105,6 +105,24 @@ Jano exposes two complementary views:
 - ``split()`` yields plain index tuples, which keeps usage lightweight and easy to integrate.
 - ``iter_splits()`` yields ``TimeSplit`` objects with segment metadata and helper methods.
 - ``describe_simulation()`` yields either a ``SimulationSummary``, an HTML report string or ``SimulationChartData`` for custom Python plotting.
+
+Adaptive partition engine
+-------------------------
+
+Jano separates the representation used for partitioning from the representation used for
+reporting. With ``engine="auto"``, the splitter chooses the safest fast path:
+
+- pandas inputs stay on the pandas path,
+- NumPy inputs use array indexing when columns are referenced by position,
+- Polars inputs keep Polars column extraction for planning and split index generation.
+
+This avoids converting a large Polars or NumPy dataset to pandas just to compute fold
+boundaries and row counts. Jano still materializes pandas objects when a user-facing
+report or slice needs pandas semantics.
+
+You can force a specific path with ``engine="pandas"``, ``engine="polars"`` or
+``engine="numpy"``. The priority remains temporal correctness first, then API stability,
+then speed.
 
 Planning before materialization
 -------------------------------

@@ -90,6 +90,7 @@ def plan_walk_forward(
     time_col: str | int | None = None,
     strategy: str = "rolling",
     allow_partial: bool = False,
+    engine: str = "auto",
     start_at: object | None = None,
     end_at: object | None = None,
     max_folds: int | None = None,
@@ -110,6 +111,8 @@ def plan_walk_forward(
         time_col: Timeline column name or position.
         strategy: Movement strategy: ``"single"``, ``"rolling"`` or ``"expanding"``.
         allow_partial: Whether to keep a final partial fold.
+        engine: Internal partition engine preference: ``"auto"``, ``"pandas"``,
+            ``"polars"`` or ``"numpy"``.
         start_at: Optional lower timestamp bound.
         end_at: Optional upper timestamp bound.
         max_folds: Optional maximum number of folds.
@@ -132,6 +135,7 @@ def plan_walk_forward(
         time_col=time_col,
         strategy=strategy,
         allow_partial=allow_partial,
+        engine=engine,
         start_at=start_at,
         end_at=end_at,
         max_folds=max_folds,
@@ -145,6 +149,7 @@ def plan_walk_forward(
     return {
         "dataset_path": str(Path(dataset_path)),
         "total_folds": int(plan.total_folds),
+        "engine": plan.partition_plan.engine_metadata.to_dict(),
         "columns": [str(column) for column in plan_frame.columns],
         "preview": plan_frame.head(preview_rows).to_dict(orient="records"),
     }
@@ -158,6 +163,7 @@ def run_walk_forward(
     time_col: str | int | None = None,
     strategy: str = "rolling",
     allow_partial: bool = False,
+    engine: str = "auto",
     start_at: object | None = None,
     end_at: object | None = None,
     max_folds: int | None = None,
@@ -178,6 +184,8 @@ def run_walk_forward(
         time_col: Timeline column name or position.
         strategy: Movement strategy: ``"single"``, ``"rolling"`` or ``"expanding"``.
         allow_partial: Whether to keep a final partial fold.
+        engine: Internal partition engine preference: ``"auto"``, ``"pandas"``,
+            ``"polars"`` or ``"numpy"``.
         start_at: Optional lower timestamp bound.
         end_at: Optional upper timestamp bound.
         max_folds: Optional maximum number of folds.
@@ -200,6 +208,7 @@ def run_walk_forward(
         time_col=time_col,
         strategy=strategy,
         allow_partial=allow_partial,
+        engine=engine,
         start_at=start_at,
         end_at=end_at,
         max_folds=max_folds,
@@ -213,6 +222,7 @@ def run_walk_forward(
     return {
         "dataset_path": str(Path(dataset_path)),
         "total_folds": int(result.total_folds),
+        "engine": result.engine_metadata.to_dict(),
         "summary_preview": summary_frame.head(preview_rows).to_dict(orient="records"),
         "chart_data": result.chart_data.to_dict(),
         "html": result.html,
@@ -270,6 +280,7 @@ def _build_simulation(
     time_col: str | int | None,
     strategy: str,
     allow_partial: bool,
+    engine: str,
     start_at: object | None,
     end_at: object | None,
     max_folds: int | None,
@@ -291,6 +302,7 @@ def _build_simulation(
         step=step,
         strategy=strategy,
         allow_partial=allow_partial,
+        engine=engine,
         start_at=start_at,
         end_at=end_at,
         max_folds=max_folds,

@@ -151,6 +151,11 @@ the exact tool contract exposed to AI clients.
 Type and validation helpers
 ---------------------------
 
+.. autoclass:: jano.engines.PartitionEngineMetadata
+   :members:
+   :undoc-members:
+   :no-index:
+
 .. autoclass:: jano.types.SizeSpec
    :members:
    :undoc-members:

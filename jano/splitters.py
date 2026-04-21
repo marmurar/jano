@@ -7,9 +7,9 @@ from typing import Dict, Iterator, List, Tuple
 import numpy as np
 import pandas as pd
 
+from .engines import PartitionEngine
 from .planning import PartitionPlan, PlannedFold
 from .reporting import SimulationChartData, SimulationSummary, build_simulation_summary
-from .io import coerce_tabular_input
 from .slicing import TimeIndexer
 from .splits import TimeSplit
 from .types import SegmentBoundaries, SizeSpec, TemporalPartitionSpec, TemporalSemanticsSpec
@@ -41,6 +41,8 @@ class TemporalBacktestSplitter:
             fixed-size windows or ``"expanding"`` for growing training history.
         allow_partial: Whether to keep the last fold when the final evaluation segment
             would otherwise run past the end of the dataset.
+        engine: Internal partition engine preference. Use ``"auto"`` to let Jano choose
+            the safest native backend, or force ``"pandas"``, ``"polars"`` or ``"numpy"``.
     """
 
     def __init__(
@@ -50,6 +52,7 @@ class TemporalBacktestSplitter:
         step,
         strategy: str = "rolling",
         allow_partial: bool = False,
+        engine: str = "auto",
     ) -> None:
         if isinstance(time_col, TemporalSemanticsSpec):
             self.temporal_semantics = validate_temporal_semantics(time_col)
@@ -62,6 +65,9 @@ class TemporalBacktestSplitter:
         self.step = SizeSpec.from_value(step)
         self.strategy = validate_strategy(strategy)
         self.allow_partial = allow_partial
+        if engine not in {"auto", "pandas", "polars", "numpy"}:
+            raise ValueError("engine must be one of 'auto', 'pandas', 'polars' or 'numpy'")
+        self.engine = engine
 
         if self.partition.size_kind != self.step.kind:
             raise ValueError("step must use the same unit family as the partition sizes")
@@ -105,8 +111,8 @@ class TemporalBacktestSplitter:
         Yields:
             ``TimeSplit`` instances containing segment indices, boundaries and metadata.
         """
-        frame = self._coerce_frame(X)
-        indexer = TimeIndexer(frame=frame, semantics=self.temporal_semantics)
+        engine = self._build_engine(X)
+        indexer = TimeIndexer(engine=engine, semantics=self.temporal_semantics)
 
         if self.partition.size_kind == "duration":
             yield from self._iter_duration_splits(indexer)
@@ -139,8 +145,8 @@ class TemporalBacktestSplitter:
         Returns:
             A ``PartitionPlan`` containing fold boundaries and row counts.
         """
-        frame = self._coerce_frame(X)
-        indexer = TimeIndexer(frame=frame, semantics=self.temporal_semantics)
+        engine = self._build_engine(X)
+        indexer = TimeIndexer(engine=engine, semantics=self.temporal_semantics)
         if self.partition.size_kind == "duration":
             folds = list(self._plan_duration_splits(indexer))
         else:
@@ -148,11 +154,12 @@ class TemporalBacktestSplitter:
         if not folds:
             raise ValueError("The current configuration did not produce any valid folds")
         return PartitionPlan(
-            frame=frame,
+            frame=X,
             temporal_semantics=self.temporal_semantics,
             strategy=self.strategy,
             size_kind=self.partition.size_kind,
             folds=folds,
+            engine=engine,
         )
 
     def describe_simulation(
@@ -178,8 +185,9 @@ class TemporalBacktestSplitter:
             A ``SimulationSummary``, raw HTML string or ``SimulationChartData``
             depending on ``output``.
         """
-        frame = self._coerce_frame(X)
-        splits = list(self.iter_splits(frame))
+        engine = self._build_engine(X)
+        frame = engine.to_pandas()
+        splits = list(self.iter_splits(X))
         if not splits:
             raise ValueError("The current configuration did not produce any valid folds")
 
@@ -201,12 +209,11 @@ class TemporalBacktestSplitter:
             return summary.chart_data
         raise ValueError("output must be one of 'summary', 'html' or 'chart_data'")
 
-    @staticmethod
-    def _coerce_frame(X) -> pd.DataFrame:
-        frame = coerce_tabular_input(X)
-        if frame.empty:
+    def _build_engine(self, X) -> PartitionEngine:
+        engine = PartitionEngine.from_input(X, prefer=self.engine)
+        if engine.empty:
             raise ValueError("X must contain at least one row")
-        return frame
+        return engine
 
     def _iter_duration_splits(self, indexer: TimeIndexer) -> Iterator[TimeSplit]:
         for planned in self._plan_duration_splits(indexer):
