@@ -1,12 +1,25 @@
 from __future__ import annotations
 
+import builtins
+import runpy
+import sys
+import types
 from importlib.metadata import version
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 import polars as pl
 
+import jano.engines as engines_module
+import jano.io as io_module
+import jano.mcp_server as mcp_server_module
+import jano.mcp_tools as mcp_tools_module
+import jano.planning as planning_module
+import jano.policies as policies_module
+import jano.runner as runner_module
+import jano.validation as validation_module
 from jano import (
     AlwaysRetrain,
     DriftBasedRetrain,
@@ -34,6 +47,7 @@ from jano import (
     __version__,
 )
 from jano.describe import SimulationSummary as LegacySimulationSummary
+from jano.engines import PartitionEngine, detect_backend, missing_columns
 from jano.jano import TemporalBacktestSplitter as LegacyTemporalBacktestSplitter
 from jano.mcp_server import build_server
 from jano.mcp_tools import load_dataset_frame, plan_walk_forward, preview_dataset, run_walk_forward
@@ -2037,3 +2051,863 @@ def test_rolling_train_history_policy_optimizes_inner_train_size_per_iteration()
     assert "optimal_train_size" in result.to_frame().columns
     assert summary["iterations"] == 5
     assert summary["metric"] == "rmse"
+
+
+def test_retrain_policy_base_interface_raises_not_implemented() -> None:
+    context = RetrainContext(
+        fold=0,
+        split=TimeSplit(
+            fold=0,
+            segments={"train": np.array([0]), "test": np.array([1])},
+            boundaries={
+                "train": SegmentBoundaries(pd.Timestamp("2024-01-01"), pd.Timestamp("2024-01-02")),
+                "test": SegmentBoundaries(pd.Timestamp("2024-01-02"), pd.Timestamp("2024-01-03")),
+            },
+        ),
+        history=pd.DataFrame(),
+        metric_directions={},
+        last_retrain_fold=None,
+    )
+
+    with pytest.raises(NotImplementedError):
+        RetrainPolicy().should_retrain(context)
+
+
+def test_retrain_policies_cover_validation_and_baseline_branches() -> None:
+    with pytest.raises(ValueError, match="greater than zero"):
+        PeriodicRetrain(0)
+    with pytest.raises(ValueError, match="greater than or equal to zero"):
+        DriftBasedRetrain(threshold=-0.1)
+    with pytest.raises(ValueError, match="baseline must be one of"):
+        DriftBasedRetrain(baseline="unknown")
+
+    split = TimeSplit(
+        fold=2,
+        segments={"train": np.array([0, 1]), "test": np.array([2])},
+        boundaries={
+            "train": SegmentBoundaries(pd.Timestamp("2024-01-01"), pd.Timestamp("2024-01-03")),
+            "test": SegmentBoundaries(pd.Timestamp("2024-01-03"), pd.Timestamp("2024-01-04")),
+        },
+    )
+    history = pd.DataFrame(
+        {
+            "fold": [0, 1],
+            "retrained": [True, False],
+            "rmse": [0.0, 0.2],
+            "accuracy": [0.0, 0.3],
+        }
+    )
+
+    empty_context = RetrainContext(0, split, pd.DataFrame(), {"rmse": "min"}, None)
+    assert PeriodicRetrain(2).should_retrain(empty_context) is True
+    assert DriftBasedRetrain(metric="rmse").should_retrain(empty_context) is True
+
+    with pytest.raises(ValueError, match="not present in runner history"):
+        DriftBasedRetrain(metric="mae").should_retrain(
+            RetrainContext(1, split, history, {"rmse": "min"}, 0)
+        )
+
+    assert DriftBasedRetrain(metric="rmse", threshold=0.1, baseline="first").should_retrain(
+        RetrainContext(2, split, history, {"rmse": "min"}, 0)
+    )
+    assert DriftBasedRetrain(
+        metric="rmse", threshold=0.1, baseline="best", relative=False
+    ).should_retrain(RetrainContext(2, split, history, {"rmse": "min"}, 0))
+    assert not DriftBasedRetrain(
+        metric="accuracy", threshold=0.1, baseline="previous_fold"
+    ).should_retrain(
+        RetrainContext(
+            2,
+            split,
+            pd.DataFrame({"fold": [0, 1], "retrained": [True, False], "accuracy": [0.0, -0.3]}),
+            {"accuracy": "max"},
+            0,
+        )
+    )
+    assert DriftBasedRetrain(
+        metric="accuracy", threshold=0.1, baseline="best", relative=False
+    ).should_retrain(
+        RetrainContext(
+            2,
+            split,
+            pd.DataFrame({"fold": [0, 1], "retrained": [True, False], "accuracy": [0.8, 0.6]}),
+            {"accuracy": "max"},
+            0,
+        )
+    )
+    assert DriftBasedRetrain(metric="rmse", baseline="last_retrain")._baseline_value(
+        RetrainContext(
+            2,
+            split,
+            pd.DataFrame({"fold": [0, 1], "retrained": [False, False], "rmse": [0.5, 0.6]}),
+            {"rmse": "min"},
+            1,
+        )
+    ) == 0.5
+
+
+def test_walk_forward_runner_covers_error_paths_and_workflow_variants(tmp_path) -> None:
+    frame = build_frame(size=10)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2),
+        step=2,
+        strategy="rolling",
+    )
+    simulation = TemporalSimulation(
+        "timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2),
+        step=2,
+        strategy="rolling",
+        max_folds=2,
+    )
+
+    class SimulationWrapper:
+        def __init__(self, simulation):
+            self.simulation = simulation
+
+    class SplitterWrapper:
+        def __init__(self, splitter):
+            self._splitter = splitter
+
+        def as_splitter(self):
+            return self._splitter
+
+    result = WalkForwardRunner(
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        feature_cols=["feature"],
+        metrics="rmse",
+    ).run(simulation, frame)
+    assert len(result.to_frame()) == 2
+
+    wrapped_result = WalkForwardRunner(
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        feature_cols=["feature"],
+        prediction_column="y_hat",
+    ).run(SimulationWrapper(simulation), frame)
+    assert "y_hat" in wrapped_result.predictions_frame().columns
+
+    splitter_result = WalkForwardRunner(
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        feature_cols=["feature"],
+    ).run(SplitterWrapper(splitter), frame)
+    assert splitter_result.summary()["folds"] == 3
+
+    with pytest.raises(ValueError, match="same number of rows"):
+        WalkForwardRunner(model=SimpleLinearRegressor()).run(simulation, frame, frame["target"][:-1])
+    with pytest.raises(ValueError, match="target_col is required"):
+        WalkForwardRunner(model=SimpleLinearRegressor()).run(simulation, frame)
+    with pytest.raises(ValueError, match="retrain_interval cannot be used together"):
+        WalkForwardRunner(
+            model=SimpleLinearRegressor(),
+            target_col="target",
+            retrain_interval=2,
+            retrain_policy=AlwaysRetrain(),
+        )
+    with pytest.raises(ValueError, match="retrain must be True, False"):
+        WalkForwardRunner(model=SimpleLinearRegressor(), target_col="target", retrain="sometimes")
+    with pytest.raises(ValueError, match="retrain_interval is required"):
+        WalkForwardRunner(model=SimpleLinearRegressor(), target_col="target", retrain="periodic")
+    with pytest.raises(TypeError, match="workflow must be"):
+        WalkForwardRunner(model=SimpleLinearRegressor(), target_col="target").run(object(), frame)
+
+    class MissingTrainTestWorkflow:
+        def as_splitter(self):
+            class _Splitter:
+                temporal_semantics = TemporalSemanticsSpec(timeline_col="timestamp")
+
+                def iter_splits(self, X):
+                    yield TimeSplit(
+                        fold=0,
+                        segments={"validation": np.array([0, 1]), "test": np.array([2, 3])},
+                        boundaries={
+                            "validation": SegmentBoundaries(
+                                pd.Timestamp("2024-01-01"), pd.Timestamp("2024-01-03")
+                            ),
+                            "test": SegmentBoundaries(
+                                pd.Timestamp("2024-01-03"), pd.Timestamp("2024-01-05")
+                            ),
+                        },
+                    )
+
+            return _Splitter()
+
+    with pytest.raises(ValueError, match="requires folds with 'train' and 'test'"):
+        WalkForwardRunner(
+            model=SimpleLinearRegressor(),
+            target_col="target",
+            feature_cols=["feature"],
+        ).run(MissingTrainTestWorkflow(), frame)
+
+    empty_simulation = TemporalSimulation(
+        "timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2),
+        step=2,
+        strategy="rolling",
+        start_at="2030-01-01",
+    )
+    with pytest.raises(ValueError, match="does not contain any rows"):
+        empty_simulation.run(frame)
+
+
+def test_partition_engine_and_io_cover_native_and_error_branches(monkeypatch) -> None:
+    frame = build_frame(size=4)
+    structured = np.array([(1, "a"), (2, "b")], dtype=[("num", "i4"), ("txt", "U1")])
+
+    pandas_engine = PartitionEngine.from_input(frame.to_numpy(), prefer="pandas")
+    assert pandas_engine.metadata.converted is True
+
+    numpy_engine = PartitionEngine.from_input(frame, prefer="numpy")
+    assert numpy_engine.metadata.engine == "numpy"
+    assert numpy_engine.metadata.converted is True
+    assert numpy_engine.column_values(1).tolist() == frame.to_numpy()[:, 1].tolist()
+
+    structured_engine = PartitionEngine.from_input(structured, prefer="numpy")
+    assert structured_engine.columns == ["num", "txt"]
+    assert structured_engine.column_values(0).tolist() == [1, 2]
+    assert structured_engine.column_values("txt").tolist() == ["a", "b"]
+
+    polars_engine = PartitionEngine.from_input(frame, prefer="polars")
+    assert polars_engine.metadata.engine == "polars"
+    assert polars_engine.metadata.converted is True
+    assert PartitionEngine.from_input(pl.from_pandas(frame), prefer="polars").metadata.converted is False
+
+    with pytest.raises(ValueError, match="engine must be one of"):
+        PartitionEngine.from_input(frame, prefer="duckdb")
+    with pytest.raises(ValueError, match="out of bounds"):
+        numpy_engine.column_values(99)
+    with pytest.raises(ValueError, match="was not found"):
+        pandas_engine.column_values("missing")
+
+    unsupported = PartitionEngine(frame, engine="unknown", input_backend="pandas")
+    object.__setattr__(unsupported.metadata, "engine", "unknown")
+    with pytest.raises(RuntimeError, match="Unsupported partition engine"):
+        unsupported.column_values("feature")
+
+    scalar_engine = PartitionEngine.__new__(PartitionEngine)
+    scalar_engine.data = np.array(1)
+    with pytest.raises(TypeError, match="NumPy scalar inputs are not supported"):
+        PartitionEngine._resolve_total_rows(scalar_engine)
+
+    monkeypatch.setattr(engines_module, "detect_backend", lambda _: "custom")
+    with pytest.raises(ValueError, match="Polars engine can only be forced"):
+        PartitionEngine.from_input(frame, prefer="polars")
+    with pytest.raises(ValueError, match="NumPy engine can only be forced"):
+        PartitionEngine.from_input(frame, prefer="numpy")
+
+    monkeypatch.setattr(io_module, "pl", None)
+
+    class FakePolarsFrame:
+        __module__ = "polars.fake"
+
+    with pytest.raises(ImportError, match="Polars input support requires"):
+        io_module.coerce_tabular_input(FakePolarsFrame())
+    with pytest.raises(TypeError, match="NumPy scalar inputs are not supported"):
+        io_module.coerce_tabular_input(np.array(1))
+    assert list(io_module.coerce_tabular_input(structured).columns) == ["num", "txt"]
+    assert detect_backend(frame) == "pandas"
+    assert detect_backend(frame.to_numpy()) == "numpy"
+    assert missing_columns(["feature", "missing", 99], ["feature", "target"]) == ["missing", 99]
+
+
+def test_mcp_tools_cover_formats_and_temporal_semantics(tmp_path) -> None:
+    frame = build_frame(size=6)
+    csv_path = tmp_path / "frame.csv"
+    parquet_path = tmp_path / "frame.parquet"
+    zip_path = tmp_path / "frame.zip"
+    empty_csv = tmp_path / "empty.csv"
+    unknown_path = tmp_path / "frame.data"
+    no_csv_zip = tmp_path / "no_csv.zip"
+    frame.to_csv(csv_path, index=False)
+    pd.DataFrame(columns=frame.columns).to_csv(empty_csv, index=False)
+    csv_path.replace(unknown_path)
+    frame.to_csv(csv_path, index=False)
+
+    import zipfile
+
+    with zipfile.ZipFile(zip_path, "w") as archive:
+        archive.write(csv_path, arcname="inside.csv")
+    with zipfile.ZipFile(no_csv_zip, "w") as archive:
+        archive.writestr("inside.txt", "hello")
+
+    assert len(load_dataset_frame(str(csv_path), sample_rows=2)) == 2
+    parquet_path.write_bytes(b"placeholder")
+    original_read_parquet = mcp_tools_module.pd.read_parquet
+    mcp_tools_module.pd.read_parquet = lambda *args, **kwargs: frame.copy()
+    assert len(load_dataset_frame(str(parquet_path), dataset_format="parquet", sample_rows=3)) == 3
+    mcp_tools_module.pd.read_parquet = original_read_parquet
+    assert len(load_dataset_frame(str(zip_path), dataset_format="zip", sample_rows=4)) == 4
+
+    with pytest.raises(FileNotFoundError, match="Dataset was not found"):
+        load_dataset_frame(str(tmp_path / "missing.csv"))
+    with pytest.raises(ValueError, match="did not contain any CSV files"):
+        load_dataset_frame(str(no_csv_zip), dataset_format="zip")
+    with pytest.raises(ValueError, match="Loaded dataset is empty"):
+        load_dataset_frame(str(empty_csv))
+    with pytest.raises(ValueError, match="Unsupported dataset format"):
+        load_dataset_frame(str(csv_path), dataset_format="json")
+    with pytest.raises(ValueError, match="Could not infer dataset format"):
+        mcp_tools_module._resolve_dataset_format(unknown_path, "auto")
+    with pytest.raises(ValueError, match="time_col is required"):
+        mcp_tools_module._build_temporal_semantics(
+            time_col=None,
+            order_col=None,
+            train_time_col=None,
+            validation_time_col=None,
+            test_time_col=None,
+        )
+
+    assert mcp_tools_module._build_temporal_semantics(
+        time_col="timestamp",
+        order_col=None,
+        train_time_col=None,
+        validation_time_col=None,
+        test_time_col=None,
+    ) == "timestamp"
+    semantics = mcp_tools_module._build_temporal_semantics(
+        time_col="timestamp",
+        order_col="feature",
+        train_time_col="timestamp",
+        validation_time_col=None,
+        test_time_col="target",
+    )
+    assert semantics.order_col == "feature"
+    assert semantics.segment_time_cols == {"train": "timestamp", "test": "target"}
+
+    preview = preview_dataset(str(csv_path), sample_rows=3)
+    assert preview["sample_rows"] == 3
+
+    plan = plan_walk_forward(
+        str(csv_path),
+        partition={"layout": "train_test", "train_size": 4, "test_size": 2},
+        step=2,
+        time_col="timestamp",
+        preview_rows=1,
+    )
+    run = run_walk_forward(
+        str(csv_path),
+        partition={"layout": "train_test", "train_size": 4, "test_size": 2},
+        step=2,
+        time_col="timestamp",
+        preview_rows=1,
+    )
+    assert plan["total_folds"] == 1
+    assert "html" in run
+
+
+def test_mcp_server_builds_tools_and_main_runs(monkeypatch) -> None:
+    tools = {}
+    original_build_server = mcp_server_module.build_server
+
+    class FakeMCP:
+        def __init__(self, name, instructions):
+            self.name = name
+            self.instructions = instructions
+            self.ran = False
+
+        def tool(self):
+            def decorator(fn):
+                tools[fn.__name__] = fn
+                return fn
+
+            return decorator
+
+        def run(self):
+            self.ran = True
+
+    fake_module = types.ModuleType("mcp.server.fastmcp")
+    fake_module.FastMCP = FakeMCP
+    monkeypatch.setitem(sys.modules, "mcp.server.fastmcp", fake_module)
+    monkeypatch.setattr(mcp_server_module, "preview_dataset", lambda *args, **kwargs: {"kind": "preview", "args": args, "kwargs": kwargs})
+    monkeypatch.setattr(mcp_server_module, "plan_walk_forward", lambda *args, **kwargs: {"kind": "plan", "args": args, "kwargs": kwargs})
+    monkeypatch.setattr(mcp_server_module, "run_walk_forward", lambda *args, **kwargs: {"kind": "run", "args": args, "kwargs": kwargs})
+
+    server = build_server()
+    assert server.name == "Jano"
+    assert tools["preview_local_dataset"]("data.csv")["kind"] == "preview"
+    assert tools["plan_walk_forward_simulation"]("data.csv", {"layout": "train_test"}, "1D", "ts")["kind"] == "plan"
+    assert tools["run_walk_forward_simulation"]("data.csv", {"layout": "train_test"}, "1D", "ts")["kind"] == "run"
+
+    monkeypatch.setattr(mcp_server_module, "build_server", lambda: server)
+    mcp_server_module.main()
+    assert server.ran is True
+    monkeypatch.setattr(mcp_server_module, "build_server", original_build_server)
+
+    original_import = builtins.__import__
+
+    def fake_import(name, globals=None, locals=None, fromlist=(), level=0):
+        if name == "mcp.server.fastmcp":
+            raise ImportError("missing")
+        return original_import(name, globals, locals, fromlist, level)
+
+    monkeypatch.setattr(builtins, "__import__", fake_import)
+    with pytest.raises(RuntimeError, match="optional MCP dependency"):
+        mcp_server_module.build_server()
+
+
+def test_planning_simulation_and_splitter_cover_remaining_helpers(tmp_path, monkeypatch) -> None:
+    frame = build_frame(size=12)
+    semantics = TemporalSemanticsSpec(
+        timeline_col="timestamp",
+        order_col="timestamp",
+        segment_time_cols={"train": "timestamp", "test": "timestamp"},
+    )
+    splitter = TemporalBacktestSplitter(
+        time_col=semantics,
+        partition=TemporalPartitionSpec(layout="train_test", train_size="4D", test_size="2D"),
+        step="2D",
+        strategy="rolling",
+    )
+    plan = splitter.plan(frame)
+    assert plan.engine_metadata.engine in {"pandas", "numpy", "polars"}
+    assert list(plan.iter_splits())
+    assert plan.select_iterations([0]).total_folds == 1
+    assert plan.select_from_iteration(1).total_folds == max(plan.total_folds - 1, 0)
+    assert plan.select_until_iteration(0).total_folds == 1
+    assert plan.exclude_windows(train=[("2024-01-01", "2024-01-02")]).total_folds <= plan.total_folds
+    with pytest.raises(ValueError, match="end greater than start"):
+        plan.exclude_windows(train=[("2024-01-02", "2024-01-01")])
+
+    sim_plan = SimulationPlan(plan, "Coverage")
+    materialized = sim_plan.materialize()
+    assert sim_plan.describe().title == "Coverage"
+    html_path = tmp_path / "plan.html"
+    assert sim_plan.write_html(html_path) == html_path
+    assert materialized.to_dict()["engine"]["engine"] == materialized.engine_metadata.engine
+    assert list(materialized.iter_splits())
+    assert materialized.write_html(tmp_path / "result.html").exists()
+
+    with pytest.raises(ValueError, match="greater than zero"):
+        TemporalSimulation("timestamp", TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2), 1, max_folds=0)
+
+    simulation = TemporalSimulation(
+        0,
+        TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2),
+        2,
+        strategy="rolling",
+        max_folds=2,
+    )
+    numpy_frame = frame[["timestamp", "feature", "target"]].to_numpy()
+    assert simulation.plan(numpy_frame).total_folds == 2
+    assert simulation.run(numpy_frame).total_folds == 2
+    assert simulation._timeline_column_name(frame[["timestamp", "feature", "target"]]) == "timestamp"
+    assert simulation._select_input(frame).equals(frame)
+
+    with pytest.raises(ValueError, match="did not produce any valid folds"):
+        TemporalSimulation(
+            "timestamp",
+            TemporalPartitionSpec(layout="train_test", train_size=20, test_size=10),
+            1,
+            strategy="single",
+        ).plan(frame)
+
+    with pytest.raises(ValueError, match="engine must be one of"):
+        TemporalBacktestSplitter(
+            time_col="timestamp",
+            partition=TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2),
+            step=2,
+            strategy="rolling",
+            engine="spark",
+        )
+    with pytest.raises(ValueError, match="Per-segment temporal semantics currently require duration-based"):
+        TemporalBacktestSplitter(
+            time_col=TemporalSemanticsSpec(
+                timeline_col="timestamp",
+                segment_time_cols={"train": "feature"},
+            ),
+            partition=TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2),
+            step=2,
+            strategy="rolling",
+        )
+    with pytest.raises(ValueError, match="output must be one of"):
+        splitter.describe_simulation(frame, output="json")
+    assert isinstance(splitter.describe_simulation(frame, output="html"), str)
+    assert splitter.describe_simulation(frame, output="chart_data").to_dict()
+    assert TemporalBacktestSplitter._is_valid_segments({"train": np.array([0])}) is True
+    assert TemporalBacktestSplitter._is_valid_segments({"train": np.array([])}) is False
+    assert TemporalBacktestSplitter._is_valid_count_map({"train": 1}) is True
+    assert TemporalBacktestSplitter._is_valid_count_map({"train": 0}) is False
+    with pytest.raises(ValueError, match="resolved to zero rows"):
+        TemporalBacktestSplitter._resolve_position_size(SizeSpec.from_value(0.01), 1)
+
+    empty_plan = planning_module.PartitionPlan(
+        frame=frame,
+        temporal_semantics=TemporalSemanticsSpec(timeline_col="timestamp"),
+        strategy="rolling",
+        size_kind="rows",
+        folds=[],
+    )
+    with pytest.raises(ValueError, match="does not contain any folds"):
+        empty_plan.materialize()
+
+    monkeypatch.setattr(planning_module.PartitionPlan, "materialize", lambda self: [])
+    monkeypatch.setattr(planning_module, "build_simulation_summary", lambda **kwargs: (_ for _ in ()).throw(AssertionError("should not be called")))
+
+
+def test_slicing_validation_types_and_policy_helpers_cover_error_branches(monkeypatch) -> None:
+    frame = build_frame(size=8)
+    semantics = TemporalSemanticsSpec(timeline_col="timestamp", segment_time_cols={"train": "timestamp"})
+    indexer = runner_module.TemporalSimulation(
+        "timestamp",
+        TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2),
+        2,
+        strategy="rolling",
+    ).as_splitter().plan(frame)._engine
+    time_indexer = planning_module.TimeIndexer(engine=indexer, semantics=semantics)
+    assert time_indexer.bounds_between(pd.Timestamp("2024-01-01"), pd.Timestamp("2024-01-03")) == (0, 2)
+    assert time_indexer.bounds_between_for_column("timestamp", pd.Timestamp("2024-01-01"), pd.Timestamp("2024-01-03")) == (0, 2)
+    assert time_indexer.slice_between(pd.Timestamp("2024-01-01"), pd.Timestamp("2024-01-03")).tolist() == [0, 1]
+
+    with pytest.raises(ValueError, match="layout must be"):
+        runner_module.TemporalBacktestSplitter(
+            time_col="timestamp",
+            partition=TemporalPartitionSpec(layout="invalid", train_size=4, test_size=2),
+            step=2,
+            strategy="rolling",
+        )
+    with pytest.raises(ValueError, match="calendar_frequency must be a valid fixed pandas frequency"):
+        TemporalBacktestSplitter(
+            time_col="timestamp",
+            partition=TemporalPartitionSpec(
+                layout="train_test",
+                train_size="4D",
+                test_size="2D",
+                calendar_frequency="ME",
+            ),
+            step="1D",
+            strategy="rolling",
+        )
+    with pytest.raises(ValueError, match="timeline_col must not be None"):
+        TemporalBacktestSplitter(
+            time_col=TemporalSemanticsSpec(timeline_col=None),  # type: ignore[arg-type]
+            partition=TemporalPartitionSpec(layout="train_test", train_size="4D", test_size="2D"),
+            step="1D",
+            strategy="rolling",
+        )
+    with pytest.raises(ValueError, match="segment_time_cols keys must be non-empty strings"):
+        validation_module.validate_temporal_semantics(
+            TemporalSemanticsSpec(timeline_col="timestamp", segment_time_cols={"": "timestamp"})
+        )
+    with pytest.raises(ValueError, match="segment_time_cols values must be non-null"):
+        validation_module.validate_temporal_semantics(
+            TemporalSemanticsSpec(timeline_col="timestamp", segment_time_cols={"train": None})  # type: ignore[arg-type]
+        )
+
+    assert policies_module._accuracy(np.array([1, 0]), np.array([1, 1])) == 0.5
+    assert policies_module._resolve_column(frame, 1) == "feature"
+    assert policies_module._resolve_columns(frame, [0, "feature"]) == ["timestamp", "feature"]
+    with pytest.raises(ValueError, match="Unknown metric"):
+        policies_module._normalize_metric_mapping("unknown")
+    with pytest.raises(ValueError, match="must not be empty"):
+        policies_module._normalize_metric_mapping({})
+    with pytest.raises(ValueError, match="Unknown metric"):
+        policies_module._normalize_metric_mapping(["rmse", "weird"])
+    with pytest.raises(ValueError, match="metrics must not be empty"):
+        policies_module._normalize_metric_mapping([])
+    assert policies_module._normalize_metric_mapping({"custom": lambda y, p: 0.0})[1]["custom"] == "min"
+
+    with pytest.raises(ValueError, match="X must contain at least one row"):
+        policies_module._prepare_supervised_frame(
+            frame.iloc[0:0],
+            time_col="timestamp",
+            target_col="target",
+            feature_cols=["feature"],
+        )
+    with pytest.raises(ValueError, match="target_col 'missing'"):
+        policies_module._prepare_supervised_frame(
+            frame,
+            time_col="timestamp",
+            target_col="missing",
+            feature_cols=["feature"],
+        )
+    with pytest.raises(ValueError, match="empty feature set"):
+        policies_module._prepare_supervised_frame(
+            frame[["timestamp", "target"]],
+            time_col="timestamp",
+            target_col="target",
+            feature_cols=None,
+        )
+
+    no_default = FeatureLookbackSpec(group_lookbacks={"lags": "3D"})
+    assert no_default.normalized_default_lookback() is None
+    with pytest.raises(ValueError, match="Feature lookbacks must use duration-based sizes"):
+        FeatureLookbackSpec(default_lookback=2).normalized_default_lookback()
+
+    train_growth = TrainGrowthResult(
+        pd.DataFrame({"variant": [0, 1], "train_rows": [5, 10], "rmse": [1.0, 0.5], "accuracy": [0.7, 0.8]}),
+        {"rmse": "min", "accuracy": "max"},
+    )
+    assert train_growth.find_optimal_train_size(metric="accuracy")["train_rows"] == 10
+    with pytest.raises(ValueError, match="not present"):
+        train_growth.find_optimal_train_size(metric="mae")
+    with pytest.raises(ValueError, match="greater than or equal to zero"):
+        train_growth.find_optimal_train_size(tolerance=-0.1)
+
+    decay = PerformanceDecayResult(
+        pd.DataFrame({"window": [0, 1], "rmse": [0.0, 0.2], "accuracy": [0.0, -0.2]}),
+        {"rmse": "min", "accuracy": "max"},
+    )
+    assert decay.find_drift_onset(metric="rmse", threshold=0.1, baseline="first") is not None
+    assert decay.find_drift_onset(metric="accuracy", threshold=0.1, baseline="first") is not None
+    assert decay.find_drift_onset(metric="rmse", threshold=1.0, baseline=0.0, relative=False) is None
+    with pytest.raises(ValueError, match="not present"):
+        decay.find_drift_onset(metric="mae")
+    with pytest.raises(ValueError, match="greater than or equal to zero"):
+        decay.find_drift_onset(threshold=-0.1)
+    assert decay.find_drift_onset(
+        metric="accuracy",
+        threshold=0.1,
+        baseline=0.0,
+        relative=False,
+    ) is not None
+
+    with pytest.raises(ValueError, match="train_sizes must not be empty"):
+        RollingTrainHistoryPolicy(
+            "timestamp",
+            partition=TemporalPartitionSpec(layout="train_test", train_size="5D", test_size="1D"),
+            step="1D",
+            train_sizes=[],
+        )
+
+
+def test_remaining_engine_and_type_branches(monkeypatch) -> None:
+    frame = build_frame(size=4)
+
+    monkeypatch.setattr(engines_module, "pl", None)
+    with pytest.raises(ImportError, match="optional 'polars' dependency"):
+        PartitionEngine.from_input(frame, prefer="polars")
+
+    monkeypatch.setattr(engines_module, "detect_backend", lambda _: "custom")
+    monkeypatch.setattr(engines_module, "coerce_tabular_input", lambda _: frame.copy())
+    auto_engine = PartitionEngine.from_input(object(), prefer="auto")
+    assert auto_engine.metadata.engine == "pandas"
+    assert auto_engine.metadata.converted is True
+
+    class CustomFrame:
+        pass
+
+    custom_engine = PartitionEngine(CustomFrame(), engine="pandas", input_backend="custom")
+    assert custom_engine.columns == ["timestamp", "feature", "target"]
+    assert custom_engine.total_rows == len(frame)
+
+    class FakePolarsFrame:
+        __module__ = "polars.fake"
+
+    with pytest.raises(ImportError, match="optional 'polars' dependency"):
+        detect_backend(FakePolarsFrame())
+
+    vector_engine = PartitionEngine(np.array([1, 2, 3]), engine="numpy", input_backend="numpy")
+    assert vector_engine.columns == [0]
+    assert vector_engine.total_rows == 3
+
+    with pytest.raises(TypeError, match="Size values must be"):
+        SizeSpec.from_value(object())
+
+
+def test_remaining_mcp_tool_and_server_branches(monkeypatch, tmp_path) -> None:
+    assert mcp_tools_module._resolve_dataset_format(Path("frame.parquet"), "auto") == "parquet"
+    assert mcp_tools_module._resolve_dataset_format(Path("frame.zip"), "auto") == "zip"
+
+    class FakeMCP:
+        def __init__(self, *args, **kwargs):
+            self.ran = False
+
+        def tool(self):
+            def decorator(fn):
+                return fn
+
+            return decorator
+
+        def run(self):
+            self.ran = True
+
+    fake_module = types.ModuleType("mcp.server.fastmcp")
+    fake_module.FastMCP = FakeMCP
+    monkeypatch.setitem(sys.modules, "mcp.server.fastmcp", fake_module)
+    with pytest.warns(RuntimeWarning, match="found in sys.modules"):
+        runpy.run_module("jano.mcp_server", run_name="__main__")
+
+
+def test_remaining_planning_runner_simulation_and_splitter_branches(monkeypatch) -> None:
+    frame = build_frame(size=12)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size="4D", test_size="2D"),
+        step="2D",
+        strategy="rolling",
+    )
+    plan = splitter.plan(frame)
+    sim_plan = SimulationPlan(plan, "Coverage")
+    assert sim_plan.select_iterations([0]).total_folds == 1
+    assert sim_plan.select_from_iteration(1).total_folds == max(sim_plan.total_folds - 1, 0)
+    assert sim_plan.select_until_iteration(0).total_folds == 1
+    assert sim_plan.exclude_windows(validation=[("2024-01-01", "2024-01-02")]).total_folds == sim_plan.total_folds
+
+    assert policies_module._normalize_metric_mapping(["rmse"])[1]["rmse"] == "min"
+
+    no_default_split = TimeSplit(
+        fold=0,
+        segments={"train": np.array([0, 1])},
+        boundaries={"train": SegmentBoundaries(pd.Timestamp("2024-01-02"), pd.Timestamp("2024-01-03"))},
+    )
+    with pytest.raises(ValueError, match="Unknown segment"):
+        no_default_split.feature_history_bounds(FeatureLookbackSpec(group_lookbacks={"lags": "1D"}), segment_name="missing")
+    assert "__default__" not in no_default_split.feature_history_bounds(
+        FeatureLookbackSpec(group_lookbacks={"lags": "1D"}),
+    )
+
+    assert DriftBasedRetrain(metric="rmse", threshold=0.1)._baseline_value(
+        RetrainContext(
+            1,
+            no_default_split,
+            pd.DataFrame({"fold": [0], "retrained": [True], "rmse": [0.5]}),
+            {"rmse": "min"},
+            None,
+        )
+    ) == 0.5
+    assert DriftBasedRetrain(
+        metric="accuracy",
+        threshold=0.1,
+        baseline="best",
+    ).should_retrain(
+        RetrainContext(
+            2,
+            no_default_split,
+            pd.DataFrame({"fold": [0, 1], "retrained": [True, False], "accuracy": [0.0, -0.3]}),
+            {"accuracy": "max"},
+            0,
+        )
+    )
+
+    no_fold_splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=50, test_size=50),
+        step=1,
+        strategy="single",
+    )
+    assert list(no_fold_splitter.split(frame)) == []
+
+    with pytest.raises(ValueError, match="did not produce any valid folds"):
+        WalkForwardRunner(
+            model=SimpleLinearRegressor(),
+            target_col="target",
+            feature_cols=["feature"],
+        ).run(no_fold_splitter, frame)
+
+    with pytest.raises(ValueError, match="did not produce any valid folds"):
+        TemporalSimulation(
+            "timestamp",
+            TemporalPartitionSpec(layout="train_test", train_size=50, test_size=50),
+            1,
+            strategy="single",
+        ).run(frame)
+    with pytest.raises(ValueError, match="did not produce any valid folds"):
+        TemporalSimulation(
+            "timestamp",
+            TemporalPartitionSpec(layout="train_test", train_size=50, test_size=50),
+            1,
+            strategy="single",
+        ).plan(frame)
+
+    assert isinstance(
+        WalkForwardRunner(model=SimpleLinearRegressor(), target_col="target", retrain=True, retrain_interval=2).retrain_policy,
+        PeriodicRetrain,
+    )
+    assert isinstance(
+        WalkForwardRunner(model=SimpleLinearRegressor(), target_col="target", retrain="never").retrain_policy,
+        NeverRetrain,
+    )
+
+    class WrappedSimulation:
+        def __init__(self):
+            self.simulation = TemporalSimulation(
+                "timestamp",
+                TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2),
+                2,
+                strategy="rolling",
+                max_folds=1,
+            )
+
+    wrapped = WalkForwardRunner(
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        feature_cols=["feature"],
+    ).run(WrappedSimulation(), frame)
+    assert len(wrapped.to_frame()) == 1
+
+    with pytest.raises(ValueError, match="step must use the same unit family"):
+        TemporalBacktestSplitter(
+            time_col="timestamp",
+            partition=TemporalPartitionSpec(layout="train_test", train_size="4D", test_size="2D"),
+            step=1,
+            strategy="rolling",
+        )
+
+    expanding = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size="1D", test_size="10D"),
+        step="10D",
+        strategy="expanding",
+        allow_partial=False,
+    )
+    assert list(expanding.iter_splits(frame))
+
+    no_duration_fold = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size="1D",
+            test_size="20D",
+            gap_before_train="2D",
+        ),
+        step="1D",
+        strategy="expanding",
+        allow_partial=False,
+    )
+    assert list(no_duration_fold.iter_splits(frame)) == []
+
+    positional = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=1, test_size=20),
+        step=1,
+        strategy="single",
+        allow_partial=False,
+    )
+    assert list(positional.iter_splits(frame)) == []
+
+
+def test_remaining_validation_and_workflow_branches(monkeypatch) -> None:
+    with pytest.raises(ValueError, match="order_col must resolve to a non-null column reference"):
+        validation_module.validate_temporal_semantics(
+            types.SimpleNamespace(
+                timeline_col="timestamp",
+                effective_order_col=None,
+                segment_time_cols={},
+            )
+        )
+
+    empty_partition = planning_module.PartitionPlan(
+        frame=build_frame(),
+        temporal_semantics=TemporalSemanticsSpec(timeline_col="timestamp"),
+        strategy="rolling",
+        size_kind="rows",
+        folds=[],
+    )
+
+    policy = RollingTrainHistoryPolicy(
+        "timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size="5D", test_size="1D"),
+        step="1D",
+        train_sizes=["1D"],
+    )
+    monkeypatch.setattr(policy._walk_forward, "plan", lambda X, title=None: SimulationPlan(empty_partition, "Empty"))
+    with pytest.raises(ValueError, match="did not produce any valid outer iterations"):
+        policy.evaluate(
+            build_frame(size=10),
+            model=SimpleLinearRegressor(),
+            target_col="target",
+            feature_cols=["feature"],
+        )

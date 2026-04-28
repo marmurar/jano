@@ -7,6 +7,7 @@
 [![CI](https://github.com/marmurar/jano/actions/workflows/ci.yml/badge.svg)](https://github.com/marmurar/jano/actions/workflows/ci.yml)
 [![Docs](https://github.com/marmurar/jano/actions/workflows/docs.yml/badge.svg)](https://github.com/marmurar/jano/actions/workflows/docs.yml)
 [![codecov](https://codecov.io/gh/marmurar/jano/graph/badge.svg)](https://codecov.io/gh/marmurar/jano)
+[![PyPI Downloads](https://static.pepy.tech/badge/jano/month)](https://pepy.tech/projects/jano)
 
 Jano is a Python library for defining temporal partitions and backtesting schemes over time-correlated datasets.
 
