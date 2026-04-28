@@ -49,14 +49,45 @@ The intended progression is:
 - move up to higher-level policies when the question is already encapsulated,
 - and only drop to the fully manual mode when you need total control.
 
-In other words, Jano gives you three levels of usage:
+In practice, Jano now exposes five layers:
 
-- a small recommended surface such as ``WalkForwardPolicy``, ``TrainHistoryPolicy`` or ``DriftMonitoringPolicy``
-- explicit lower-level workflows such as ``TemporalSimulation``, ``TrainGrowthPolicy`` or ``PerformanceDecayPolicy``
-- an intermediate planning layer through ``plan()``
-- a manual mode through ``TemporalBacktestSplitter`` and ``iter_splits()`` when you want to compose partitions, gaps, feature history and external training loops exactly as you prefer
+- a geometry layer through ``TemporalBacktestSplitter`` and manual ``iter_splits()``
+- a planning layer through ``plan()``
+- a simulation layer through ``TemporalSimulation`` and ``WalkForwardPolicy``
+- an execution layer through ``WalkForwardRunner`` and retrain policies
+- a study layer through wrappers such as ``TrainHistoryPolicy`` or ``DriftMonitoringPolicy``
 
 That last level matters because not every production evaluation fits a predefined class. Jano should help when the common case is enough, but it should still let you compose your own temporal logic when the problem demands it.
+
+Architecture by layer
+---------------------
+
+This layered view is the cleanest way to understand what Jano does and what it does not do.
+
+``Splitter``
+  Defines temporal geometry. This is the low-level core: folds, boundaries, gaps,
+  strategies, temporal semantics and manual iteration.
+
+``Plan``
+  Computes the geometry before materialization. This is where you inspect iterations,
+  row counts and temporal windows, or exclude special dates before slicing the dataset.
+
+``Simulation``
+  Materializes folds and produces reports about the temporal experiment itself. This
+  layer answers "what would the partition policy look like over time?"
+
+``Runner``
+  Executes a model over those folds. This layer answers "what happens if I train,
+  predict and measure over this temporal simulation under a specific retraining rule?"
+
+``Study``
+  Encapsulates a narrower operational hypothesis, such as whether more history helps,
+  how long a model stays useful without retraining, or how a retrain cadence should be
+  compared.
+
+This separation matters because the splitter should remain compositional and neutral.
+Training logic, prediction loops, metric tracking and retraining decisions belong above
+it, in simulation or execution workflows.
 
 Strategies
 ----------
@@ -102,6 +133,7 @@ Jano exposes two complementary views:
 
 - ``plan()`` precomputes the simulation geometry as an inspectable object before materializing folds.
 - ``TemporalSimulation.run()`` materializes a full simulation and returns a reusable result object.
+- ``WalkForwardRunner.run()`` executes a model over the temporal workflow and returns fold-level metrics, retrain events and predictions.
 - ``split()`` yields plain index tuples, which keeps usage lightweight and easy to integrate.
 - ``iter_splits()`` yields ``TimeSplit`` objects with segment metadata and helper methods.
 - ``describe_simulation()`` yields either a ``SimulationSummary``, an HTML report string or ``SimulationChartData`` for custom Python plotting.
@@ -242,6 +274,7 @@ These policies are not just visual variations of the splitter. They encapsulate 
 temporal questions about the system under evaluation:
 
 - walk-forward simulation asks how the system would have behaved over time under a retraining policy
+- walk-forward execution asks what metrics and predictions emerge when a model is actually run under that policy
 - train growth asks whether more historical data is actually worth using
 - performance decay asks how long the current train set remains operationally safe
 

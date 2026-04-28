@@ -10,6 +10,16 @@ from .policies import (
     TrainGrowthResult,
 )
 from .reporting import SimulationChartData, SimulationSummary
+from .runner import (
+    AlwaysRetrain,
+    DriftBasedRetrain,
+    NeverRetrain,
+    PeriodicRetrain,
+    RetrainContext,
+    RetrainPolicy,
+    WalkForwardRunResult,
+    WalkForwardRunner,
+)
 from .simulation import SimulationResult, TemporalSimulation
 from .splitters import TemporalBacktestSplitter
 from .splits import TimeSplit
@@ -29,13 +39,19 @@ from .workflows import (
 )
 
 __all__ = [
+    "AlwaysRetrain",
+    "DriftBasedRetrain",
     "FeatureLookbackSpec",
     "DriftMonitoringPolicy",
+    "NeverRetrain",
     "PartitionPlan",
     "PartitionEngineMetadata",
     "PerformanceDecayPolicy",
     "PerformanceDecayResult",
+    "PeriodicRetrain",
     "PlannedFold",
+    "RetrainContext",
+    "RetrainPolicy",
     "RollingTrainHistoryPolicy",
     "RollingTrainHistoryResult",
     "SegmentBoundaries",
@@ -53,5 +69,7 @@ __all__ = [
     "TrainGrowthResult",
     "TimeSplit",
     "WalkForwardPolicy",
+    "WalkForwardRunResult",
+    "WalkForwardRunner",
     "__version__",
 ]

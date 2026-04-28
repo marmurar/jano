@@ -54,6 +54,16 @@ Main workflow
    :undoc-members:
    :no-index:
 
+.. autoclass:: jano.runner.WalkForwardRunner
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.runner.WalkForwardRunResult
+   :members:
+   :undoc-members:
+   :no-index:
+
 .. autoclass:: jano.planning.SimulationPlan
    :members:
    :undoc-members:
@@ -91,6 +101,34 @@ Main workflow
 
 Temporal policies
 -----------------
+
+Retrain policies
+----------------
+
+.. autoclass:: jano.runner.RetrainPolicy
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.runner.AlwaysRetrain
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.runner.NeverRetrain
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.runner.PeriodicRetrain
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.runner.DriftBasedRetrain
+   :members:
+   :undoc-members:
+   :no-index:
 
 .. autoclass:: jano.policies.TrainGrowthPolicy
    :members:

@@ -44,26 +44,21 @@ Jano
 
       A visual summary of how Jano lays out temporal partitions, folds and reporting across time.
 
-Jano is a Python toolkit designed to structure, execute and analyze temporal simulations for machine learning systems operating on time-correlated data. It provides a formal framework to define time-aware partitioning policies, run walk-forward evaluations and generate auditable reports that reflect how models behave under realistic, production-like temporal dynamics.
+Jano is a Python toolkit designed to structure, execute and analyze temporal simulations for machine learning systems operating on time-correlated data. It provides a formal framework to define time-aware partitioning policies, run walk-forward evaluations, execute models under explicit retraining rules and generate auditable reports that reflect how systems behave under realistic, production-like temporal dynamics.
 
 Unlike traditional random splits that implicitly assume i.i.d. data, Jano treats chronology as a first-class constraint. It is built for scenarios where leakage must be tightly controlled and where system performance is expected to evolve over time because of drift, retraining cycles or changing data distributions.
 
 At its core, Jano introduces explicit temporal partitioning abstractions. Users can define train, validation and test segments through durations, row counts or proportions, compose them into rolling, expanding or fixed-window strategies, and use temporal gaps to model the latency that often exists between training, prediction and label availability.
 
-The recommended public surface centers on ``TemporalSimulation`` for end-to-end simulation workflows, while ``TemporalBacktestSplitter`` remains available for manual fold iteration and lower-level control. Jano does not compute drift metrics directly; instead, it exposes temporal structure in evaluation results so drift, regime changes and model decay become easier to inspect fold by fold.
+The recommended public surface centers on ``TemporalSimulation`` and ``WalkForwardPolicy`` for fold-level simulation, ``WalkForwardRunner`` for model execution over those folds, and ``TemporalBacktestSplitter`` for manual iteration and lower-level control. Jano does not compute drift metrics directly; instead, it exposes temporal structure in evaluation results so drift, regime changes and model decay become easier to inspect fold by fold.
 
 Typical use cases include:
 
 - Walk-forward validation for forecasting and time-aware classification.
 - Simulation of retraining policies and deployment strategies.
+- Execution of model benchmarks under explicit retraining rules.
 - Monitoring model stability across time slices.
 - Evaluating decision policies under evolving data conditions.
-
-Supported input backends:
-
-- ``pandas.DataFrame`` with named columns
-- ``numpy.ndarray`` with integer column references
-- ``polars.DataFrame`` through the optional ``jano[polars]`` extra
 
 .. toctree::
    :hidden:

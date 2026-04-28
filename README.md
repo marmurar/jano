@@ -108,6 +108,7 @@ The design goals are:
 The recommended high-level surface is intentionally small:
 
 - `WalkForwardPolicy` for production-like walk-forward evaluation,
+- `WalkForwardRunner` when you want Jano to execute a model over those folds and manage retraining cadence,
 - `TrainHistoryPolicy` for fixed-test, growing-train questions,
 - `DriftMonitoringPolicy` for fixed-train, moving-test questions.
 
@@ -130,6 +131,16 @@ The workflow is intentionally compositional:
 - move to `plan()` when you want to inspect or filter iterations before running them,
 - use higher-level policies such as `TrainGrowthPolicy` or `PerformanceDecayPolicy` when the question is already encapsulated,
 - and fall back to manual fold iteration when you want to compose everything yourself: partitions, gaps, feature history and model training logic.
+
+The cleanest mental model is to treat Jano as five layers that can stay independent:
+
+- `TemporalBacktestSplitter` for temporal geometry and manual fold iteration.
+- `plan()` for inspecting and filtering that geometry before materialization.
+- `TemporalSimulation` and `WalkForwardPolicy` for fold-level simulation and reporting.
+- `WalkForwardRunner` for training, predicting and measuring over temporal folds with explicit retrain rules.
+- higher-level studies and policies for operational questions such as train sufficiency, decay and retraining cadence.
+
+That separation is deliberate. The splitter remains the free-form core. Runners and studies extend what Jano can do at the simulation layer, but they do not replace manual fold iteration.
 
 It supports:
 
@@ -178,6 +189,44 @@ print(result.chart_data.segment_stats)
 ```
 
 By default, `engine="auto"` lets Jano choose the safest fast path for partitioning:
+
+## Example: run a model over the walk-forward policy
+
+```python
+from jano import TemporalPartitionSpec, WalkForwardPolicy, WalkForwardRunner
+
+policy = WalkForwardPolicy(
+    time_col="timestamp",
+    partition=TemporalPartitionSpec(
+        layout="train_test",
+        train_size="30D",
+        test_size="7D",
+    ),
+    step="7D",
+    strategy="rolling",
+)
+
+runner = WalkForwardRunner(
+    model=model,
+    target_col="target",
+    feature_cols=["feature"],
+    retrain="periodic",
+    retrain_interval=2,
+    metrics=["mae", "rmse"],
+)
+
+run = runner.run(policy, frame)
+
+print(run.to_frame().head())
+print(run.summary())
+```
+
+Supported retrain modes are:
+
+- `retrain=True` or `retrain="always"` to refit on every fold.
+- `retrain=False` or `retrain="never"` to train once and benchmark a fixed model.
+- `retrain="periodic"` with `retrain_interval=K` to refit every `K` folds.
+- `retrain_policy=DriftBasedRetrain(...)` when the next retrain decision should depend on previously observed fold metrics.
 pandas inputs stay pandas, Polars inputs use Polars column extraction, and NumPy arrays
 use array indexing. You can force a path with `engine="pandas"`, `engine="polars"` or
 `engine="numpy"` when you need deterministic behavior for a pipeline.

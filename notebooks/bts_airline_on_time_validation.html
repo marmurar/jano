@@ -1,5 +1,4 @@
-<!doctype html><html><head><meta charset='utf-8'><title>Jano BTS Airline notebook</title>
-<style>
+<!doctype html><html><head><meta charset='utf-8'><title>Jano BTS Airline notebook</title><style>
 :root {
   --ink: #17202a;
   --muted: #64748b;
@@ -10,13 +9,12 @@
   --teal: #0f766e;
   --amber: #b45309;
   --rose: #be123c;
-  --green: #15803d;
 }
 body, .jp-Notebook { background: var(--paper); color: var(--ink); }
 .jp-Cell, .cell { margin-bottom: 1.35rem; }
 h1, h2, h3 { color: var(--navy); letter-spacing: -0.03em; }
-h1 { font-size: 2.5rem; margin-bottom: .35rem; }
-h2 { font-size: 1.55rem; margin-top: 2.1rem; }
+h1 { font-size: 2.4rem; margin-bottom: .35rem; }
+h2 { font-size: 1.55rem; margin-top: 2rem; }
 p, li { font-size: 1.02rem; line-height: 1.65; }
 a { color: var(--teal); font-weight: 700; }
 .jano-hero { background: linear-gradient(135deg, #fff7ed 0%, #f0fdfa 54%, #e0f2fe 100%); border: 1px solid var(--line); border-radius: 28px; padding: 2rem; box-shadow: 0 22px 70px rgba(17, 38, 63, .10); }
@@ -33,7 +31,6 @@ a { color: var(--teal); font-weight: 700; }
 .jano-table th, .jano-table td, table.dataframe th, table.dataframe td { border-bottom: 1px solid #edf2f7; padding: .68rem .72rem; text-align: right; }
 .jano-table th, table.dataframe th { background: #11263f; color: #f8fafc; font-weight: 700; }
 .jano-table tr:nth-child(even) td, table.dataframe tr:nth-child(even) td { background: #f8fafc; }
-.jano-table .idx { color: #64748b; font-weight: 700; }
 .output_area, .jp-OutputArea-output { margin-top: .65rem; }
 pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 pre.jano-code { background: #0f172a; color: #d1fae5; border-radius: 18px; padding: 1rem; overflow-x: auto; font-size: .83rem; line-height: 1.55; border: 1px solid #1e293b; }
@@ -42,8 +39,7 @@ details.jano-code-wrap summary { cursor: pointer; color: var(--teal); font-weigh
 .jano-pill { display: inline-flex; align-items: center; gap: .35rem; border-radius: 999px; background: #ccfbf1; color: #134e4a; padding: .32rem .7rem; font-weight: 800; font-size: .82rem; margin: .2rem .25rem .2rem 0; }
 .jano-pill.amber { background: #fef3c7; color: #92400e; }
 .jano-pill.rose { background: #ffe4e6; color: #9f1239; }
-</style>
-</head><body><main style='max-width:1120px;margin:0 auto;padding:32px 22px 72px;'>
+</style></head><body><main style='max-width:1120px;margin:0 auto;padding:32px 22px 72px;'>
 <section class='jano-section'><style>
 :root {
   --ink: #17202a;
@@ -55,13 +51,12 @@ details.jano-code-wrap summary { cursor: pointer; color: var(--teal); font-weigh
   --teal: #0f766e;
   --amber: #b45309;
   --rose: #be123c;
-  --green: #15803d;
 }
 body, .jp-Notebook { background: var(--paper); color: var(--ink); }
 .jp-Cell, .cell { margin-bottom: 1.35rem; }
 h1, h2, h3 { color: var(--navy); letter-spacing: -0.03em; }
-h1 { font-size: 2.5rem; margin-bottom: .35rem; }
-h2 { font-size: 1.55rem; margin-top: 2.1rem; }
+h1 { font-size: 2.4rem; margin-bottom: .35rem; }
+h2 { font-size: 1.55rem; margin-top: 2rem; }
 p, li { font-size: 1.02rem; line-height: 1.65; }
 a { color: var(--teal); font-weight: 700; }
 .jano-hero { background: linear-gradient(135deg, #fff7ed 0%, #f0fdfa 54%, #e0f2fe 100%); border: 1px solid var(--line); border-radius: 28px; padding: 2rem; box-shadow: 0 22px 70px rgba(17, 38, 63, .10); }
@@ -78,7 +73,6 @@ a { color: var(--teal); font-weight: 700; }
 .jano-table th, .jano-table td, table.dataframe th, table.dataframe td { border-bottom: 1px solid #edf2f7; padding: .68rem .72rem; text-align: right; }
 .jano-table th, table.dataframe th { background: #11263f; color: #f8fafc; font-weight: 700; }
 .jano-table tr:nth-child(even) td, table.dataframe tr:nth-child(even) td { background: #f8fafc; }
-.jano-table .idx { color: #64748b; font-weight: 700; }
 .output_area, .jp-OutputArea-output { margin-top: .65rem; }
 pre, code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
 pre.jano-code { background: #0f172a; color: #d1fae5; border-radius: 18px; padding: 1rem; overflow-x: auto; font-size: .83rem; line-height: 1.55; border: 1px solid #1e293b; }
@@ -91,10 +85,10 @@ details.jano-code-wrap summary { cursor: pointer; color: var(--teal); font-weigh
 <div class="jano-hero">
   <div class="jano-eyebrow">Real dataset walkthrough</div>
   <h1>Jano on BTS Airline On-Time Performance</h1>
-  <p class="jano-lead">This notebook uses a real January 2024 extract from the U.S. Bureau of Transportation Statistics to show how Jano plans leakage-aware temporal simulations before model evaluation.</p>
+  <p class="jano-lead">This notebook uses a real January 2024 extract from the U.S. Bureau of Transportation Statistics to show how Jano can inspect a leakage-aware temporal plan, execute a multiclass model over those folds, and compare retraining policies with an ordinal cost.</p>
   <span class="jano-pill">walk-forward plan</span>
-  <span class="jano-pill amber">calendar-aligned days</span>
-  <span class="jano-pill rose">leakage-aware timestamps</span>
+  <span class="jano-pill amber">multiclass target</span>
+  <span class="jano-pill rose">retrain runner</span>
 </div>
 <p>Official source:</p>
 <ul>
@@ -102,14 +96,9 @@ details.jano-code-wrap summary { cursor: pointer; color: var(--teal); font-weigh
 <li>BTS table download page: https://www.transtats.bts.gov/DL_SelectFields.aspx?QO_fu146_anzr=b0-gvzr&amp;gnoyr_VQ=FGJ</li>
 <li>Direct January 2024 PREZIP file used here: https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_1.zip</li>
 </ul>
-<div class="jano-note jano-warning">The BTS zip/CSV is intentionally kept out of git because it is a large external dataset. The repository ignores <code>data/</code>, so this notebook is versioned but the downloaded dataset is not.</div></section>
-<section class='jano-section'>
-<div class="jano-grid"><div class="jano-card"><strong>dataset zip</strong><span>data/bts/bts_ontime_2024_01.zip</span></div><div class="jano-card"><strong>downloaded</strong><span>True</span></div></div>
+<div class="jano-note jano-warning">The BTS zip/CSV is intentionally kept out of git because it is a large external dataset. The repository ignores <code>data/</code>, so this notebook is versioned but the downloaded dataset is not.</div>
 </section>
-<section class='jano-section'><h2>1. Load a Real Operational Slice</h2>
-<p>The raw monthly BTS file is large enough to make planning realistic. We keep only ATL departures and a compact set of columns so the notebook stays fast while preserving the temporal problem.</p></section>
-<section class='jano-section'>
-<div class="jano-grid"><div class="jano-card"><strong>rows used</strong><span>25,000</span></div><div class="jano-card"><strong>origin</strong><span>ATL</span></div><div class="jano-card"><strong>date range</strong><span>Jan 01 - Jan 30</span></div><div class="jano-card"><strong>delay rate</strong><span>21.6%</span></div></div><div class="jano-table"><table class="dataframe dataframe">
+<section class='jano-section'><div class="jano-grid"><div class="jano-card"><strong>rows used</strong><span>25,000</span></div><div class="jano-card"><strong>date range</strong><span>Jan 01 - Jan 31</span></div><div class="jano-card"><strong>early flights</strong><span>15,082</span></div><div class="jano-card"><strong>delayed flights</strong><span>5,023</span></div></div><div class="jano-table"><table class="dataframe dataframe">
   <thead>
     <tr style="text-align: right;">
       <th>scheduled_departure_at</th>
@@ -117,7 +106,8 @@ details.jano-code-wrap summary { cursor: pointer; color: var(--teal); font-weigh
       <th>Origin</th>
       <th>Dest</th>
       <th>Reporting_Airline</th>
-      <th>is_arrival_delayed</th>
+      <th>ArrDelay</th>
+      <th>arrival_state_label</th>
     </tr>
   </thead>
   <tbody>
@@ -127,7 +117,8 @@ details.jano-code-wrap summary { cursor: pointer; color: var(--teal); font-weigh
       <td>ATL</td>
       <td>FLL</td>
       <td>NK</td>
-      <td>0</td>
+      <td>7.0</td>
+      <td>on_time</td>
     </tr>
     <tr>
       <td>2024-01-01 05:35</td>
@@ -135,7 +126,8 @@ details.jano-code-wrap summary { cursor: pointer; color: var(--teal); font-weigh
       <td>ATL</td>
       <td>LGA</td>
       <td>NK</td>
-      <td>0</td>
+      <td>-24.0</td>
+      <td>early</td>
     </tr>
     <tr>
       <td>2024-01-01 05:36</td>
@@ -143,7 +135,8 @@ details.jano-code-wrap summary { cursor: pointer; color: var(--teal); font-weigh
       <td>ATL</td>
       <td>MIA</td>
       <td>AA</td>
-      <td>0</td>
+      <td>-20.0</td>
+      <td>early</td>
     </tr>
     <tr>
       <td>2024-01-01 05:47</td>
@@ -151,7 +144,8 @@ details.jano-code-wrap summary { cursor: pointer; color: var(--teal); font-weigh
       <td>ATL</td>
       <td>DFW</td>
       <td>AA</td>
-      <td>0</td>
+      <td>14.0</td>
+      <td>on_time</td>
     </tr>
     <tr>
       <td>2024-01-01 05:50</td>
@@ -159,24 +153,39 @@ details.jano-code-wrap summary { cursor: pointer; color: var(--teal); font-weigh
       <td>ATL</td>
       <td>MCO</td>
       <td>F9</td>
-      <td>0</td>
+      <td>2.0</td>
+      <td>on_time</td>
     </tr>
   </tbody>
-</table></div>
-</section>
-<section class='jano-section'><h2>2. Define Leakage-Aware Time Semantics</h2>
-<p>The operational timeline is `scheduled_departure_at`. Training eligibility uses `actual_arrival_at`, because the supervised target is only known once the flight has arrived. Test eligibility stays anchored on scheduled departure.</p></section>
-<section class='jano-section'>
-<div class="jano-grid"><div class="jano-card"><strong>timeline</strong><span>scheduled_departure_at</span></div><div class="jano-card"><strong>train eligibility</strong><span>actual_arrival_at</span></div><div class="jano-card"><strong>test eligibility</strong><span>scheduled_departure_at</span></div><div class="jano-card"><strong>strategy</strong><span>rolling</span></div></div>
-</section>
-<section class='jano-section'><h2>3. Inspect the Plan Before Materializing Folds</h2>
-<p>A [`plan()`](https://marmurar.github.io/jano/concepts.html#planning-before-materialization) is the precomputed geometry of a simulation. It shows the temporal intent before any train/test slices are materialized or any model is trained.</p></section>
-<section class='jano-section'>
-<details class='jano-code-wrap'><summary>Show code</summary>
-<pre class='jano-code'>plan = walk_forward.plan(flights, title=&quot;ATL January 2024 walk-forward plan&quot;)
-plan_df = plan.to_frame()
-plan_df[[&quot;iteration&quot;, &quot;train_start&quot;, &quot;train_end&quot;, &quot;test_start&quot;, &quot;test_end&quot;, &quot;train_rows&quot;, &quot;test_rows&quot;]]</pre></details>
-<div class="jano-grid"><div class="jano-card"><strong>planned folds</strong><span>8</span></div><div class="jano-card"><strong>engine</strong><span>pandas</span></div><div class="jano-card"><strong>calendar</strong><span>daily</span></div><div class="jano-card"><strong>first test</strong><span>2024-01-08</span></div></div><div class="jano-table"><table class="dataframe dataframe">
+</table></div></section>
+<section class='jano-section'><h2>2. Multiclass Target</h2><p>The notebook uses an ordinal three-state target so fold-by-fold cost is more informative than a plain delayed/not-delayed flag.</p><div class="jano-table"><table class="dataframe dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>arrival_state_label</th>
+      <th>rows</th>
+      <th>share</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>early</td>
+      <td>15082</td>
+      <td>0.603</td>
+    </tr>
+    <tr>
+      <td>delayed</td>
+      <td>5023</td>
+      <td>0.201</td>
+    </tr>
+    <tr>
+      <td>on_time</td>
+      <td>4895</td>
+      <td>0.196</td>
+    </tr>
+  </tbody>
+</table></div></section>
+<section class='jano-section'><h2>3. Leakage-Aware Time Semantics</h2><p>The operational timeline is <code>scheduled_departure_at</code>, while train eligibility is anchored on <code>actual_arrival_at</code> so labels only become available once a flight has arrived.</p><div class="jano-grid"><div class="jano-card"><strong>timeline</strong><span>scheduled_departure_at</span></div><div class="jano-card"><strong>train eligibility</strong><span>actual_arrival_at</span></div><div class="jano-card"><strong>test eligibility</strong><span>scheduled_departure_at</span></div><div class="jano-card"><strong>max folds</strong><span>8</span></div></div></section>
+<section class='jano-section'><h2>4. Inspect the Plan Before Materializing Folds</h2><p>A <a href="https://marmurar.github.io/jano/concepts.html#planning-before-materialization">plan()</a> is the precomputed geometry of a simulation. It shows temporal intent before any train/test slices are materialized or any model is trained.</p><div class="jano-table"><table class="dataframe dataframe">
   <thead>
     <tr style="text-align: right;">
       <th>iteration</th>
@@ -195,8 +204,8 @@ plan_df[[&quot;iteration&quot;, &quot;train_start&quot;, &quot;train_end&quot;, 
       <td>2024-01-08</td>
       <td>2024-01-08</td>
       <td>2024-01-09</td>
-      <td>5720</td>
-      <td>829</td>
+      <td>5476</td>
+      <td>792</td>
     </tr>
     <tr>
       <td>1</td>
@@ -204,8 +213,8 @@ plan_df[[&quot;iteration&quot;, &quot;train_start&quot;, &quot;train_end&quot;, 
       <td>2024-01-09</td>
       <td>2024-01-09</td>
       <td>2024-01-10</td>
-      <td>5829</td>
-      <td>792</td>
+      <td>5594</td>
+      <td>751</td>
     </tr>
     <tr>
       <td>2</td>
@@ -213,8 +222,8 @@ plan_df[[&quot;iteration&quot;, &quot;train_start&quot;, &quot;train_end&quot;, 
       <td>2024-01-10</td>
       <td>2024-01-10</td>
       <td>2024-01-11</td>
-      <td>5754</td>
-      <td>817</td>
+      <td>5511</td>
+      <td>771</td>
     </tr>
     <tr>
       <td>3</td>
@@ -222,8 +231,8 @@ plan_df[[&quot;iteration&quot;, &quot;train_start&quot;, &quot;train_end&quot;, 
       <td>2024-01-11</td>
       <td>2024-01-11</td>
       <td>2024-01-12</td>
-      <td>5738</td>
-      <td>853</td>
+      <td>5480</td>
+      <td>806</td>
     </tr>
     <tr>
       <td>4</td>
@@ -231,8 +240,8 @@ plan_df[[&quot;iteration&quot;, &quot;train_start&quot;, &quot;train_end&quot;, 
       <td>2024-01-12</td>
       <td>2024-01-12</td>
       <td>2024-01-13</td>
-      <td>5773</td>
-      <td>827</td>
+      <td>5498</td>
+      <td>783</td>
     </tr>
     <tr>
       <td>5</td>
@@ -240,8 +249,8 @@ plan_df[[&quot;iteration&quot;, &quot;train_start&quot;, &quot;train_end&quot;, 
       <td>2024-01-13</td>
       <td>2024-01-13</td>
       <td>2024-01-14</td>
-      <td>5737</td>
-      <td>759</td>
+      <td>5461</td>
+      <td>724</td>
     </tr>
     <tr>
       <td>6</td>
@@ -249,8 +258,8 @@ plan_df[[&quot;iteration&quot;, &quot;train_start&quot;, &quot;train_end&quot;, 
       <td>2024-01-14</td>
       <td>2024-01-14</td>
       <td>2024-01-15</td>
-      <td>5725</td>
-      <td>780</td>
+      <td>5447</td>
+      <td>745</td>
     </tr>
     <tr>
       <td>7</td>
@@ -258,360 +267,187 @@ plan_df[[&quot;iteration&quot;, &quot;train_start&quot;, &quot;train_end&quot;, 
       <td>2024-01-15</td>
       <td>2024-01-15</td>
       <td>2024-01-16</td>
-      <td>5655</td>
-      <td>842</td>
+      <td>5378</td>
+      <td>801</td>
     </tr>
   </tbody>
-</table></div>
-</section>
-<section class='jano-section'><h2>4. Remove a Special Date Before Execution</h2>
-<p>Because the plan is inspectable, we can exclude folds before materialization. Here we remove folds whose train segment overlaps Martin Luther King Jr. Day.</p></section>
-<section class='jano-section'>
-<details class='jano-code-wrap'><summary>Show code</summary>
-<pre class='jano-code'>filtered_plan = plan.exclude_windows(train=[(&quot;2024-01-15&quot;, &quot;2024-01-16&quot;)])
-filtered_plan.to_frame()[[&quot;iteration&quot;, &quot;train_start&quot;, &quot;train_end&quot;, &quot;test_start&quot;, &quot;test_end&quot;]]</pre></details>
-<div class="jano-grid"><div class="jano-card"><strong>folds before</strong><span>8</span></div><div class="jano-card"><strong>folds after</strong><span>8</span></div><div class="jano-card"><strong>excluded train overlap</strong><span>Jan 15</span></div><div class="jano-card"><strong>materialized folds</strong><span>8</span></div></div><div class="jano-table"><table class="dataframe dataframe">
+</table></div></section>
+<section class='jano-section'><h2>5. Execute a Multiclass Model Across the Folds</h2><p><code>WalkForwardRunner</code> compares retrain policies over the same fold geometry. The custom <code>delay_cost</code> metric is the mean absolute distance between ordered classes early, on_time and delayed.</p><div class="jano-table"><table class="dataframe dataframe">
   <thead>
     <tr style="text-align: right;">
-      <th>iteration</th>
-      <th>train_start</th>
-      <th>train_end</th>
-      <th>test_start</th>
-      <th>test_end</th>
+      <th>policy</th>
+      <th>folds</th>
+      <th>retrain_events</th>
+      <th>mean_accuracy</th>
+      <th>mean_delay_cost</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td>0</td>
-      <td>2024-01-01</td>
-      <td>2024-01-08</td>
-      <td>2024-01-08</td>
-      <td>2024-01-09</td>
+      <td>always</td>
+      <td>8</td>
+      <td>8</td>
+      <td>0.477</td>
+      <td>0.785</td>
     </tr>
     <tr>
-      <td>1</td>
-      <td>2024-01-02</td>
-      <td>2024-01-09</td>
-      <td>2024-01-09</td>
-      <td>2024-01-10</td>
-    </tr>
-    <tr>
-      <td>2</td>
-      <td>2024-01-03</td>
-      <td>2024-01-10</td>
-      <td>2024-01-10</td>
-      <td>2024-01-11</td>
-    </tr>
-    <tr>
-      <td>3</td>
-      <td>2024-01-04</td>
-      <td>2024-01-11</td>
-      <td>2024-01-11</td>
-      <td>2024-01-12</td>
-    </tr>
-    <tr>
+      <td>periodic_2</td>
+      <td>8</td>
       <td>4</td>
-      <td>2024-01-05</td>
-      <td>2024-01-12</td>
-      <td>2024-01-12</td>
-      <td>2024-01-13</td>
+      <td>0.477</td>
+      <td>0.785</td>
     </tr>
     <tr>
-      <td>5</td>
-      <td>2024-01-06</td>
-      <td>2024-01-13</td>
-      <td>2024-01-13</td>
-      <td>2024-01-14</td>
+      <td>on_drift</td>
+      <td>8</td>
+      <td>3</td>
+      <td>0.477</td>
+      <td>0.785</td>
     </tr>
     <tr>
-      <td>6</td>
-      <td>2024-01-07</td>
-      <td>2024-01-14</td>
-      <td>2024-01-14</td>
-      <td>2024-01-15</td>
-    </tr>
-    <tr>
-      <td>7</td>
-      <td>2024-01-08</td>
-      <td>2024-01-15</td>
-      <td>2024-01-15</td>
-      <td>2024-01-16</td>
+      <td>never</td>
+      <td>8</td>
+      <td>1</td>
+      <td>0.475</td>
+      <td>0.793</td>
     </tr>
   </tbody>
-</table></div>
-</section>
-<section class='jano-section'><h2>5. Materialize Only the Folds We Want</h2>
-<p>Materialization turns the plan into actual fold objects and row indices. This is the point where a training loop or downstream evaluation can consume the splits.</p></section>
-<section class='jano-section'>
-<div class="jano-grid"><div class="jano-card"><strong>materialized folds</strong><span>8</span></div><div class="jano-card"><strong>summary rows</strong><span>8</span></div><div class="jano-card"><strong>first fold train rows</strong><span>5720</span></div><div class="jano-card"><strong>first fold test rows</strong><span>829</span></div></div><div class="jano-table"><table class="dataframe dataframe">
+</table></div><div style="height:16px"></div><div class="jano-table"><table class="dataframe dataframe">
   <thead>
     <tr style="text-align: right;">
       <th>fold</th>
-      <th>simulation_start</th>
-      <th>simulation_end</th>
-      <th>train_start</th>
-      <th>train_end</th>
-      <th>train_rows</th>
-      <th>test_start</th>
-      <th>test_end</th>
-      <th>test_rows</th>
+      <th>retrained</th>
+      <th>accuracy</th>
+      <th>delay_cost</th>
     </tr>
   </thead>
   <tbody>
     <tr>
       <td>0</td>
-      <td>2024-01-01</td>
-      <td>2024-01-09</td>
-      <td>2024-01-01</td>
-      <td>2024-01-08</td>
-      <td>5720</td>
-      <td>2024-01-08</td>
-      <td>2024-01-09</td>
-      <td>829</td>
+      <td>True</td>
+      <td>0.625</td>
+      <td>0.558</td>
     </tr>
     <tr>
       <td>1</td>
-      <td>2024-01-02</td>
-      <td>2024-01-10</td>
-      <td>2024-01-02</td>
-      <td>2024-01-09</td>
-      <td>5829</td>
-      <td>2024-01-09</td>
-      <td>2024-01-10</td>
-      <td>792</td>
+      <td>False</td>
+      <td>0.200</td>
+      <td>1.383</td>
     </tr>
     <tr>
       <td>2</td>
-      <td>2024-01-03</td>
-      <td>2024-01-11</td>
-      <td>2024-01-03</td>
-      <td>2024-01-10</td>
-      <td>5754</td>
-      <td>2024-01-10</td>
-      <td>2024-01-11</td>
-      <td>817</td>
+      <td>True</td>
+      <td>0.616</td>
+      <td>0.516</td>
     </tr>
     <tr>
       <td>3</td>
-      <td>2024-01-04</td>
-      <td>2024-01-12</td>
-      <td>2024-01-04</td>
-      <td>2024-01-11</td>
-      <td>5738</td>
-      <td>2024-01-11</td>
-      <td>2024-01-12</td>
-      <td>853</td>
+      <td>False</td>
+      <td>0.597</td>
+      <td>0.525</td>
     </tr>
     <tr>
       <td>4</td>
-      <td>2024-01-05</td>
-      <td>2024-01-13</td>
-      <td>2024-01-05</td>
-      <td>2024-01-12</td>
-      <td>5773</td>
-      <td>2024-01-12</td>
-      <td>2024-01-13</td>
-      <td>827</td>
-    </tr>
-  </tbody>
-</table></div>
-</section>
-<section class='jano-section'><h2>6. Model Hypothesis: How Much Train History Is Enough?</h2>
-<p>The model here is intentionally simple. The point is not to build a production-grade delay classifier, but to show how a temporal policy can test a hypothesis on real time-correlated data.</p></section>
-<section class='jano-section'>
-<div class="jano-grid"><div class="jano-card"><strong>model</strong><span>delay-rate classifier</span></div><div class="jano-card"><strong>features</strong><span>6</span></div><div class="jano-card"><strong>target</strong><span>is_arrival_delayed</span></div></div>
-</section>
-<section class='jano-section'>
-<details class='jano-code-wrap'><summary>Show code</summary>
-<pre class='jano-code'>train_history = TrainHistoryPolicy(
-    semantics,
-    cutoff=plan_df.iloc[3][&quot;train_end&quot;],
-    train_sizes=[&quot;2D&quot;, &quot;4D&quot;, &quot;6D&quot;, &quot;7D&quot;],
-    test_size=&quot;1D&quot;,
-)
-
-train_history_result = train_history.evaluate(
-    flights,
-    model=model,
-    target_col=&quot;is_arrival_delayed&quot;,
-    feature_cols=feature_cols,
-    metrics=&quot;accuracy&quot;,
-)
-
-train_history_result.to_frame()</pre></details>
-<div class="jano-grid"><div class="jano-card"><strong>best train size</strong><span>2 days 00:00:00</span></div><div class="jano-card"><strong>accuracy</strong><span>0.856</span></div><div class="jano-card"><strong>train rows</strong><span>1,615</span></div><div class="jano-card"><strong>test rows</strong><span>853</span></div></div><div class="jano-table"><table class="dataframe dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th>variant</th>
-      <th>train_size</th>
-      <th>train_start</th>
-      <th>train_end</th>
-      <th>test_start</th>
-      <th>test_end</th>
-      <th>train_rows</th>
-      <th>test_rows</th>
-      <th>accuracy</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>0</td>
-      <td>2 days 00:00:00</td>
-      <td>2024-01-09</td>
-      <td>2024-01-11</td>
-      <td>2024-01-11</td>
-      <td>2024-01-12</td>
-      <td>1615</td>
-      <td>853</td>
-      <td>0.856</td>
-    </tr>
-    <tr>
-      <td>1</td>
-      <td>4 days 00:00:00</td>
-      <td>2024-01-07</td>
-      <td>2024-01-11</td>
-      <td>2024-01-11</td>
-      <td>2024-01-12</td>
-      <td>3279</td>
-      <td>853</td>
-      <td>0.856</td>
-    </tr>
-    <tr>
-      <td>2</td>
-      <td>6 days 00:00:00</td>
-      <td>2024-01-05</td>
-      <td>2024-01-11</td>
-      <td>2024-01-11</td>
-      <td>2024-01-12</td>
-      <td>4908</td>
-      <td>853</td>
-      <td>0.853</td>
-    </tr>
-    <tr>
-      <td>3</td>
-      <td>7 days 00:00:00</td>
-      <td>2024-01-04</td>
-      <td>2024-01-11</td>
-      <td>2024-01-11</td>
-      <td>2024-01-12</td>
-      <td>5738</td>
-      <td>853</td>
-      <td>0.831</td>
-    </tr>
-  </tbody>
-</table></div>
-</section>
-<section class='jano-section'><h2>7. Drift Monitoring: What Happens If Train Stays Fixed?</h2>
-<p>This policy freezes train and moves test forward. It answers a different operational question: how long can the current model remain behind an API before performance starts to decay?</p></section>
-<section class='jano-section'>
-<details class='jano-code-wrap'><summary>Show code</summary>
-<pre class='jano-code'>drift_monitor = DriftMonitoringPolicy(
-    semantics,
-    cutoff=plan_df.iloc[3][&quot;train_end&quot;],
-    train_size=&quot;7D&quot;,
-    test_size=&quot;1D&quot;,
-    step=&quot;1D&quot;,
-    max_windows=6,
-)
-
-drift_result = drift_monitor.evaluate(
-    flights,
-    model=model,
-    target_col=&quot;is_arrival_delayed&quot;,
-    feature_cols=feature_cols,
-    metrics=&quot;accuracy&quot;,
-)
-
-drift_result.to_frame()</pre></details>
-<div class="jano-grid"><div class="jano-card"><strong>baseline accuracy</strong><span>0.831</span></div><div class="jano-card"><strong>last window accuracy</strong><span>0.515</span></div><div class="jano-card"><strong>windows</strong><span>6</span></div><div class="jano-card"><strong>drift onset</strong><span>window 1</span></div></div><div class="jano-table"><table class="dataframe dataframe">
-  <thead>
-    <tr style="text-align: right;">
-      <th>window</th>
-      <th>train_size</th>
-      <th>train_start</th>
-      <th>train_end</th>
-      <th>test_start</th>
-      <th>test_end</th>
-      <th>train_rows</th>
-      <th>test_rows</th>
-      <th>accuracy</th>
-    </tr>
-  </thead>
-  <tbody>
-    <tr>
-      <td>0</td>
-      <td>7 days 00:00:00</td>
-      <td>2024-01-04</td>
-      <td>2024-01-11</td>
-      <td>2024-01-11</td>
-      <td>2024-01-12</td>
-      <td>5738</td>
-      <td>853</td>
-      <td>0.831</td>
-    </tr>
-    <tr>
-      <td>1</td>
-      <td>7 days 00:00:00</td>
-      <td>2024-01-04</td>
-      <td>2024-01-11</td>
-      <td>2024-01-12</td>
-      <td>2024-01-13</td>
-      <td>5738</td>
-      <td>827</td>
-      <td>0.637</td>
-    </tr>
-    <tr>
-      <td>2</td>
-      <td>7 days 00:00:00</td>
-      <td>2024-01-04</td>
-      <td>2024-01-11</td>
-      <td>2024-01-13</td>
-      <td>2024-01-14</td>
-      <td>5738</td>
-      <td>759</td>
-      <td>0.689</td>
-    </tr>
-    <tr>
-      <td>3</td>
-      <td>7 days 00:00:00</td>
-      <td>2024-01-04</td>
-      <td>2024-01-11</td>
-      <td>2024-01-14</td>
-      <td>2024-01-15</td>
-      <td>5738</td>
-      <td>780</td>
-      <td>0.723</td>
-    </tr>
-    <tr>
-      <td>4</td>
-      <td>7 days 00:00:00</td>
-      <td>2024-01-04</td>
-      <td>2024-01-11</td>
-      <td>2024-01-15</td>
-      <td>2024-01-16</td>
-      <td>5738</td>
-      <td>842</td>
-      <td>0.595</td>
+      <td>True</td>
+      <td>0.404</td>
+      <td>0.908</td>
     </tr>
     <tr>
       <td>5</td>
-      <td>7 days 00:00:00</td>
-      <td>2024-01-04</td>
-      <td>2024-01-11</td>
-      <td>2024-01-16</td>
-      <td>2024-01-17</td>
-      <td>5738</td>
-      <td>824</td>
-      <td>0.515</td>
+      <td>False</td>
+      <td>0.453</td>
+      <td>0.787</td>
+    </tr>
+    <tr>
+      <td>6</td>
+      <td>True</td>
+      <td>0.499</td>
+      <td>0.719</td>
+    </tr>
+    <tr>
+      <td>7</td>
+      <td>False</td>
+      <td>0.421</td>
+      <td>0.884</td>
     </tr>
   </tbody>
-</table></div>
-</section>
-<section class='jano-section'><h2>Notes</h2>
-<ul>
-<li>The notebook prioritizes temporal geometry and leakage-aware validation over model sophistication.</li>
-<li>`calendar_frequency=&quot;D&quot;` aligns folds to complete calendar days.</li>
-<li>The plan-first workflow makes the simulation auditable before folds are materialized.</li>
-<li>Replace the toy classifier with your own model pipeline while keeping the same temporal setup.</li>
-</ul></section>
+</table></div></section>
+<section class='jano-section'><h2>6. Train History Hypothesis</h2><p>Keeping the same test day fixed, the 4-day train window matches the best cost profile with fewer rows than the full 7-day window.</p><div class="jano-table"><table class="dataframe dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>train_size</th>
+      <th>train_rows</th>
+      <th>accuracy</th>
+      <th>delay_cost</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>2 days 00:00:00</td>
+      <td>1530</td>
+      <td>0.125</td>
+      <td>1.512</td>
+    </tr>
+    <tr>
+      <td>4 days 00:00:00</td>
+      <td>3129</td>
+      <td>0.638</td>
+      <td>0.488</td>
+    </tr>
+    <tr>
+      <td>6 days 00:00:00</td>
+      <td>4685</td>
+      <td>0.634</td>
+      <td>0.494</td>
+    </tr>
+    <tr>
+      <td>7 days 00:00:00</td>
+      <td>5480</td>
+      <td>0.597</td>
+      <td>0.525</td>
+    </tr>
+  </tbody>
+</table></div></section>
+<section class='jano-section'><h2>7. Drift Monitoring</h2><p>Freezing train and shifting test forward shows how ordinal cost changes as the fixed model ages in time.</p><div class="jano-table"><table class="dataframe dataframe">
+  <thead>
+    <tr style="text-align: right;">
+      <th>window</th>
+      <th>accuracy</th>
+      <th>delay_cost</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>0</td>
+      <td>0.597</td>
+      <td>0.525</td>
+    </tr>
+    <tr>
+      <td>1</td>
+      <td>0.404</td>
+      <td>0.908</td>
+    </tr>
+    <tr>
+      <td>2</td>
+      <td>0.453</td>
+      <td>0.787</td>
+    </tr>
+    <tr>
+      <td>3</td>
+      <td>0.499</td>
+      <td>0.719</td>
+    </tr>
+    <tr>
+      <td>4</td>
+      <td>0.421</td>
+      <td>0.884</td>
+    </tr>
+    <tr>
+      <td>5</td>
+      <td>0.418</td>
+      <td>0.885</td>
+    </tr>
+  </tbody>
+</table></div></section>
+<section class='jano-section'><h2>Notes</h2><ul><li>The notebook prioritizes temporal geometry and leakage-aware validation over model sophistication.</li><li><code>TemporalBacktestSplitter</code> remains available when you want manual fold iteration; the runner is an execution layer on top of that geometry.</li><li>The multiclass target makes fold variation more informative because <code>delay_cost</code> distinguishes adjacent mistakes from severe ones.</li><li>Replace the toy classifier with your own model pipeline while keeping the same temporal setup.</li></ul></section>
 </main></body></html>

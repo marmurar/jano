@@ -56,6 +56,7 @@ That makes it useful for:
 
 - Backtesting predictive systems over transactional data.
 - Simulating daily, weekly or custom retraining cadences.
+- Executing model benchmarks over those temporal folds under explicit retrain rules.
 - Comparing rolling and expanding windows.
 - Introducing temporal gaps between train and evaluation segments.
 - Defining ``train/test`` or ``train/validation/test`` layouts using durations, row counts or percentages.
@@ -81,6 +82,7 @@ Current status
 The project is in an early redesign phase. The new core already supports:
 
 - ``TemporalSimulation`` as a higher-level interface for running full simulations.
+- ``WalkForwardRunner`` as an execution layer on top of temporal folds.
 - Optional simulation window controls such as ``start_at``, ``end_at`` and ``max_folds``.
 - ``single``, ``rolling`` and ``expanding`` strategies.
 - ``train_test`` and ``train_val_test`` layouts.
@@ -89,6 +91,7 @@ The project is in an early redesign phase. The new core already supports:
 - Temporal semantics that let each segment use a different timestamp column for eligibility.
 - Input normalization for ``pandas``, ``numpy`` and optional ``polars`` data.
 - Simulation reporting as summary objects, HTML reports or plot-ready Python data.
+- Retrain execution modes such as always, never, periodic or drift-based retraining.
 - A numpy-first temporal indexing path that trims overhead on large datasets.
 
 The API is stable enough for experimentation and active design work, while still small enough to refine before broader publication. In practice, Jano already works as an experimental framework for reasoning about machine learning systems as time-evolving processes rather than static train/test artifacts.

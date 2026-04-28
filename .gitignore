@@ -11,3 +11,5 @@ build
 *.egg-info
 docs/_build
 data/
+HANDOFF.md
+FUTURE_IDEAS.md

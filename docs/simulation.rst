@@ -125,6 +125,71 @@ You can anchor the simulation to a specific point in time and cap the number of 
 
 ``WalkForwardPolicy`` also accepts ``end_at`` if you want to constrain the simulation to a bounded time window before folds are generated.
 
+Running a model with retrain policies
+-------------------------------------
+
+When you do not want to write a manual ``for train_idx, test_idx in splitter`` loop,
+use ``WalkForwardRunner`` on top of the temporal workflow. The runner keeps Jano's
+responsibilities separated:
+
+- ``WalkForwardPolicy`` still defines fold geometry
+- ``WalkForwardRunner`` executes the estimator over those folds
+- a retrain policy decides whether the estimator should be refit before each fold
+
+.. code-block:: python
+
+   from jano import TemporalPartitionSpec, WalkForwardPolicy, WalkForwardRunner
+
+   policy = WalkForwardPolicy(
+       time_col="timestamp",
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="30D",
+           test_size="7D",
+       ),
+       step="7D",
+       strategy="rolling",
+   )
+
+   runner = WalkForwardRunner(
+       model=model,
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       retrain="always",
+       metrics=["mae", "rmse"],
+   )
+
+   run = runner.run(policy, frame)
+   print(run.to_frame().head())
+   print(run.summary())
+
+The shorthand retrain modes are:
+
+- ``retrain="always"`` or ``retrain=True`` to refit on every fold
+- ``retrain="never"`` or ``retrain=False`` to fit once and reuse the same model
+- ``retrain="periodic"`` plus ``retrain_interval=K`` to refit every ``K`` folds
+
+You can also pass an explicit retrain policy object:
+
+.. code-block:: python
+
+   from jano import DriftBasedRetrain, WalkForwardRunner
+
+   runner = WalkForwardRunner(
+       model=model,
+       target_col="target",
+       retrain_policy=DriftBasedRetrain(
+           metric="mae",
+           threshold=0.05,
+           baseline="last_retrain",
+       ),
+       metrics=["mae"],
+   )
+
+``DriftBasedRetrain`` uses previously observed fold metrics to decide whether the next
+fold should trigger a retrain. That makes it useful as a first operational benchmark,
+without forcing drift logic into the splitter itself.
+
 Calendar-aligned duration windows
 ---------------------------------
 

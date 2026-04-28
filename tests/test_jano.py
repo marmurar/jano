@@ -8,11 +8,17 @@ import pytest
 import polars as pl
 
 from jano import (
+    AlwaysRetrain,
+    DriftBasedRetrain,
     DriftMonitoringPolicy,
     FeatureLookbackSpec,
+    NeverRetrain,
     PartitionPlan,
+    PeriodicRetrain,
     PerformanceDecayPolicy,
     PlannedFold,
+    RetrainContext,
+    RetrainPolicy,
     RollingTrainHistoryPolicy,
     RollingTrainHistoryResult,
     SimulationPlan,
@@ -22,6 +28,8 @@ from jano import (
     TemporalSimulation,
     TrainHistoryPolicy,
     TrainGrowthPolicy,
+    WalkForwardRunResult,
+    WalkForwardRunner,
     WalkForwardPolicy,
     __version__,
 )
@@ -63,6 +71,15 @@ class SimpleLinearRegressor:
         matrix = X.to_numpy(dtype=float)
         design = np.column_stack([np.ones(len(matrix)), matrix])
         return design @ self.coef_
+
+
+class MeanRegressor:
+    def fit(self, X: pd.DataFrame, y: pd.Series):
+        self.mean_ = float(np.asarray(y).mean())
+        return self
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        return np.repeat(self.mean_, len(X))
 
 
 def test_public_version_matches_installed_distribution_metadata() -> None:
@@ -210,6 +227,139 @@ def test_split_returns_plain_index_tuples() -> None:
     train_idx, test_idx = next(splitter.split(frame))
     assert train_idx.tolist() == [0, 1, 2, 3, 4]
     assert test_idx.tolist() == [5, 6, 7]
+
+
+def test_walk_forward_runner_retrains_every_fold_by_default() -> None:
+    frame = build_frame(size=10)
+    policy = WalkForwardPolicy(
+        "timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2),
+        step=2,
+        strategy="rolling",
+    )
+
+    result = WalkForwardRunner(
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        feature_cols=["feature"],
+        metrics="rmse",
+    ).run(policy, frame)
+
+    assert isinstance(result, WalkForwardRunResult)
+    assert result.retrain_policy == "AlwaysRetrain"
+    assert result.to_frame()["retrained"].tolist() == [True, True, True]
+    assert len(result.predictions_frame()) == 6
+
+
+def test_walk_forward_runner_can_keep_same_model_without_retraining() -> None:
+    frame = build_frame(size=10)
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2),
+        step=2,
+        strategy="rolling",
+    )
+
+    result = WalkForwardRunner(
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        feature_cols=["feature"],
+        retrain=False,
+        metrics="rmse",
+    ).run(splitter, frame)
+
+    assert result.retrain_policy == "NeverRetrain"
+    assert result.to_frame()["retrained"].tolist() == [True, False, False]
+    assert result.summary()["retrain_events"] == 1
+
+
+def test_walk_forward_runner_supports_periodic_retraining() -> None:
+    frame = build_frame(size=10)
+    policy = WalkForwardPolicy(
+        "timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2),
+        step=2,
+        strategy="rolling",
+    )
+
+    result = WalkForwardRunner(
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        feature_cols=["feature"],
+        retrain="periodic",
+        retrain_interval=2,
+        metrics="rmse",
+    ).run(policy, frame)
+
+    assert result.retrain_policy == "PeriodicRetrain"
+    assert result.to_frame()["retrained"].tolist() == [True, False, True]
+
+
+def test_walk_forward_runner_accepts_separate_y_input() -> None:
+    frame = build_frame(size=10)
+    policy = WalkForwardPolicy(
+        "timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2),
+        step=2,
+        strategy="rolling",
+    )
+
+    result = WalkForwardRunner(
+        model=SimpleLinearRegressor(),
+        feature_cols=["feature"],
+        metrics="rmse",
+    ).run(policy, frame[["timestamp", "feature"]], frame["target"])
+
+    assert "rmse" in result.to_frame().columns
+    assert len(result.predictions_frame()) == 6
+
+
+def test_walk_forward_runner_respects_policy_max_folds() -> None:
+    frame = build_frame(size=12)
+    policy = WalkForwardPolicy(
+        "timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2),
+        step=1,
+        strategy="rolling",
+        max_folds=2,
+    )
+
+    result = WalkForwardRunner(
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        feature_cols=["feature"],
+        retrain="always",
+        metrics="rmse",
+    ).run(policy, frame)
+
+    assert len(result.to_frame()) == 2
+
+
+def test_walk_forward_runner_can_retrain_on_observed_drift() -> None:
+    frame = pd.DataFrame(
+        {
+            "timestamp": pd.date_range("2024-01-01", periods=10, freq="D"),
+            "feature": np.arange(10),
+            "target": np.arange(10),
+        }
+    )
+    policy = WalkForwardPolicy(
+        "timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2),
+        step=2,
+        strategy="rolling",
+    )
+
+    result = WalkForwardRunner(
+        model=MeanRegressor(),
+        target_col="target",
+        feature_cols=["feature"],
+        retrain_policy=DriftBasedRetrain(metric="mae", threshold=0.5, baseline="last_retrain"),
+        metrics="mae",
+    ).run(policy, frame)
+
+    assert result.retrain_policy == "DriftBasedRetrain"
+    assert result.to_frame()["retrained"].tolist() == [True, False, True]
 
 
 def test_duration_split_keeps_original_positions_on_unsorted_frame() -> None:

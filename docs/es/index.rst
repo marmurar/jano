@@ -44,16 +44,17 @@ Jano
 
       Resumen visual de cómo Jano organiza particiones temporales, folds y reporting a lo largo del tiempo.
 
-Jano es un toolkit de Python para estructurar, ejecutar y analizar simulaciones temporales sobre sistemas de machine learning que operan con datos correlacionados en el tiempo. Proporciona un marco explícito para definir políticas de partición temporal, correr evaluaciones walk-forward y generar reportes auditables que reflejan cómo se comportan los modelos bajo dinámicas de producción más realistas.
+Jano es un toolkit de Python para estructurar, ejecutar y analizar simulaciones temporales sobre sistemas de machine learning que operan con datos correlacionados en el tiempo. Proporciona un marco explícito para definir políticas de partición temporal, correr evaluaciones walk-forward, ejecutar modelos bajo reglas explícitas de retraining y generar reportes auditables que reflejan cómo se comportan los sistemas bajo dinámicas de producción más realistas.
 
 A diferencia de los splits aleatorios tradicionales, Jano trata la cronología como una restricción de primer nivel. Está pensado para escenarios donde el leakage debe controlarse estrictamente y donde la performance cambia en el tiempo por drift, ciclos de reentrenamiento o cambios en la distribución de los datos.
 
-En la práctica, la superficie recomendada es ``TemporalSimulation`` para corridas completas, mientras que ``TemporalBacktestSplitter`` sigue disponible para control manual de folds. Jano no calcula métricas de drift directamente; expone la estructura temporal de los resultados para que el drift, los cambios de régimen y la degradación sean observables fold por fold.
+En la práctica, la superficie recomendada se reparte entre ``TemporalSimulation`` y ``WalkForwardPolicy`` para simulación de folds, ``WalkForwardRunner`` para ejecutar modelos sobre esos folds, y ``TemporalBacktestSplitter`` para control manual e iteración low-level. Jano no calcula métricas de drift directamente; expone la estructura temporal de los resultados para que el drift, los cambios de régimen y la degradación sean observables fold por fold.
 
 Casos de uso típicos:
 
 - validación walk-forward para forecasting o clasificación temporal
 - simulación de políticas de retraining y despliegue
+- ejecución de benchmarks de modelo bajo reglas explícitas de retraining
 - monitoreo de estabilidad del modelo a lo largo del tiempo
 - evaluación de políticas de decisión bajo condiciones de datos cambiantes
 

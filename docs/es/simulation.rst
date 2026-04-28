@@ -118,6 +118,71 @@ Podés anclar la simulación a un punto de tiempo específico y limitar el núme
 
 ``WalkForwardPolicy`` también acepta ``end_at`` cuando querés restringir la simulación a una ventana temporal acotada.
 
+Correr un modelo con policies de retraining
+-------------------------------------------
+
+Cuando no querés escribir un loop manual tipo ``for train_idx, test_idx in splitter``,
+podés usar ``WalkForwardRunner`` por encima del workflow temporal. El runner mantiene
+las responsabilidades separadas:
+
+- ``WalkForwardPolicy`` sigue definiendo la geometría de folds
+- ``WalkForwardRunner`` ejecuta el estimador sobre esos folds
+- una policy de retraining decide si el modelo debe refittearse antes de cada fold
+
+.. code-block:: python
+
+   from jano import TemporalPartitionSpec, WalkForwardPolicy, WalkForwardRunner
+
+   policy = WalkForwardPolicy(
+       time_col="timestamp",
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="30D",
+           test_size="7D",
+       ),
+       step="7D",
+       strategy="rolling",
+   )
+
+   runner = WalkForwardRunner(
+       model=model,
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       retrain="always",
+       metrics=["mae", "rmse"],
+   )
+
+   run = runner.run(policy, frame)
+   print(run.to_frame().head())
+   print(run.summary())
+
+Los modos shorthand de retraining son:
+
+- ``retrain="always"`` o ``retrain=True`` para refittear en cada fold
+- ``retrain="never"`` o ``retrain=False`` para entrenar una vez y reutilizar el mismo modelo
+- ``retrain="periodic"`` más ``retrain_interval=K`` para refittear cada ``K`` folds
+
+También podés pasar una policy explícita:
+
+.. code-block:: python
+
+   from jano import DriftBasedRetrain, WalkForwardRunner
+
+   runner = WalkForwardRunner(
+       model=model,
+       target_col="target",
+       retrain_policy=DriftBasedRetrain(
+           metric="mae",
+           threshold=0.05,
+           baseline="last_retrain",
+       ),
+       metrics=["mae"],
+   )
+
+``DriftBasedRetrain`` usa métricas observadas en folds previos para decidir si el fold
+siguiente debería disparar un retraining. Eso lo vuelve útil como benchmark operativo
+inicial, sin meter lógica de drift dentro del splitter.
+
 Alineación a días calendario
 ----------------------------
 
