@@ -150,15 +150,115 @@ class WalkForwardRunResult:
         """Return row-level predictions across all test folds."""
         return self.predictions.copy()
 
+    @property
+    def metric_names(self) -> list[str]:
+        """Return metric columns recorded for each evaluated fold."""
+        metadata_columns = {
+            "fold",
+            "retrained",
+            "last_retrain_fold",
+            "train_rows",
+            "test_rows",
+            "train_start",
+            "train_end",
+            "test_start",
+            "test_end",
+        }
+        return [column for column in self.records.columns if column not in metadata_columns]
+
+    def fold_summary(self) -> pd.DataFrame:
+        """Return fold geometry and retraining metadata without metric columns."""
+        columns = [
+            "fold",
+            "retrained",
+            "last_retrain_fold",
+            "train_rows",
+            "test_rows",
+            "train_start",
+            "train_end",
+            "test_start",
+            "test_end",
+        ]
+        return self.records[[column for column in columns if column in self.records.columns]].copy()
+
+    def metric_trajectory(self) -> pd.DataFrame:
+        """Return metrics in long format, one row per fold and metric."""
+        metric_names = self.metric_names
+        if not metric_names:
+            return pd.DataFrame(columns=["fold", "metric", "value", "direction", "retrained"])
+
+        trajectory = self.records.melt(
+            id_vars=["fold", "retrained"],
+            value_vars=metric_names,
+            var_name="metric",
+            value_name="value",
+        )
+        trajectory["direction"] = trajectory["metric"].map(
+            lambda metric: self.metric_directions.get(metric, "min")
+        )
+        return trajectory[["fold", "metric", "value", "direction", "retrained"]]
+
+    def retrain_events(self) -> pd.DataFrame:
+        """Return the subset of folds where the estimator was retrained."""
+        return self.fold_summary().loc[lambda frame: frame["retrained"].astype(bool)].reset_index(
+            drop=True
+        )
+
     def summary(self) -> dict[str, object]:
         """Return compact aggregate execution statistics."""
         retrained = self.records["retrained"].astype(bool)
-        return {
+        summary = {
             "folds": int(len(self.records)),
             "retrain_policy": self.retrain_policy,
             "retrain_events": int(retrained.sum()),
             "retrain_ratio": float(retrained.mean()),
+            "metrics": self.metric_names,
         }
+        for metric in self.metric_names:
+            values = self.records[metric].astype(float)
+            direction = self.metric_directions.get(metric, "min")
+            best_index = values.idxmin() if direction == "min" else values.idxmax()
+            summary[f"{metric}_mean"] = float(values.mean())
+            summary[f"{metric}_best"] = float(values.loc[best_index])
+            summary[f"{metric}_best_fold"] = int(self.records.loc[best_index, "fold"])
+        return summary
+
+    def report_data(self, *, include_predictions: bool = False) -> dict[str, object]:
+        """Return JSON-ready execution data for notebooks, agents or custom reports."""
+        payload: dict[str, object] = {
+            "summary": self.summary(),
+            "folds": _frame_records(self.fold_summary()),
+            "metrics": _frame_records(self.metric_trajectory()),
+            "retraining": {
+                "policy": self.retrain_policy,
+                "events": _frame_records(self.retrain_events()),
+            },
+            "metric_directions": dict(self.metric_directions),
+        }
+        if include_predictions:
+            payload["predictions"] = _frame_records(self.predictions_frame())
+        return payload
+
+    def to_dict(self, *, include_predictions: bool = False) -> dict[str, object]:
+        """Return a serializable representation of the execution result."""
+        return self.report_data(include_predictions=include_predictions)
+
+
+def _frame_records(frame: pd.DataFrame) -> list[dict[str, object]]:
+    return [
+        {str(key): _json_ready(value) for key, value in row.items()}
+        for row in frame.to_dict(orient="records")
+    ]
+
+
+def _json_ready(value):
+    if isinstance(value, pd.Timestamp):
+        return value.isoformat()
+    if isinstance(value, pd.Timedelta):
+        return str(value)
+    if isinstance(value, np.generic):
+        return value.item()
+    return value
 
 
 class WalkForwardRunner:

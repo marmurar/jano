@@ -216,6 +216,10 @@ run = runner.run(policy, frame)
 
 print(run.to_frame().head())
 print(run.summary())
+print(run.metric_trajectory().head())
+print(run.retrain_events())
+
+report_data = run.report_data(include_predictions=False)
 ```
 
 Supported retrain modes are:
@@ -224,6 +228,15 @@ Supported retrain modes are:
 - `retrain=False` or `retrain="never"` to train once and benchmark a fixed model.
 - `retrain="periodic"` with `retrain_interval=K` to refit every `K` folds.
 - `retrain_policy=DriftBasedRetrain(...)` when the next retrain decision should depend on previously observed fold metrics.
+
+Runner results are intentionally data-first rather than dashboard-first:
+
+- `run.fold_summary()` returns temporal fold geometry and retraining metadata.
+- `run.metric_trajectory()` returns metrics in long format, ready for plotting.
+- `run.retrain_events()` returns only folds where the estimator was refit.
+- `run.predictions_frame()` returns row-level test predictions.
+- `run.report_data()` / `run.to_dict()` return structured dictionaries for notebooks, agents, dashboards or presentation tools.
+
 pandas inputs stay pandas, Polars inputs use Polars column extraction, and NumPy arrays
 use array indexing. You can force a path with `engine="pandas"`, `engine="polars"` or
 `engine="numpy"` when you need deterministic behavior for a pipeline.

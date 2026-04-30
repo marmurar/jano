@@ -263,6 +263,109 @@ def test_walk_forward_runner_retrains_every_fold_by_default() -> None:
     assert result.retrain_policy == "AlwaysRetrain"
     assert result.to_frame()["retrained"].tolist() == [True, True, True]
     assert len(result.predictions_frame()) == 6
+    assert result.metric_names == ["rmse"]
+
+
+def test_walk_forward_run_result_exposes_plot_ready_execution_data() -> None:
+    frame = build_frame(size=10)
+    policy = WalkForwardPolicy(
+        "timestamp",
+        partition=TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2),
+        step=2,
+        strategy="rolling",
+    )
+
+    result = WalkForwardRunner(
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        feature_cols=["feature"],
+        retrain="periodic",
+        retrain_interval=2,
+        metrics=["mae", "rmse"],
+    ).run(policy, frame)
+
+    fold_summary = result.fold_summary()
+    trajectory = result.metric_trajectory()
+    retrain_events = result.retrain_events()
+    report = result.report_data(include_predictions=True)
+
+    assert list(fold_summary.columns) == [
+        "fold",
+        "retrained",
+        "last_retrain_fold",
+        "train_rows",
+        "test_rows",
+        "train_start",
+        "train_end",
+        "test_start",
+        "test_end",
+    ]
+    assert trajectory["metric"].tolist() == ["mae", "mae", "mae", "rmse", "rmse", "rmse"]
+    assert set(trajectory["direction"]) == {"min"}
+    assert retrain_events["fold"].tolist() == [0, 2]
+    assert report["summary"]["metrics"] == ["mae", "rmse"]
+    assert report["summary"]["retrain_events"] == 2
+    assert report["retraining"]["policy"] == "PeriodicRetrain"
+    assert report["folds"][0]["train_start"] == "2024-01-01T00:00:00"
+    assert len(report["predictions"]) == len(result.predictions_frame())
+    assert result.to_dict(include_predictions=True)["predictions"][0]["prediction"] == report["predictions"][0]["prediction"]
+
+
+def test_walk_forward_run_result_data_helpers_handle_minimal_and_max_metric_payloads() -> None:
+    result = WalkForwardRunResult(
+        records=pd.DataFrame(
+            {
+                "fold": [0, 1],
+                "retrained": [True, False],
+                "last_retrain_fold": [0, 0],
+                "train_rows": [4, 4],
+                "test_rows": [2, 2],
+                "train_start": [pd.Timestamp("2024-01-01"), pd.Timestamp("2024-01-02")],
+                "train_end": [pd.Timestamp("2024-01-05"), pd.Timestamp("2024-01-06")],
+                "test_start": [pd.Timestamp("2024-01-05"), pd.Timestamp("2024-01-06")],
+                "test_end": [pd.Timestamp("2024-01-07"), pd.Timestamp("2024-01-08")],
+                "accuracy": [np.float64(0.6), np.float64(0.8)],
+            }
+        ),
+        predictions=pd.DataFrame(
+            {
+                "fold": [0],
+                "row_index": [np.int64(4)],
+                "retrained": [True],
+                "y_true": [np.int64(1)],
+                "prediction": [np.int64(1)],
+                "latency": [pd.Timedelta(days=1)],
+            }
+        ),
+        metric_directions={"accuracy": "max"},
+        retrain_policy="ManualPolicy",
+    )
+
+    summary = result.summary()
+    report = result.report_data()
+    report_with_predictions = result.report_data(include_predictions=True)
+
+    assert summary["accuracy_best"] == 0.8
+    assert summary["accuracy_best_fold"] == 1
+    assert "predictions" not in report
+    assert report_with_predictions["predictions"][0]["row_index"] == 4
+    assert report_with_predictions["predictions"][0]["latency"] == "1 days 00:00:00"
+
+    no_metric = WalkForwardRunResult(
+        records=result.fold_summary(),
+        predictions=pd.DataFrame(),
+        metric_directions={},
+        retrain_policy="ManualPolicy",
+    )
+    assert no_metric.metric_names == []
+    assert list(no_metric.metric_trajectory().columns) == [
+        "fold",
+        "metric",
+        "value",
+        "direction",
+        "retrained",
+    ]
+    assert no_metric.report_data()["metrics"] == []
 
 
 def test_walk_forward_runner_can_keep_same_model_without_retraining() -> None:

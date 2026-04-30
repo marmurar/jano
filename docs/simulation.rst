@@ -162,6 +162,19 @@ responsibilities separated:
    run = runner.run(policy, frame)
    print(run.to_frame().head())
    print(run.summary())
+   print(run.metric_trajectory().head())
+   print(run.retrain_events())
+
+Runner results are intentionally data-first. Jano does not need to own the final
+dashboard layer; it exposes structured evidence that notebooks, agents,
+presentation tools or applications can visualize in their own style:
+
+- ``run.fold_summary()`` returns temporal fold geometry and retraining metadata.
+- ``run.metric_trajectory()`` returns metrics in long format, ready for plotting.
+- ``run.retrain_events()`` returns only folds where the estimator was refit.
+- ``run.predictions_frame()`` returns row-level test predictions.
+- ``run.report_data()`` and ``run.to_dict()`` return structured dictionaries for
+  external reporting layers.
 
 The shorthand retrain modes are:
 

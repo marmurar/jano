@@ -155,6 +155,19 @@ las responsabilidades separadas:
    run = runner.run(policy, frame)
    print(run.to_frame().head())
    print(run.summary())
+   print(run.metric_trajectory().head())
+   print(run.retrain_events())
+
+Los resultados del runner son data-first. Jano no necesita ser dueño de la capa
+final de dashboard; expone evidencia estructurada para que notebooks, agentes,
+herramientas de presentación o aplicaciones la visualicen con su propio estilo:
+
+- ``run.fold_summary()`` devuelve geometría temporal y metadata de retraining.
+- ``run.metric_trajectory()`` devuelve métricas en formato long, listas para graficar.
+- ``run.retrain_events()`` devuelve solo los folds donde el estimador se refitteó.
+- ``run.predictions_frame()`` devuelve predicciones row-level sobre los tests.
+- ``run.report_data()`` y ``run.to_dict()`` devuelven diccionarios estructurados
+  para capas externas de reporting.
 
 Los modos shorthand de retraining son:
 
