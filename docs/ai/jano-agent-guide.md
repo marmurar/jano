@@ -1,0 +1,181 @@
+# Jano Agent Guide
+
+This guide is the canonical AI-facing usage guide for Jano. Use it when an agent
+needs to write code with Jano, analyze a temporal dataset, propose validation
+experiments or modify the project.
+
+## What Jano Is
+
+Jano is a temporal simulation and backtesting toolkit for time-dependent machine
+learning systems. It is designed for datasets where chronology matters and random
+splits can leak future information into training.
+
+Use Jano to:
+
+- define temporal train/test or train/validation/test partitions
+- inspect fold geometry before materializing data
+- run walk-forward simulations
+- execute models over temporal folds under explicit retraining policies
+- structure evidence about drift, decay, retraining cadence and train history
+
+Jano is not AutoML, a model registry, a feature store or a dashboard framework.
+
+## Recommended API Selection
+
+Use `TemporalBacktestSplitter` when the user wants low-level fold iteration or full
+manual control.
+
+Use `WalkForwardPolicy` when the user wants a production-like temporal simulation
+with rolling, expanding or single-window movement.
+
+Use `policy.plan(frame)` before running when the user wants to inspect fold dates,
+row counts, iteration indices or exclude specific windows.
+
+Use `WalkForwardRunner` when the user wants Jano to fit, predict and measure a model
+over temporal folds.
+
+Use `TrainHistoryPolicy` when the question is: does more training history improve
+performance on the same fixed test window?
+
+Use `DriftMonitoringPolicy` or `PerformanceDecayPolicy` when the question is: how
+long does a model or rule remain useful after a fixed training window?
+
+Use `RollingTrainHistoryPolicy` when the question is: how much history is optimal on
+average across walk-forward iterations?
+
+## Core Patterns
+
+### Inspect Before Running
+
+Prefer planning before materialization when the user asks about fold geometry,
+dataset windows, row counts or excluded dates.
+
+```python
+from jano import TemporalPartitionSpec, WalkForwardPolicy
+
+policy = WalkForwardPolicy(
+    time_col="timestamp",
+    partition=TemporalPartitionSpec(
+        layout="train_test",
+        train_size="30D",
+        test_size="7D",
+    ),
+    step="7D",
+    strategy="rolling",
+)
+
+plan = policy.plan(frame)
+plan_frame = plan.to_frame()
+```
+
+### Run a Simulation Without a Model
+
+Use this when the user wants fold-level simulation and reporting but not model
+execution.
+
+```python
+result = policy.run(frame, title="Walk-forward simulation")
+
+summary_frame = result.to_frame()
+chart_data = result.chart_data.to_dict()
+```
+
+### Execute a Model Over Folds
+
+Use this when the user wants metrics, predictions or retraining behavior.
+
+```python
+from jano import WalkForwardRunner
+
+runner = WalkForwardRunner(
+    model=model,
+    target_col="target",
+    feature_cols=["feature_a", "feature_b"],
+    retrain="periodic",
+    retrain_interval=2,
+    metrics=["mae", "rmse"],
+)
+
+run = runner.run(policy, frame)
+
+records = run.to_frame()
+metrics = run.metric_trajectory()
+retrain_events = run.retrain_events()
+report_data = run.report_data()
+```
+
+## Data-First Reporting
+
+Prefer structured outputs over generated HTML for model execution. Jano's runner is
+designed to return evidence that notebooks, dashboards, slides or agents can
+visualize externally.
+
+Use:
+
+- `run.fold_summary()` for temporal fold geometry and retraining metadata
+- `run.metric_trajectory()` for long-format metric data
+- `run.retrain_events()` for folds where the model was refit
+- `run.predictions_frame()` for row-level test predictions
+- `run.report_data()` or `run.to_dict()` for JSON-ready agent output
+
+Do not make HTML dashboards the primary contract for runner results.
+
+## Temporal Safety Rules
+
+- Do not use random `train_test_split` for time-dependent validation.
+- Do not train on rows whose target or label would not have been available in production.
+- Use `gap_before_test`, `gap_before_validation` or `TemporalSemanticsSpec` when leakage is possible.
+- Use calendar alignment with `calendar_frequency` when the user wants complete days or other fixed calendar periods.
+- Keep model fitting and metrics outside `TemporalBacktestSplitter`.
+- Preserve manual fold iteration as a valid path for advanced users.
+
+## Multiple Time Columns
+
+Use `TemporalSemanticsSpec` when the dataset has different timestamps for ordering,
+training eligibility or testing eligibility.
+
+Example: flights may have `scheduled_departure_at` and `actual_arrival_at`. A train
+row may only be eligible after arrival, while the timeline may remain anchored on
+scheduled departure.
+
+```python
+from jano import TemporalSemanticsSpec
+
+semantics = TemporalSemanticsSpec(
+    timeline_col="scheduled_departure_at",
+    order_col="scheduled_departure_at",
+    segment_time_cols={
+        "train": "actual_arrival_at",
+        "test": "scheduled_departure_at",
+    },
+)
+```
+
+## Working on the Jano Repo
+
+Before changing architecture or public APIs, read:
+
+- `docs/architecture/README.md`
+- `docs/architecture/adrs/`
+- `docs/architecture/specs/`
+- `docs/architecture/rfcs/`
+
+Important architecture rules:
+
+- the splitter remains model-agnostic
+- runner execution does not redefine fold geometry
+- runner outputs are data-first
+- manual fold iteration remains public
+- studies compose lower-level primitives
+
+## Verification
+
+For code changes, run:
+
+```bash
+python3 -m pytest --cov=jano --cov-report=term-missing
+python3 -m sphinx -b html docs docs/_build/html
+```
+
+The project currently has a 99% coverage gate.
+

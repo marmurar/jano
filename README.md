@@ -68,6 +68,19 @@ The MCP layer is intentionally opinionated: it exposes planning and walk-forward
 
 This is meant for MCP-aware coding assistants such as Claude Code, Claude Desktop, Cursor, Codex runtimes with MCP support, and other local agent environments. The server runs locally and reads only the file paths you provide to its tools; Jano does not upload datasets anywhere by itself.
 
+## AI-ready usage
+
+Jano includes three surfaces intended to make the project easier for AI agents to use and extend:
+
+- Architecture notes in `docs/architecture/` explain the project layers, accepted decisions, specs and open RFCs.
+- The canonical agent guide in `docs/ai/jano-agent-guide.md` explains which Jano API to use for common temporal validation tasks.
+- Tool-specific adapters provide lightweight entry points for Codex, Claude and Cursor:
+  - `skills/jano/SKILL.md`
+  - `CLAUDE.md`
+  - `.cursor/rules/jano.mdc`
+
+Use the MCP server when an agent should execute Jano operations over local datasets. Use the skill or agent guide when an agent needs to reason about Jano, write code with the library or modify the repository safely.
+
 ## Why Jano exists
 
 Many machine learning datasets are not just tabular; they are structured over time and often across multiple entities such as users, routes, sellers or products. In those settings, a more faithful view of the data is not "a bag of independent rows" but a temporally ordered process.

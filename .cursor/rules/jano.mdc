@@ -1,0 +1,24 @@
+---
+description: Jano temporal simulation and backtesting guidance
+globs:
+  - "**/*.py"
+  - "**/*.md"
+  - "docs/**/*.rst"
+alwaysApply: false
+---
+
+# Jano Agent Rules
+
+Use `docs/ai/jano-agent-guide.md` as the canonical guide.
+
+Apply these rules when working on Jano:
+
+- Use `WalkForwardPolicy` for production-like walk-forward simulations.
+- Use `policy.plan(frame)` before materializing folds when the user asks about dates, row counts or iteration geometry.
+- Use `WalkForwardRunner` for fitting, predicting and measuring models over temporal folds.
+- Use `TemporalBacktestSplitter` for low-level manual fold iteration.
+- Keep `TemporalBacktestSplitter` model-agnostic.
+- Prefer data-first outputs: `fold_summary()`, `metric_trajectory()`, `retrain_events()`, `report_data()`.
+- Do not make HTML dashboards the primary contract for runner execution results.
+- Read `docs/architecture/` before changing public APIs or architecture.
+

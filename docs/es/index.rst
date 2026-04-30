@@ -72,6 +72,7 @@ Backends soportados:
    concepts
    simulation
    mcp
+   ai
    benchmark
    api
    release
