@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use Jano in research, technical reports, benchmarks or production validation work, please cite it using this metadata."
+title: "Jano: Temporal Simulation and Backtesting Toolkit for Time-Dependent Machine Learning Systems"
+authors:
+  - family-names: "Muraro"
+    given-names: "Marcos Manuel"
+url: "https://github.com/marmurar/jano"
+repository-code: "https://github.com/marmurar/jano"
+license: "MIT"
+version: "0.3.1"
+date-released: "2026-04-28"
+keywords:
+  - "temporal validation"
+  - "walk-forward validation"
+  - "backtesting"
+  - "machine learning"
+  - "time-correlated data"
+  - "retraining"

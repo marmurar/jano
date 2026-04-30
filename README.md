@@ -550,6 +550,10 @@ Current distribution and quality signals:
 
 For production use, pin an explicit version and review release notes before upgrading. For experimentation, temporal validation design work and prototype evaluation pipelines, the project is ready to use.
 
+## Citation
+
+If you use Jano in research, technical reports, benchmarks or production validation work, please cite it using the metadata in [CITATION.cff](CITATION.cff).
+
 ## Authors
 
 - Marcos Manuel Muraro
