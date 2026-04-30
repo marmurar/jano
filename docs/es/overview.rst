@@ -77,7 +77,13 @@ Jano se está ordenando alrededor de algunas ideas claras:
 Estado actual
 -------------
 
-El core actual ya soporta:
+Jano es un proyecto público temprano, con un core usable y una API que todavía
+se está refinando a medida que crece la capa de simulación. La superficie de
+partición temporal de bajo nivel es la parte más estable de la librería, mientras
+que las APIs de ejecución y estudios siguen evolucionando alrededor de preguntas
+operativas explícitas.
+
+El core actual soporta:
 
 - ``TemporalSimulation`` como interfaz high-level para correr simulaciones completas
 - ``WalkForwardRunner`` como capa de ejecución por encima de folds temporales
@@ -92,4 +98,9 @@ El core actual ya soporta:
 - modos de ejecución como retraining siempre, nunca, periódico o basado en drift
 - una ruta de indexado temporal más numpy-first para reducir overhead en datasets grandes
 
-La API ya es suficientemente estable para experimentar y seguir refinando el diseño. En la práctica, Jano ya funciona como un framework experimental para razonar sobre sistemas de machine learning como procesos que evolucionan en el tiempo, y no como artefactos estáticos de train/test.
+El paquete está disponible en PyPI como ``jano``. La suite de tests tiene un
+umbral mínimo de cobertura del 99%, y la cobertura medida actualmente es 99.25%.
+
+Para uso productivo, conviene fijar una versión explícita y revisar las notas de
+release antes de actualizar. Para experimentación, diseño de validación temporal
+y pipelines prototipo de evaluación, Jano ya está listo para usarse.

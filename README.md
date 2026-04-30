@@ -7,7 +7,10 @@
 [![CI](https://github.com/marmurar/jano/actions/workflows/ci.yml/badge.svg)](https://github.com/marmurar/jano/actions/workflows/ci.yml)
 [![Docs](https://github.com/marmurar/jano/actions/workflows/docs.yml/badge.svg)](https://github.com/marmurar/jano/actions/workflows/docs.yml)
 [![codecov](https://codecov.io/gh/marmurar/jano/graph/badge.svg)](https://codecov.io/gh/marmurar/jano)
+[![PyPI](https://img.shields.io/pypi/v/jano.svg)](https://pypi.org/project/jano/)
+[![Python versions](https://img.shields.io/pypi/pyversions/jano.svg)](https://pypi.org/project/jano/)
 [![PyPI Downloads](https://static.pepy.tech/badge/jano/month)](https://pepy.tech/projects/jano)
+[![License](https://img.shields.io/pypi/l/jano.svg)](https://github.com/marmurar/jano/blob/master/LICENSE.txt)
 
 Jano is a Python library for defining temporal partitions and backtesting schemes over time-correlated datasets.
 
@@ -17,7 +20,7 @@ Documentation: [marmurar.github.io/jano](https://marmurar.github.io/jano/)
 
 It is designed for cases where a plain `train_test_split()` is not enough: transactional data, production simulations, repeated retraining, walk-forward validation, model monitoring, rule evaluation, or any experiment where the ordering of time matters.
 
-The core accepts `pandas.DataFrame`, `numpy.ndarray` and `polars.DataFrame` inputs. `pandas` remains the internal execution engine, while NumPy and Polars inputs are normalized at the boundary so the split/reporting API stays consistent.
+The core accepts `pandas.DataFrame`, `numpy.ndarray` and `polars.DataFrame` inputs through a unified API. Jano keeps native pandas, NumPy and Polars paths for partition planning when that is safe, and falls back to pandas materialization for reporting and user-facing slices.
 
 The project is named after Janus, the Roman god of beginnings, transitions and thresholds. That framing fits the library well: Jano helps define how a dataset moves from training periods into evaluation periods, fold after fold.
 
@@ -118,13 +121,6 @@ Those classes sit on top of the lower-level building blocks that remain availabl
 - `TemporalSimulation` for explicit simulation objects,
 - `TemporalBacktestSplitter` for manual fold iteration,
 - `TrainGrowthPolicy` and `PerformanceDecayPolicy` for lower-level temporal hypothesis primitives.
-
-The workflow is intentionally compositional:
-
-- start simple with predefined layouts and strategies,
-- move to `plan()` when you want to inspect or filter iterations before running them,
-- use the small policy surface when the question is already encapsulated,
-- and fall back to manual fold iteration when you want to compose everything yourself: partitions, gaps, feature history and model training logic.
 
 The workflow is intentionally compositional:
 
@@ -462,7 +458,7 @@ The generated report shows each fold across the dataset timeline, with richer su
 
 ## Installation
 
-After the first PyPI release, install the package with:
+Install the current release from PyPI:
 
 ```bash
 python -m pip install jano
@@ -497,7 +493,7 @@ The release path is:
 
 That tag triggers the `Publish` workflow, which builds the wheel and source distribution and publishes them to PyPI.
 
-In parallel, the repository also includes a `GitHub Release` workflow that can create a GitHub Release and attach the built wheel and source distribution for any `v*` tag. That gives the project a distribution channel even while PyPI access is still being recovered.
+In parallel, the repository also includes a `GitHub Release` workflow that can create a GitHub Release and attach the built wheel and source distribution for any `v*` tag.
 
 ## Continuous integration and coverage
 
@@ -507,12 +503,26 @@ The repository includes:
 - GitHub Pages publication for Sphinx documentation.
 - Coverage reporting with `pytest-cov`.
 - Codecov upload and status tracking.
+- A coverage gate set to 99%.
 
 ## Status
 
-Jano is currently in an early redesign phase. The public API is stabilizing around temporal partition specs, reusable splitters and rich split objects.
+Jano is an early public project with a usable core and an API that is still being refined as the simulation layer grows.
 
-That means the project is already usable for experimentation, but it is still a good moment to refine naming, ergonomics and compatibility guarantees before publishing broadly.
+The low-level temporal partitioning surface is the most stable part of the library: `TemporalBacktestSplitter`, `TemporalPartitionSpec`, `TemporalSimulation`, `WalkForwardPolicy` and `plan()` are the foundation for manual fold iteration, auditability and simulation planning.
+
+The higher-level execution and study APIs, including `WalkForwardRunner`, retrain policies, train-history studies and drift-monitoring helpers, are intentionally evolving. They are covered by tests and documented, but naming and ergonomics may still change while Jano is being shaped into a broader temporal experimentation framework.
+
+Current distribution and quality signals:
+
+- PyPI package: [jano](https://pypi.org/project/jano/).
+- Latest tested release line: `0.3.x`.
+- Test suite: `114 passed`.
+- Coverage gate: `99%` minimum.
+- Current measured coverage: `99.25%`.
+- Documentation: [marmurar.github.io/jano](https://marmurar.github.io/jano/).
+
+For production use, pin an explicit version and review release notes before upgrading. For experimentation, temporal validation design work and prototype evaluation pipelines, the project is ready to use.
 
 ## Authors
 
