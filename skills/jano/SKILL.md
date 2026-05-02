@@ -25,6 +25,8 @@ Use Jano when:
 - Use `WalkForwardRunner` when fitting and predicting over folds.
 - Use `TemporalBacktestSplitter` for manual control.
 - Use `report_data()`, `metric_trajectory()` and `fold_summary()` for agent-readable outputs.
+- Use the MCP tool `run_walk_forward_baseline_model` for quick local sanity checks
+  before writing custom model code.
 
 ## Rules
 
@@ -32,4 +34,3 @@ Use Jano when:
 - Do not add model logic to `TemporalBacktestSplitter`.
 - Prefer structured outputs over generated HTML for runner results.
 - Read `docs/architecture/` before changing public APIs.
-

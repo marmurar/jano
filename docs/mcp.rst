@@ -7,13 +7,15 @@ This is useful when you want an agent to:
 
 - inspect a local dataset,
 - precompute a walk-forward plan,
-- and run a temporal simulation without writing Python code manually.
+- run a temporal simulation,
+- and execute a simple baseline model without writing Python code manually.
 
 The initial MCP surface is intentionally narrow. It focuses on the most stable, agent-friendly workflow:
 
 - preview a dataset,
 - plan a walk-forward simulation,
-- run a walk-forward simulation.
+- run a walk-forward simulation,
+- run a baseline model over the same folds.
 
 Why MCP instead of only the Python library?
 -------------------------------------------
@@ -66,8 +68,41 @@ Available MCP tools
   Materialize a walk-forward simulation and return a compact summary, selected
   partition-engine metadata and rendered HTML.
 
-Both tools accept ``engine`` with the same values as the Python API: ``"auto"``,
+``run_walk_forward_baseline_model``
+  Execute a built-in baseline model over the walk-forward folds and return
+  runner data: aggregate summary, fold preview, metric trajectory, retraining
+  events and an optional bounded prediction preview. Use ``model="mean"`` for
+  numeric regression targets and ``model="majority_class"`` for classification
+  targets.
+
+The planning and execution tools accept ``engine`` with the same values as the Python API: ``"auto"``,
 ``"pandas"``, ``"polars"`` or ``"numpy"``.
+
+Baseline runner example
+-----------------------
+
+.. code-block:: json
+
+   {
+     "dataset_path": "data/bts/bts_ontime_2024_01.zip",
+     "partition": {
+       "layout": "train_test",
+       "train_size": "7D",
+       "test_size": "1D"
+     },
+     "step": "1D",
+     "time_col": "FL_DATE",
+     "target_col": "arrival_state",
+     "model": "majority_class",
+     "metrics": "accuracy",
+     "retrain": "periodic",
+     "retrain_interval": 2,
+     "max_folds": 5
+   }
+
+This tool is intentionally a baseline, not a general arbitrary-model executor.
+For production estimators, use the Python ``WalkForwardRunner`` directly so your
+code controls model construction, feature engineering and custom metrics.
 
 Example MCP client configuration
 --------------------------------
@@ -138,6 +173,7 @@ It deliberately starts with:
 
 - dataset preview,
 - planning,
-- walk-forward simulation.
+- walk-forward simulation,
+- baseline-model execution.
 
 Lower-level composition and model-specific temporal hypothesis policies remain available in the Python library itself.

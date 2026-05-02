@@ -33,6 +33,7 @@ Current MCP tools:
 - `preview_local_dataset`
 - `plan_walk_forward_simulation`
 - `run_walk_forward_simulation`
+- `run_walk_forward_baseline_model`
 
 Install it in a Python 3.10+ environment:
 
@@ -64,7 +65,7 @@ Example MCP client configuration:
 }
 ```
 
-The MCP layer is intentionally opinionated: it exposes planning and walk-forward simulation first, while the full Python library remains available when you need custom composition.
+The MCP layer is intentionally opinionated: it exposes planning, walk-forward simulation and simple baseline-model execution first, while the full Python library remains available when you need custom composition.
 
 This is meant for MCP-aware coding assistants such as Claude Code, Claude Desktop, Cursor, Codex runtimes with MCP support, and other local agent environments. The server runs locally and reads only the file paths you provide to its tools; Jano does not upload datasets anywhere by itself.
 

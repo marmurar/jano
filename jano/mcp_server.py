@@ -1,6 +1,11 @@
 from __future__ import annotations
 
-from .mcp_tools import plan_walk_forward, preview_dataset, run_walk_forward
+from .mcp_tools import (
+    plan_walk_forward,
+    preview_dataset,
+    run_walk_forward,
+    run_walk_forward_baseline,
+)
 
 
 def build_server():
@@ -165,6 +170,102 @@ def build_server():
             test_time_col=test_time_col,
             title=title,
             preview_rows=preview_rows,
+        )
+
+    @mcp.tool()
+    def run_walk_forward_baseline_model(
+        dataset_path: str,
+        partition: dict,
+        step: str,
+        time_col: str,
+        target_col: str,
+        feature_cols: list[str] | None = None,
+        model: str = "mean",
+        metrics: str | list[str] | None = None,
+        retrain: bool | str = "always",
+        retrain_interval: int | None = None,
+        drift_metric: str = "rmse",
+        drift_threshold: float = 0.05,
+        drift_baseline: str = "last_retrain",
+        drift_relative: bool = True,
+        strategy: str = "rolling",
+        allow_partial: bool = False,
+        engine: str = "auto",
+        start_at: str | None = None,
+        end_at: str | None = None,
+        max_folds: int | None = None,
+        dataset_format: str = "auto",
+        order_col: str | None = None,
+        train_time_col: str | None = None,
+        validation_time_col: str | None = None,
+        test_time_col: str | None = None,
+        include_predictions: bool = False,
+        preview_rows: int = 20,
+        prediction_preview_rows: int = 20,
+    ) -> dict:
+        """Run a simple baseline model over walk-forward folds.
+
+        Args:
+            dataset_path: Local path to a CSV, Parquet or ZIP-with-CSV dataset.
+            partition: Object accepted by ``TemporalPartitionSpec``.
+            step: Step size such as ``"1D"``.
+            time_col: Timeline column used to anchor the simulation.
+            target_col: Target column to evaluate.
+            feature_cols: Optional feature columns.
+            model: ``"mean"`` for numeric regression or ``"majority_class"`` for
+                classification.
+            metrics: Metric name or list accepted by ``WalkForwardRunner``.
+            retrain: ``"always"``, ``"never"``, ``"periodic"``, ``"on_drift"``,
+                ``True`` or ``False``.
+            retrain_interval: Fold interval required by ``retrain="periodic"``.
+            drift_metric: Metric monitored by ``retrain="on_drift"``.
+            drift_threshold: Drift threshold.
+            drift_baseline: Drift baseline reference.
+            drift_relative: Whether drift threshold is relative or absolute.
+            strategy: Movement strategy: ``"single"``, ``"rolling"`` or ``"expanding"``.
+            allow_partial: Whether to keep a final partial fold.
+            engine: Internal partition engine preference.
+            start_at: Optional lower timestamp bound.
+            end_at: Optional upper timestamp bound.
+            max_folds: Optional maximum number of folds.
+            dataset_format: Explicit format or ``"auto"``.
+            order_col: Optional column used to sort the dataset.
+            train_time_col: Optional timestamp column used to assign train rows.
+            validation_time_col: Optional timestamp column used to assign validation rows.
+            test_time_col: Optional timestamp column used to assign test rows.
+            include_predictions: Whether to return a bounded prediction preview.
+            preview_rows: Number of fold/metric rows returned in previews.
+            prediction_preview_rows: Number of prediction rows returned when requested.
+        """
+        return run_walk_forward_baseline(
+            dataset_path,
+            partition=partition,
+            step=step,
+            time_col=time_col,
+            target_col=target_col,
+            feature_cols=feature_cols,
+            model=model,
+            metrics=metrics,
+            retrain=retrain,
+            retrain_interval=retrain_interval,
+            drift_metric=drift_metric,
+            drift_threshold=drift_threshold,
+            drift_baseline=drift_baseline,
+            drift_relative=drift_relative,
+            strategy=strategy,
+            allow_partial=allow_partial,
+            engine=engine,
+            start_at=start_at,
+            end_at=end_at,
+            max_folds=max_folds,
+            dataset_format=dataset_format,
+            order_col=order_col,
+            train_time_col=train_time_col,
+            validation_time_col=validation_time_col,
+            test_time_col=test_time_col,
+            include_predictions=include_predictions,
+            preview_rows=preview_rows,
+            prediction_preview_rows=prediction_preview_rows,
         )
 
     return mcp

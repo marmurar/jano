@@ -51,7 +51,13 @@ from jano.describe import SimulationSummary as LegacySimulationSummary
 from jano.engines import PartitionEngine, detect_backend, missing_columns
 from jano.jano import TemporalBacktestSplitter as LegacyTemporalBacktestSplitter
 from jano.mcp_server import build_server
-from jano.mcp_tools import load_dataset_frame, plan_walk_forward, preview_dataset, run_walk_forward
+from jano.mcp_tools import (
+    load_dataset_frame,
+    plan_walk_forward,
+    preview_dataset,
+    run_walk_forward,
+    run_walk_forward_baseline,
+)
 from jano.policies import PerformanceDecayResult, TrainGrowthResult
 from jano.reporting import SimulationChartData, SimulationSummary
 from jano.simulation import SimulationResult
@@ -117,6 +123,77 @@ def test_mcp_run_walk_forward_returns_summary_and_html(tmp_path) -> None:
     assert "<html" in result["html"].lower()
     assert "segment_stats" in result["chart_data"]
 
+def test_mcp_run_walk_forward_baseline_returns_runner_data(tmp_path) -> None:
+    path = write_csv_frame(tmp_path, build_frame(size=18))
+
+    result = run_walk_forward_baseline(
+        path,
+        partition={"layout": "train_test", "train_size": "4D", "test_size": "2D"},
+        step="1D",
+        time_col="timestamp",
+        target_col="target",
+        model="mean",
+        metrics=["mae", "rmse"],
+        retrain="periodic",
+        retrain_interval=2,
+        max_folds=3,
+        include_predictions=True,
+        prediction_preview_rows=2,
+    )
+
+    assert result["summary"]["folds"] == 3
+    assert result["summary"]["metrics"] == ["mae", "rmse"]
+    assert result["retrain_policy"] == "PeriodicRetrain"
+    assert len(result["folds_preview"]) == 3
+    assert len(result["metrics_preview"]) == 6
+    assert result["metric_directions"] == {"mae": "min", "rmse": "min"}
+    assert len(result["predictions_preview"]) == 2
+
+def test_mcp_run_walk_forward_baseline_supports_classification_and_drift(tmp_path) -> None:
+    frame = build_frame(size=18)
+    frame["class_target"] = np.where(frame["target"] > frame["target"].median(), "high", "low")
+    path = write_csv_frame(tmp_path, frame)
+
+    result = run_walk_forward_baseline(
+        path,
+        partition={"layout": "train_test", "train_size": "4D", "test_size": "2D"},
+        step="1D",
+        time_col="timestamp",
+        target_col="class_target",
+        model="majority_class",
+        metrics="accuracy",
+        retrain="on_drift",
+        drift_metric="accuracy",
+        drift_threshold=0.1,
+        max_folds=3,
+    )
+
+    assert result["summary"]["metrics"] == ["accuracy"]
+    assert result["retrain_policy"] == "DriftBasedRetrain"
+    assert result["metric_directions"] == {"accuracy": "max"}
+    assert "events" in result["retraining"]
+
+def test_mcp_run_walk_forward_baseline_validates_arguments(tmp_path) -> None:
+    path = write_csv_frame(tmp_path, build_frame(size=8))
+
+    with pytest.raises(ValueError, match="target_col is required"):
+        run_walk_forward_baseline(
+            path,
+            partition={"layout": "train_test", "train_size": "4D", "test_size": "2D"},
+            step="1D",
+            time_col="timestamp",
+        )
+
+    with pytest.raises(ValueError, match="model must be either"):
+        run_walk_forward_baseline(
+            path,
+            partition={"layout": "train_test", "train_size": "4D", "test_size": "2D"},
+            step="1D",
+            time_col="timestamp",
+            target_col="target",
+            model="unsupported",
+        )
+
 def test_mcp_server_build_is_lazy_about_optional_dependency() -> None:
     try:
         server = build_server()
@@ -150,8 +227,10 @@ def test_mcp_tools_cover_formats_and_temporal_semantics(tmp_path) -> None:
     original_read_parquet = mcp_tools_module.pd.read_parquet
     mcp_tools_module.pd.read_parquet = lambda *args, **kwargs: frame.copy()
     assert len(load_dataset_frame(str(parquet_path), dataset_format="parquet", sample_rows=3)) == 3
+    assert len(load_dataset_frame(str(parquet_path), dataset_format="parquet")) == 6
     mcp_tools_module.pd.read_parquet = original_read_parquet
     assert len(load_dataset_frame(str(zip_path), dataset_format="zip", sample_rows=4)) == 4
+    assert len(load_dataset_frame(str(zip_path), sample_rows=4)) == 4
 
     with pytest.raises(FileNotFoundError, match="Dataset was not found"):
         load_dataset_frame(str(tmp_path / "missing.csv"))
@@ -209,6 +288,25 @@ def test_mcp_tools_cover_formats_and_temporal_semantics(tmp_path) -> None:
     assert plan["total_folds"] == 1
     assert "html" in run
 
+def test_mcp_baseline_helpers_cover_errors_and_json_ready() -> None:
+    with pytest.raises(ValueError, match="mean baseline requires"):
+        mcp_tools_module._MeanBaselineModel().fit(pd.DataFrame({"x": [1]}), ["not numeric"])
+    with pytest.raises(ValueError, match="majority_class baseline requires"):
+        mcp_tools_module._MajorityClassBaselineModel().fit(pd.DataFrame({"x": []}), [])
+
+    records = mcp_tools_module._frame_records(
+        pd.DataFrame(
+            {
+                "timestamp": [pd.Timestamp("2024-01-01")],
+                "duration": [pd.Timedelta(days=1)],
+                "value": [np.int64(7)],
+            }
+        )
+    )
+    assert records == [
+        {"timestamp": "2024-01-01T00:00:00", "duration": "1 days 00:00:00", "value": 7}
+    ]
+
 def test_mcp_server_builds_tools_and_main_runs(monkeypatch) -> None:
     tools = {}
     original_build_server = mcp_server_module.build_server
@@ -235,12 +333,20 @@ def test_mcp_server_builds_tools_and_main_runs(monkeypatch) -> None:
     monkeypatch.setattr(mcp_server_module, "preview_dataset", lambda *args, **kwargs: {"kind": "preview", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "plan_walk_forward", lambda *args, **kwargs: {"kind": "plan", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "run_walk_forward", lambda *args, **kwargs: {"kind": "run", "args": args, "kwargs": kwargs})
+    monkeypatch.setattr(mcp_server_module, "run_walk_forward_baseline", lambda *args, **kwargs: {"kind": "baseline", "args": args, "kwargs": kwargs})
 
     server = build_server()
     assert server.name == "Jano"
     assert tools["preview_local_dataset"]("data.csv")["kind"] == "preview"
     assert tools["plan_walk_forward_simulation"]("data.csv", {"layout": "train_test"}, "1D", "ts")["kind"] == "plan"
     assert tools["run_walk_forward_simulation"]("data.csv", {"layout": "train_test"}, "1D", "ts")["kind"] == "run"
+    assert tools["run_walk_forward_baseline_model"](
+        "data.csv",
+        {"layout": "train_test"},
+        "1D",
+        "ts",
+        "target",
+    )["kind"] == "baseline"
 
     monkeypatch.setattr(mcp_server_module, "build_server", lambda: server)
     mcp_server_module.main()

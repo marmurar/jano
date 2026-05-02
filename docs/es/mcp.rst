@@ -7,13 +7,15 @@ Esto sirve cuando querés que un agente:
 
 - inspeccione un dataset local,
 - precalcule un plan walk-forward,
-- y corra una simulación temporal sin escribir Python manualmente.
+- corra una simulación temporal,
+- y ejecute un baseline simple sin escribir Python manualmente.
 
 La primera superficie MCP es deliberadamente angosta. Se enfoca en el workflow más estable y más legible para agentes:
 
 - previsualizar un dataset,
 - planificar una simulación walk-forward,
-- correr una simulación walk-forward.
+- correr una simulación walk-forward,
+- correr un baseline sobre los mismos folds.
 
 Por qué MCP además de la librería Python
 ----------------------------------------
@@ -66,8 +68,40 @@ Tools MCP disponibles
   Materializa una simulación walk-forward y devuelve un resumen compacto, metadata del motor
   de particionado elegido y el HTML renderizado.
 
-Ambas tools aceptan ``engine`` con los mismos valores que la API Python: ``"auto"``,
+``run_walk_forward_baseline_model``
+  Ejecuta un baseline incorporado sobre los folds walk-forward y devuelve datos del runner:
+  resumen agregado, preview de folds, trayectoria de métricas, eventos de reentrenamiento
+  y una preview acotada de predicciones opcional. Usá ``model="mean"`` para targets
+  numéricos de regresión y ``model="majority_class"`` para targets de clasificación.
+
+Las tools de planning y ejecución aceptan ``engine`` con los mismos valores que la API Python: ``"auto"``,
 ``"pandas"``, ``"polars"`` o ``"numpy"``.
+
+Ejemplo de baseline runner
+--------------------------
+
+.. code-block:: json
+
+   {
+     "dataset_path": "data/bts/bts_ontime_2024_01.zip",
+     "partition": {
+       "layout": "train_test",
+       "train_size": "7D",
+       "test_size": "1D"
+     },
+     "step": "1D",
+     "time_col": "FL_DATE",
+     "target_col": "arrival_state",
+     "model": "majority_class",
+     "metrics": "accuracy",
+     "retrain": "periodic",
+     "retrain_interval": 2,
+     "max_folds": 5
+   }
+
+Esta tool es intencionalmente un baseline, no un ejecutor general de modelos arbitrarios.
+Para estimadores productivos, usá ``WalkForwardRunner`` directamente desde Python para
+controlar construcción del modelo, feature engineering y métricas custom.
 
 Ejemplo de configuración del cliente MCP
 ----------------------------------------
@@ -138,6 +172,7 @@ Empieza deliberadamente con:
 
 - preview de datasets,
 - planning,
-- simulación walk-forward.
+- simulación walk-forward,
+- ejecución de baselines.
 
 La composición low-level y las policies temporales más ligadas a modelos siguen disponibles en la librería Python.

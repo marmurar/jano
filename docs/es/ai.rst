@@ -63,10 +63,17 @@ Usa MCP cuando un agente debe ejecutar operaciones sobre archivos locales:
 
 - previsualizar un dataset local,
 - construir un plan walk-forward,
-- correr una simulación walk-forward.
+- correr una simulación walk-forward,
+- ejecutar un baseline simple sobre los mismos folds con
+  ``run_walk_forward_baseline_model``.
 
 Usa la guía para agentes o la skill cuando un agente necesita razonar sobre Jano
 o escribir código Python con la librería.
+
+La tool de baseline sirve para chequeos rápidos con ``model="mean"`` en
+regresión numérica o ``model="majority_class"`` en clasificación. Para modelos
+productivos conviene escribir Python con ``WalkForwardRunner`` y controlar
+explícitamente features, estimadores y métricas.
 
 En resumen:
 

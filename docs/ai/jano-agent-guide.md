@@ -120,6 +120,24 @@ Use:
 
 Do not make HTML dashboards the primary contract for runner results.
 
+## MCP Usage
+
+Use the local MCP server when the agent should execute Jano against local files
+through declared tools instead of writing Python ad hoc.
+
+Available MCP tools cover:
+
+- dataset preview with `preview_local_dataset`
+- fold planning with `plan_walk_forward_simulation`
+- simulation execution with `run_walk_forward_simulation`
+- simple baseline-model execution with `run_walk_forward_baseline_model`
+
+Use `run_walk_forward_baseline_model` for quick sanity checks over a dataset before
+writing custom model code. It supports `model="mean"` for numeric regression targets
+and `model="majority_class"` for classification targets. For production estimators,
+write Python with `WalkForwardRunner` so the project controls feature engineering,
+model construction and custom metrics explicitly.
+
 ## Temporal Safety Rules
 
 - Do not use random `train_test_split` for time-dependent validation.
@@ -178,4 +196,3 @@ python3 -m sphinx -b html docs docs/_build/html
 ```
 
 The project currently has a 99% coverage gate.
-
