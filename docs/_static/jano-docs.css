@@ -1,10 +1,14 @@
 :root {
+  color-scheme: light;
   --bg-top: #eaf4ff;
   --bg-mid: #f8fafc;
   --bg-bottom: #ffffff;
+  --body-radial: radial-gradient(circle at top left, rgba(96, 165, 250, 0.14), transparent 28%);
+  --body-gradient: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 28%, var(--bg-bottom) 100%);
   --panel-bg: rgba(255, 255, 255, 0.94);
   --panel-border: rgba(148, 163, 184, 0.24);
   --panel-shadow: 0 20px 70px rgba(15, 23, 42, 0.08);
+  --sidebar-bg: rgba(255, 255, 255, 0.86);
   --sidebar-shadow: 0 16px 50px rgba(15, 23, 42, 0.06);
   --text-main: #0f172a;
   --text-body: #334155;
@@ -13,12 +17,84 @@
   --brand: #2563eb;
   --brand-soft: #dbeafe;
   --brand-deep: #1d4ed8;
+  --link-hover: #1e40af;
   --accent: #0f766e;
   --code-bg: #f8fafc;
   --code-border: rgba(148, 163, 184, 0.24);
+  --heading-rule: rgba(191, 219, 254, 0.75);
+  --inline-code-bg: rgba(226, 232, 240, 0.5);
+  --inline-code-border: rgba(148, 163, 184, 0.2);
+  --inline-code-text: #0f172a;
+  --highlight-bg: linear-gradient(180deg, #f8fbff 0%, #f8fafc 100%);
+  --highlight-text: #0f172a;
+  --quote-border: rgba(37, 99, 235, 0.2);
+  --visual-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+  --card-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.95));
+  --preview-bg: linear-gradient(180deg, #eff6ff 0%, #ffffff 60%);
+  --preview-track-bg: linear-gradient(90deg, rgba(191, 219, 254, 0.52), rgba(219, 234, 254, 0.9));
+  --preview-track-border: rgba(191, 219, 254, 0.9);
+  --chip-bg: rgba(255, 255, 255, 0.86);
+  --admonition-bg: linear-gradient(180deg, rgba(239, 246, 255, 0.96), rgba(255, 255, 255, 0.98));
+  --admonition-border: rgba(147, 197, 253, 0.42);
+  --signature-bg: linear-gradient(180deg, rgba(239, 246, 255, 0.9), rgba(255, 255, 255, 0.98));
+  --signature-border: rgba(147, 197, 253, 0.35);
+  --example-bg: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(255, 255, 255, 1));
+  --benchmark-row-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+  --benchmark-track-bg: rgba(226, 232, 240, 0.72);
+  --table-header-bg: rgba(219, 234, 254, 0.55);
+  --table-cell-bg: rgba(255, 255, 255, 0.96);
+  --hr-color: rgba(191, 219, 254, 0.75);
   --heading-font: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, Georgia, serif;
   --body-font: "Avenir Next", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --mono-font: "SFMono-Regular", "SF Mono", "Cascadia Code", "JetBrains Mono", Consolas, monospace;
+}
+
+html[data-jano-theme="dark"] {
+  color-scheme: dark;
+  --bg-top: #0b1020;
+  --bg-mid: #0f172a;
+  --bg-bottom: #111827;
+  --body-radial: radial-gradient(circle at top left, rgba(251, 191, 36, 0.12), transparent 27%);
+  --body-gradient: linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 36%, var(--bg-bottom) 100%);
+  --panel-bg: rgba(17, 24, 39, 0.94);
+  --panel-border: rgba(75, 85, 99, 0.56);
+  --panel-shadow: 0 24px 80px rgba(0, 0, 0, 0.42);
+  --sidebar-bg: rgba(15, 23, 42, 0.9);
+  --sidebar-shadow: 0 18px 60px rgba(0, 0, 0, 0.34);
+  --text-main: #f9fafb;
+  --text-body: #e5e7eb;
+  --text-soft: #cbd5e1;
+  --text-muted: #94a3b8;
+  --brand: #f59e0b;
+  --brand-soft: rgba(251, 191, 36, 0.14);
+  --brand-deep: #fbbf24;
+  --link-hover: #fde68a;
+  --accent: #22d3ee;
+  --code-bg: #0b1120;
+  --code-border: rgba(148, 163, 184, 0.2);
+  --heading-rule: rgba(251, 191, 36, 0.26);
+  --inline-code-bg: rgba(15, 23, 42, 0.72);
+  --inline-code-border: rgba(148, 163, 184, 0.26);
+  --inline-code-text: #fde68a;
+  --highlight-bg: linear-gradient(180deg, #0b1120 0%, #111827 100%);
+  --highlight-text: #e5e7eb;
+  --quote-border: rgba(251, 191, 36, 0.34);
+  --visual-bg: linear-gradient(180deg, rgba(17, 24, 39, 0.98), rgba(15, 23, 42, 0.98));
+  --card-bg: linear-gradient(180deg, rgba(31, 41, 55, 0.94), rgba(15, 23, 42, 0.96));
+  --preview-bg: linear-gradient(180deg, rgba(30, 41, 59, 0.96), rgba(17, 24, 39, 0.98));
+  --preview-track-bg: linear-gradient(90deg, rgba(75, 85, 99, 0.48), rgba(31, 41, 55, 0.9));
+  --preview-track-border: rgba(75, 85, 99, 0.72);
+  --chip-bg: rgba(31, 41, 55, 0.84);
+  --admonition-bg: linear-gradient(180deg, rgba(31, 41, 55, 0.94), rgba(17, 24, 39, 0.98));
+  --admonition-border: rgba(251, 191, 36, 0.28);
+  --signature-bg: linear-gradient(180deg, rgba(30, 41, 59, 0.92), rgba(17, 24, 39, 0.98));
+  --signature-border: rgba(251, 191, 36, 0.24);
+  --example-bg: linear-gradient(180deg, rgba(31, 41, 55, 0.94), rgba(15, 23, 42, 0.98));
+  --benchmark-row-bg: linear-gradient(180deg, rgba(31, 41, 55, 0.94), rgba(17, 24, 39, 0.98));
+  --benchmark-track-bg: rgba(75, 85, 99, 0.48);
+  --table-header-bg: rgba(251, 191, 36, 0.14);
+  --table-cell-bg: rgba(17, 24, 39, 0.92);
+  --hr-color: rgba(251, 191, 36, 0.24);
 }
 
 html {
@@ -26,9 +102,7 @@ html {
 }
 
 body {
-  background:
-    radial-gradient(circle at top left, rgba(96, 165, 250, 0.14), transparent 28%),
-    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 28%, var(--bg-bottom) 100%);
+  background: var(--body-radial), var(--body-gradient);
   color: var(--text-body);
   font-family: var(--body-font);
 }
@@ -40,7 +114,7 @@ a {
 }
 
 a:hover {
-  color: #1e40af;
+  color: var(--link-hover);
 }
 
 div.bodywrapper {
@@ -93,7 +167,7 @@ div.body h2 {
   margin-top: 2.6rem;
   margin-bottom: 0.7rem;
   padding-bottom: 0.35rem;
-  border-bottom: 1px solid rgba(191, 219, 254, 0.75);
+  border-bottom: 1px solid var(--heading-rule);
 }
 
 div.body h3 {
@@ -120,7 +194,7 @@ div.sphinxsidebar {
 }
 
 div.sphinxsidebarwrapper {
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--sidebar-bg);
   border: 1px solid var(--panel-border);
   border-radius: 24px;
   box-shadow: var(--sidebar-shadow);
@@ -166,6 +240,39 @@ div.sphinxsidebarwrapper a:hover {
   color: var(--brand-deep);
 }
 
+div.sphinxsidebar input,
+div.sphinxsidebar textarea,
+div.sphinxsidebar select {
+  background: var(--panel-bg);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  color: var(--text-main);
+  font-family: var(--body-font);
+  padding: 0.42rem 0.55rem;
+}
+
+div.sphinxsidebar input[type="submit"] {
+  background: var(--brand-soft);
+  color: var(--text-main);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+div.sphinxsidebar input[type="submit"]:hover {
+  border-color: var(--brand-deep);
+  color: var(--brand-deep);
+}
+
+div.related,
+div.footer {
+  color: var(--text-muted);
+}
+
+div.related a,
+div.footer a {
+  color: var(--text-soft);
+}
+
 .language-switch {
   margin: 0 0 1rem;
   color: var(--text-soft);
@@ -184,8 +291,30 @@ div.sphinxsidebarwrapper a:hover {
 
 .sidebar-about {
   padding-bottom: 1rem;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+  border-bottom: 1px solid var(--panel-border);
   margin-bottom: 1rem;
+}
+
+.theme-toggle {
+  align-items: center;
+  background: var(--brand-soft);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  color: var(--text-main);
+  cursor: pointer;
+  display: inline-flex;
+  font-family: var(--body-font);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  margin: 0.75rem 0 0;
+  padding: 0.45rem 0.75rem;
+  text-transform: uppercase;
+}
+
+.theme-toggle:hover {
+  border-color: var(--brand-deep);
+  color: var(--brand-deep);
 }
 
 .sidebar-about p {
@@ -284,7 +413,7 @@ body.index div.body > h1:first-of-type {
 }
 
 .landing-visual img {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+  background: var(--visual-bg);
   border: 1px solid var(--panel-border);
   border-radius: 24px;
   box-shadow: 0 22px 60px rgba(15, 23, 42, 0.08);
@@ -302,7 +431,7 @@ body.index div.body > h1:first-of-type {
 }
 
 .landing-card {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(241, 245, 249, 0.95));
+  background: var(--card-bg);
   border: 1px solid var(--panel-border);
   border-radius: 20px;
   padding: 1.15rem 1.05rem 1.1rem;
@@ -333,10 +462,10 @@ body.index div.body > h1:first-of-type {
 .docutils.literal,
 code,
 tt {
-  background: rgba(226, 232, 240, 0.5);
-  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: var(--inline-code-bg);
+  border: 1px solid var(--inline-code-border);
   border-radius: 8px;
-  color: #0f172a;
+  color: var(--inline-code-text);
   font-family: var(--mono-font);
   font-size: 0.92em;
   padding: 0.14rem 0.42rem;
@@ -349,10 +478,10 @@ div.literal-block-wrapper {
 }
 
 div.highlight pre {
-  background: linear-gradient(180deg, #f8fbff 0%, #f8fafc 100%);
+  background: var(--highlight-bg);
   border: 1px solid var(--code-border);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
-  color: #0f172a;
+  color: var(--highlight-text);
   font-family: var(--mono-font);
   font-size: 0.95rem;
   line-height: 1.72;
@@ -370,7 +499,7 @@ div.literal-block-wrapper div.code-block-caption {
 }
 
 blockquote {
-  border-left: 4px solid rgba(37, 99, 235, 0.2);
+  border-left: 4px solid var(--quote-border);
   color: var(--text-soft);
   margin: 1.2rem 0;
   padding-left: 1rem;
@@ -390,7 +519,7 @@ table.docutils {
   border-radius: 24px;
   overflow: hidden;
   border: 1px solid var(--panel-border);
-  background: linear-gradient(180deg, #eff6ff 0%, #ffffff 60%);
+  background: var(--preview-bg);
   box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
 }
 
@@ -424,7 +553,7 @@ table.docutils {
 .simulation-preview .preview-chip {
   border: 1px solid var(--panel-border);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.86);
+  background: var(--chip-bg);
   padding: 0.38rem 0.7rem;
 }
 
@@ -447,8 +576,8 @@ table.docutils {
   position: relative;
   height: 22px;
   border-radius: 999px;
-  background: linear-gradient(90deg, rgba(191, 219, 254, 0.52), rgba(219, 234, 254, 0.9));
-  border: 1px solid rgba(191, 219, 254, 0.9);
+  background: var(--preview-track-bg);
+  border: 1px solid var(--preview-track-border);
   overflow: hidden;
 }
 
@@ -482,8 +611,8 @@ div.admonition,
 div.note,
 div.warning,
 div.tip {
-  background: linear-gradient(180deg, rgba(239, 246, 255, 0.96), rgba(255, 255, 255, 0.98));
-  border: 1px solid rgba(147, 197, 253, 0.42);
+  background: var(--admonition-bg);
+  border: 1px solid var(--admonition-border);
   border-radius: 18px;
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
   padding: 0.9rem 1rem;
@@ -501,7 +630,7 @@ div.tip p.admonition-title {
 }
 
 dl.field-list {
-  border-top: 1px solid rgba(191, 219, 254, 0.65);
+  border-top: 1px solid var(--heading-rule);
   margin-top: 1rem;
   padding-top: 1rem;
 }
@@ -514,8 +643,8 @@ dl.field-list > dt {
 dl.class > dt,
 dl.function > dt,
 dl.method > dt {
-  background: linear-gradient(180deg, rgba(239, 246, 255, 0.9), rgba(255, 255, 255, 0.98));
-  border: 1px solid rgba(147, 197, 253, 0.35);
+  background: var(--signature-bg);
+  border: 1px solid var(--signature-border);
   border-radius: 14px;
   box-shadow: 0 8px 26px rgba(15, 23, 42, 0.04);
   color: var(--text-main);
@@ -530,7 +659,7 @@ dl.method > dd {
 
 .example-block,
 .example-callout {
-  background: linear-gradient(180deg, rgba(248, 250, 252, 0.96), rgba(255, 255, 255, 1));
+  background: var(--example-bg);
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 20px;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
@@ -554,7 +683,7 @@ dl.method > dd {
 }
 
 .benchmark-row {
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 250, 252, 0.98));
+  background: var(--benchmark-row-bg);
   border: 1px solid rgba(148, 163, 184, 0.22);
   border-radius: 20px;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.05);
@@ -588,7 +717,7 @@ dl.method > dd {
 }
 
 .benchmark-track {
-  background: rgba(226, 232, 240, 0.72);
+  background: var(--benchmark-track-bg);
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 999px;
   display: block;
@@ -627,7 +756,7 @@ table.docutils th {
 }
 
 table.docutils th {
-  background: rgba(219, 234, 254, 0.55);
+  background: var(--table-header-bg);
   color: var(--text-main);
   font-size: 0.84rem;
   letter-spacing: 0.04em;
@@ -635,12 +764,12 @@ table.docutils th {
 }
 
 table.docutils td {
-  background: rgba(255, 255, 255, 0.96);
+  background: var(--table-cell-bg);
 }
 
 hr.docutils {
   border: 0;
-  border-top: 1px solid rgba(191, 219, 254, 0.75);
+  border-top: 1px solid var(--hr-color);
   margin: 2rem 0;
 }
 

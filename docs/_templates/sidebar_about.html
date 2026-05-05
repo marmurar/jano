@@ -2,8 +2,10 @@
   <span class="sidebar-kicker">Project</span>
   <p>Temporal partitions, walk-forward backtesting and simulation reporting for time-correlated datasets.</p>
   {% if pagename.startswith('es/') %}
+  <button class="theme-toggle" type="button" data-theme-toggle data-dark-label="Modo oscuro" data-light-label="Modo claro" data-dark-title="Cambiar a modo oscuro" data-light-title="Cambiar a modo claro" aria-pressed="false">Modo oscuro</button>
   <a class="sidebar-link" href="{{ pathto('es/about') }}">Sobre mí</a>
   {% else %}
+  <button class="theme-toggle" type="button" data-theme-toggle data-dark-label="Dark mode" data-light-label="Light mode" data-dark-title="Switch to dark mode" data-light-title="Switch to light mode" aria-pressed="false">Dark mode</button>
   <a class="sidebar-link" href="{{ pathto('about') }}">About Me</a>
   {% endif %}
   <p class="sidebar-languages">
