@@ -66,9 +66,12 @@ Use MCP when an agent should execute operations over local files:
 Use the agent guide or skill when an agent needs to reason about Jano or write
 Python code with the library.
 
+For repository changes, prefer opening a pull request into ``master`` so CI,
+documentation checks and configured AI review tools can inspect the diff before
+merge.
+
 In short:
 
 - architecture notes explain why and where the project is going,
 - the agent guide explains how to use Jano correctly,
 - MCP gives agents tools they can call locally.
-
