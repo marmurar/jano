@@ -494,6 +494,138 @@ div.highlight pre {
   padding: 1.15rem 1.2rem;
 }
 
+html[data-jano-theme="dark"] div.highlight,
+html[data-jano-theme="dark"] table.highlighttable {
+  background: transparent;
+}
+
+html[data-jano-theme="dark"] div.highlight pre,
+html[data-jano-theme="dark"] table.highlighttable pre {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+html[data-jano-theme="dark"] .highlight,
+html[data-jano-theme="dark"] .highlight .g,
+html[data-jano-theme="dark"] .highlight .l,
+html[data-jano-theme="dark"] .highlight .n,
+html[data-jano-theme="dark"] .highlight .x,
+html[data-jano-theme="dark"] .highlight .p,
+html[data-jano-theme="dark"] .highlight .pm,
+html[data-jano-theme="dark"] .highlight .ld,
+html[data-jano-theme="dark"] .highlight .nc,
+html[data-jano-theme="dark"] .highlight .no,
+html[data-jano-theme="dark"] .highlight .nn,
+html[data-jano-theme="dark"] .highlight .nx,
+html[data-jano-theme="dark"] .highlight .py,
+html[data-jano-theme="dark"] .highlight .nv,
+html[data-jano-theme="dark"] .highlight .vc,
+html[data-jano-theme="dark"] .highlight .vg,
+html[data-jano-theme="dark"] .highlight .vi,
+html[data-jano-theme="dark"] .highlight .vm {
+  color: #e5e7eb;
+}
+
+html[data-jano-theme="dark"] .highlight .c,
+html[data-jano-theme="dark"] .highlight .ch,
+html[data-jano-theme="dark"] .highlight .cm,
+html[data-jano-theme="dark"] .highlight .cpf,
+html[data-jano-theme="dark"] .highlight .c1,
+html[data-jano-theme="dark"] .highlight .cs,
+html[data-jano-theme="dark"] .highlight .sd {
+  color: #9ca3af;
+  font-style: italic;
+}
+
+html[data-jano-theme="dark"] .highlight .k,
+html[data-jano-theme="dark"] .highlight .kc,
+html[data-jano-theme="dark"] .highlight .kd,
+html[data-jano-theme="dark"] .highlight .kn,
+html[data-jano-theme="dark"] .highlight .kp,
+html[data-jano-theme="dark"] .highlight .kr,
+html[data-jano-theme="dark"] .highlight .kt,
+html[data-jano-theme="dark"] .highlight .ow,
+html[data-jano-theme="dark"] .highlight .nt {
+  color: #ffd21e;
+  font-weight: 800;
+}
+
+html[data-jano-theme="dark"] .highlight .s,
+html[data-jano-theme="dark"] .highlight .sa,
+html[data-jano-theme="dark"] .highlight .sb,
+html[data-jano-theme="dark"] .highlight .sc,
+html[data-jano-theme="dark"] .highlight .dl,
+html[data-jano-theme="dark"] .highlight .s2,
+html[data-jano-theme="dark"] .highlight .se,
+html[data-jano-theme="dark"] .highlight .sh,
+html[data-jano-theme="dark"] .highlight .si,
+html[data-jano-theme="dark"] .highlight .sx,
+html[data-jano-theme="dark"] .highlight .sr,
+html[data-jano-theme="dark"] .highlight .s1,
+html[data-jano-theme="dark"] .highlight .ss {
+  color: #86efac;
+}
+
+html[data-jano-theme="dark"] .highlight .m,
+html[data-jano-theme="dark"] .highlight .mb,
+html[data-jano-theme="dark"] .highlight .mf,
+html[data-jano-theme="dark"] .highlight .mh,
+html[data-jano-theme="dark"] .highlight .mi,
+html[data-jano-theme="dark"] .highlight .mo,
+html[data-jano-theme="dark"] .highlight .il {
+  color: #fb923c;
+}
+
+html[data-jano-theme="dark"] .highlight .nb,
+html[data-jano-theme="dark"] .highlight .bp,
+html[data-jano-theme="dark"] .highlight .nf,
+html[data-jano-theme="dark"] .highlight .fm {
+  color: #67e8f9;
+}
+
+html[data-jano-theme="dark"] .highlight .na,
+html[data-jano-theme="dark"] .highlight .nd,
+html[data-jano-theme="dark"] .highlight .nl {
+  color: #fbbf24;
+}
+
+html[data-jano-theme="dark"] .highlight .o {
+  color: #f8fafc;
+}
+
+html[data-jano-theme="dark"] .highlight .err,
+html[data-jano-theme="dark"] .highlight .gr,
+html[data-jano-theme="dark"] .highlight .gt,
+html[data-jano-theme="dark"] .highlight .ne,
+html[data-jano-theme="dark"] .highlight .gd {
+  color: #fda4af;
+}
+
+html[data-jano-theme="dark"] .highlight .gi {
+  color: #86efac;
+}
+
+html[data-jano-theme="dark"] .highlight .gh,
+html[data-jano-theme="dark"] .highlight .gu,
+html[data-jano-theme="dark"] .highlight .gs {
+  color: #fef3c7;
+  font-weight: 800;
+}
+
+html[data-jano-theme="dark"] .highlight .go,
+html[data-jano-theme="dark"] .highlight .gp {
+  color: #94a3b8;
+}
+
+html[data-jano-theme="dark"] .highlight .hll {
+  background-color: rgba(255, 210, 30, 0.14);
+}
+
+html[data-jano-theme="dark"] table.highlighttable td.linenos,
+html[data-jano-theme="dark"] span.linenos {
+  background: #111827;
+  color: #64748b;
+}
+
 div.literal-block-wrapper div.code-block-caption {
   background: transparent;
   color: var(--text-muted);
