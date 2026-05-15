@@ -186,6 +186,18 @@ contrato exacto de tools que se expone a clientes de IA.
 .. autofunction:: jano.mcp_tools.run_walk_forward
    :no-index:
 
+.. autofunction:: jano.mcp_tools.run_walk_forward_baseline
+   :no-index:
+
+.. autofunction:: jano.mcp_tools.compare_retrain_policies
+   :no-index:
+
+.. autofunction:: jano.mcp_tools.find_train_history_window
+   :no-index:
+
+.. autofunction:: jano.mcp_tools.monitor_decay
+   :no-index:
+
 Helpers de tipos y validación
 -----------------------------
 

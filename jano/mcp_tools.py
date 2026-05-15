@@ -7,6 +7,7 @@ import zipfile
 import numpy as np
 import pandas as pd
 
+from .policies import PerformanceDecayPolicy, TrainGrowthPolicy
 from .runner import DriftBasedRetrain, WalkForwardRunner
 from .simulation import TemporalSimulation
 from .types import TemporalPartitionSpec, TemporalSemanticsSpec
@@ -361,6 +362,246 @@ def run_walk_forward_baseline(
     return response
 
 
+def compare_retrain_policies(
+    dataset_path: str,
+    *,
+    partition: dict[str, Any],
+    step: object,
+    time_col: str | int | None = None,
+    target_col: str | int | None = None,
+    feature_cols: list[str | int] | None = None,
+    model: str = "mean",
+    metrics: str | list[str] | None = None,
+    policies: list[dict[str, Any]] | None = None,
+    strategy: str = "rolling",
+    allow_partial: bool = False,
+    engine: str = "auto",
+    start_at: object | None = None,
+    end_at: object | None = None,
+    max_folds: int | None = None,
+    dataset_format: str = "auto",
+    order_col: str | int | None = None,
+    train_time_col: str | int | None = None,
+    validation_time_col: str | int | None = None,
+    test_time_col: str | int | None = None,
+    preview_rows: int = 20,
+) -> dict[str, Any]:
+    """Compare retraining policies over the same walk-forward fold geometry.
+
+    The MCP surface intentionally uses built-in baseline models instead of
+    accepting arbitrary Python estimators. Use the Python API for custom models.
+    """
+
+    if target_col is None:
+        raise ValueError("target_col is required")
+    normalized_policies = _normalize_retrain_policy_specs(policies)
+    details: dict[str, Any] = {}
+    comparison: list[dict[str, object]] = []
+    metric_directions: dict[str, str] = {}
+
+    for policy in normalized_policies:
+        name = str(policy["name"])
+        result = run_walk_forward_baseline(
+            dataset_path,
+            partition=partition,
+            step=step,
+            time_col=time_col,
+            target_col=target_col,
+            feature_cols=feature_cols,
+            model=model,
+            metrics=metrics,
+            retrain=policy.get("retrain", "always"),
+            retrain_interval=policy.get("retrain_interval"),
+            drift_metric=policy.get("drift_metric", "rmse"),
+            drift_threshold=policy.get("drift_threshold", 0.05),
+            drift_baseline=policy.get("drift_baseline", "last_retrain"),
+            drift_relative=policy.get("drift_relative", True),
+            strategy=strategy,
+            allow_partial=allow_partial,
+            engine=engine,
+            start_at=start_at,
+            end_at=end_at,
+            max_folds=max_folds,
+            dataset_format=dataset_format,
+            order_col=order_col,
+            train_time_col=train_time_col,
+            validation_time_col=validation_time_col,
+            test_time_col=test_time_col,
+            include_predictions=False,
+            preview_rows=preview_rows,
+        )
+        summary = dict(result["summary"])
+        row = {"policy": name, "model": model, "retrain_policy": result["retrain_policy"]}
+        row.update(summary)
+        comparison.append(_json_ready_object(row))
+        details[name] = result
+        metric_directions = dict(result["metric_directions"])
+
+    return {
+        "dataset_path": str(Path(dataset_path)),
+        "model": model,
+        "policies": normalized_policies,
+        "metric_directions": metric_directions,
+        "comparison": comparison,
+        "details": details,
+    }
+
+
+def find_train_history_window(
+    dataset_path: str,
+    *,
+    time_col: str | int | None = None,
+    cutoff: object | None = None,
+    train_sizes: list[object] | None = None,
+    test_size: object | None = None,
+    target_col: str | int | None = None,
+    feature_cols: list[str | int] | None = None,
+    model: str = "mean",
+    metrics: str | list[str] | None = None,
+    metric: str = "rmse",
+    tolerance: float = 0.0,
+    relative: bool = True,
+    gap_before_test: object | None = None,
+    dataset_format: str = "auto",
+    order_col: str | int | None = None,
+    train_time_col: str | int | None = None,
+    validation_time_col: str | int | None = None,
+    test_time_col: str | int | None = None,
+    preview_rows: int = 20,
+) -> dict[str, Any]:
+    """Evaluate train-history candidates against one fixed test window."""
+
+    if cutoff is None:
+        raise ValueError("cutoff is required")
+    if not train_sizes:
+        raise ValueError("train_sizes must not be empty")
+    if test_size is None:
+        raise ValueError("test_size is required")
+    if target_col is None:
+        raise ValueError("target_col is required")
+
+    frame = load_dataset_frame(dataset_path, dataset_format=dataset_format)
+    semantics = _build_temporal_semantics(
+        time_col=time_col,
+        order_col=order_col,
+        train_time_col=train_time_col,
+        validation_time_col=validation_time_col,
+        test_time_col=test_time_col,
+    )
+    policy = TrainGrowthPolicy(
+        semantics,
+        cutoff=cutoff,
+        train_sizes=train_sizes,
+        test_size=test_size,
+        gap_before_test=gap_before_test,
+    )
+    result = policy.evaluate(
+        frame,
+        model=_build_baseline_model(model),
+        target_col=target_col,
+        feature_cols=feature_cols,
+        metrics=metrics,
+    )
+    records = result.to_frame()
+    optimal = result.find_optimal_train_size(
+        metric=metric,
+        tolerance=tolerance,
+        relative=relative,
+    )
+    return {
+        "dataset_path": str(Path(dataset_path)),
+        "model": model,
+        "metric": metric,
+        "metric_directions": result.metric_directions,
+        "total_variants": int(len(records)),
+        "optimal": _json_ready_object(optimal),
+        "records_preview": _frame_records(records.head(preview_rows)),
+    }
+
+
+def monitor_decay(
+    dataset_path: str,
+    *,
+    time_col: str | int | None = None,
+    cutoff: object | None = None,
+    train_size: object | None = None,
+    test_size: object | None = None,
+    step: object | None = None,
+    target_col: str | int | None = None,
+    feature_cols: list[str | int] | None = None,
+    model: str = "mean",
+    metrics: str | list[str] | None = None,
+    metric: str = "rmse",
+    threshold: float = 0.1,
+    baseline: str | float = "first",
+    relative: bool = True,
+    gap_before_test: object | None = None,
+    max_windows: int | None = None,
+    dataset_format: str = "auto",
+    order_col: str | int | None = None,
+    train_time_col: str | int | None = None,
+    validation_time_col: str | int | None = None,
+    test_time_col: str | int | None = None,
+    preview_rows: int = 20,
+) -> dict[str, Any]:
+    """Evaluate when fixed-train performance decay crosses a threshold."""
+
+    if cutoff is None:
+        raise ValueError("cutoff is required")
+    if train_size is None:
+        raise ValueError("train_size is required")
+    if test_size is None:
+        raise ValueError("test_size is required")
+    if step is None:
+        raise ValueError("step is required")
+    if target_col is None:
+        raise ValueError("target_col is required")
+
+    frame = load_dataset_frame(dataset_path, dataset_format=dataset_format)
+    semantics = _build_temporal_semantics(
+        time_col=time_col,
+        order_col=order_col,
+        train_time_col=train_time_col,
+        validation_time_col=validation_time_col,
+        test_time_col=test_time_col,
+    )
+    policy = PerformanceDecayPolicy(
+        semantics,
+        cutoff=cutoff,
+        train_size=train_size,
+        test_size=test_size,
+        step=step,
+        gap_before_test=gap_before_test,
+        max_windows=max_windows,
+    )
+    result = policy.evaluate(
+        frame,
+        model=_build_baseline_model(model),
+        target_col=target_col,
+        feature_cols=feature_cols,
+        metrics=metrics,
+    )
+    records = result.to_frame()
+    drift_onset = result.find_drift_onset(
+        metric=metric,
+        threshold=threshold,
+        baseline=baseline,
+        relative=relative,
+    )
+    return {
+        "dataset_path": str(Path(dataset_path)),
+        "model": model,
+        "metric": metric,
+        "threshold": float(threshold),
+        "baseline": baseline,
+        "relative": bool(relative),
+        "metric_directions": result.metric_directions,
+        "total_windows": int(len(records)),
+        "drift_onset": _json_ready_object(drift_onset),
+        "windows_preview": _frame_records(records.head(preview_rows)),
+    }
+
+
 def _resolve_dataset_format(path: Path, dataset_format: str) -> str:
     if dataset_format != "auto":
         return dataset_format
@@ -473,11 +714,47 @@ def _build_baseline_model(model: str):
     raise ValueError("model must be either 'mean' or 'majority_class'")
 
 
+def _normalize_retrain_policy_specs(policies: list[dict[str, Any]] | None) -> list[dict[str, Any]]:
+    if policies is None:
+        return [
+            {"name": "always", "retrain": "always"},
+            {"name": "never", "retrain": "never"},
+            {"name": "periodic_2", "retrain": "periodic", "retrain_interval": 2},
+        ]
+    if not policies:
+        raise ValueError("policies must not be empty")
+
+    normalized = []
+    for index, policy in enumerate(policies):
+        if not isinstance(policy, dict):
+            raise ValueError("Each policy must be a dictionary")
+        retrain = policy.get("retrain", "always")
+        if retrain not in {True, False, "always", "never", "periodic", "on_drift"}:
+            raise ValueError(
+                "policy retrain must be True, False, 'always', 'never', 'periodic' or 'on_drift'"
+            )
+        if retrain == "periodic" and policy.get("retrain_interval") is None:
+            raise ValueError("retrain_interval is required for periodic policies")
+        name = policy.get("name") or f"policy_{index}"
+        normalized_policy = dict(policy)
+        normalized_policy["name"] = name
+        normalized.append(normalized_policy)
+    return normalized
+
+
 def _frame_records(frame: pd.DataFrame) -> list[dict[str, object]]:
     return [
         {str(key): _json_ready(value) for key, value in row.items()}
         for row in frame.to_dict(orient="records")
     ]
+
+
+def _json_ready_object(value):
+    if isinstance(value, dict):
+        return {str(key): _json_ready_object(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_json_ready_object(item) for item in value]
+    return _json_ready(value)
 
 
 def _json_ready(value):

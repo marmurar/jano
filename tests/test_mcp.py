@@ -52,7 +52,10 @@ from jano.engines import PartitionEngine, detect_backend, missing_columns
 from jano.jano import TemporalBacktestSplitter as LegacyTemporalBacktestSplitter
 from jano.mcp_server import build_server
 from jano.mcp_tools import (
+    compare_retrain_policies,
+    find_train_history_window,
     load_dataset_frame,
+    monitor_decay,
     plan_walk_forward,
     preview_dataset,
     run_walk_forward,
@@ -194,6 +197,209 @@ def test_mcp_run_walk_forward_baseline_validates_arguments(tmp_path) -> None:
             model="unsupported",
         )
 
+def test_mcp_compare_retrain_policies_returns_agent_ready_comparison(tmp_path) -> None:
+    path = write_csv_frame(tmp_path, build_frame(size=18))
+
+    default_result = compare_retrain_policies(
+        path,
+        partition={"layout": "train_test", "train_size": "4D", "test_size": "2D"},
+        step="1D",
+        time_col="timestamp",
+        target_col="target",
+        model="mean",
+        metrics="mae",
+        max_folds=2,
+    )
+    assert [row["policy"] for row in default_result["comparison"]] == [
+        "always",
+        "never",
+        "periodic_2",
+    ]
+
+    result = compare_retrain_policies(
+        path,
+        partition={"layout": "train_test", "train_size": "4D", "test_size": "2D"},
+        step="1D",
+        time_col="timestamp",
+        target_col="target",
+        model="mean",
+        metrics="mae",
+        policies=[
+            {"name": "always", "retrain": "always"},
+            {"name": "periodic_2", "retrain": "periodic", "retrain_interval": 2},
+        ],
+        max_folds=3,
+    )
+
+    assert [row["policy"] for row in result["comparison"]] == ["always", "periodic_2"]
+    assert result["metric_directions"] == {"mae": "min"}
+    assert result["details"]["always"]["summary"]["folds"] == 3
+    assert result["details"]["periodic_2"]["retrain_policy"] == "PeriodicRetrain"
+
+def test_mcp_train_history_and_decay_tools_return_json_ready_results(tmp_path) -> None:
+    path = write_csv_frame(tmp_path, build_frame(size=18))
+
+    history = find_train_history_window(
+        path,
+        time_col="timestamp",
+        cutoff="2024-01-10",
+        train_sizes=["3D", "5D", "7D"],
+        test_size="2D",
+        target_col="target",
+        model="mean",
+        metrics=["mae", "rmse"],
+        metric="mae",
+    )
+    assert history["total_variants"] == 3
+    assert history["metric_directions"] == {"mae": "min", "rmse": "min"}
+    assert history["optimal"]["train_start"].startswith("2024-")
+    assert len(history["records_preview"]) == 3
+
+    decay = monitor_decay(
+        path,
+        time_col="timestamp",
+        cutoff="2024-01-08",
+        train_size="5D",
+        test_size="2D",
+        step="2D",
+        target_col="target",
+        model="mean",
+        metrics="mae",
+        metric="mae",
+        threshold=0.0,
+        relative=False,
+        max_windows=3,
+    )
+    assert decay["total_windows"] == 3
+    assert decay["metric_directions"] == {"mae": "min"}
+    assert decay["drift_onset"] is not None
+    assert decay["windows_preview"][0]["test_start"].startswith("2024-")
+
+def test_mcp_study_tools_validate_required_arguments(tmp_path) -> None:
+    path = write_csv_frame(tmp_path, build_frame(size=8))
+
+    with pytest.raises(ValueError, match="target_col is required"):
+        compare_retrain_policies(
+            path,
+            partition={"layout": "train_test", "train_size": "4D", "test_size": "2D"},
+            step="1D",
+            time_col="timestamp",
+        )
+    with pytest.raises(ValueError, match="policies must not be empty"):
+        compare_retrain_policies(
+            path,
+            partition={"layout": "train_test", "train_size": "4D", "test_size": "2D"},
+            step="1D",
+            time_col="timestamp",
+            target_col="target",
+            policies=[],
+        )
+    with pytest.raises(ValueError, match="Each policy must be a dictionary"):
+        compare_retrain_policies(
+            path,
+            partition={"layout": "train_test", "train_size": "4D", "test_size": "2D"},
+            step="1D",
+            time_col="timestamp",
+            target_col="target",
+            policies=["always"],
+        )
+    with pytest.raises(ValueError, match="policy retrain must be"):
+        compare_retrain_policies(
+            path,
+            partition={"layout": "train_test", "train_size": "4D", "test_size": "2D"},
+            step="1D",
+            time_col="timestamp",
+            target_col="target",
+            policies=[{"retrain": "sometimes"}],
+        )
+    with pytest.raises(ValueError, match="retrain_interval is required"):
+        compare_retrain_policies(
+            path,
+            partition={"layout": "train_test", "train_size": "4D", "test_size": "2D"},
+            step="1D",
+            time_col="timestamp",
+            target_col="target",
+            policies=[{"retrain": "periodic"}],
+        )
+    with pytest.raises(ValueError, match="train_sizes must not be empty"):
+        find_train_history_window(
+            path,
+            time_col="timestamp",
+            cutoff="2024-01-05",
+            train_sizes=[],
+            test_size="1D",
+            target_col="target",
+        )
+    with pytest.raises(ValueError, match="cutoff is required"):
+        find_train_history_window(
+            path,
+            time_col="timestamp",
+            train_sizes=["2D"],
+            test_size="1D",
+            target_col="target",
+        )
+    with pytest.raises(ValueError, match="test_size is required"):
+        find_train_history_window(
+            path,
+            time_col="timestamp",
+            cutoff="2024-01-05",
+            train_sizes=["2D"],
+            target_col="target",
+        )
+    with pytest.raises(ValueError, match="target_col is required"):
+        find_train_history_window(
+            path,
+            time_col="timestamp",
+            cutoff="2024-01-05",
+            train_sizes=["2D"],
+            test_size="1D",
+        )
+    with pytest.raises(ValueError, match="cutoff is required"):
+        monitor_decay(
+            path,
+            time_col="timestamp",
+            train_size="2D",
+            test_size="1D",
+            step="1D",
+            target_col="target",
+        )
+    with pytest.raises(ValueError, match="train_size is required"):
+        monitor_decay(
+            path,
+            time_col="timestamp",
+            cutoff="2024-01-05",
+            test_size="1D",
+            step="1D",
+            target_col="target",
+        )
+    with pytest.raises(ValueError, match="test_size is required"):
+        monitor_decay(
+            path,
+            time_col="timestamp",
+            cutoff="2024-01-05",
+            train_size="2D",
+            step="1D",
+            target_col="target",
+        )
+    with pytest.raises(ValueError, match="step is required"):
+        monitor_decay(
+            path,
+            time_col="timestamp",
+            cutoff="2024-01-05",
+            train_size="2D",
+            test_size="1D",
+            target_col="target",
+        )
+    with pytest.raises(ValueError, match="target_col is required"):
+        monitor_decay(
+            path,
+            time_col="timestamp",
+            cutoff="2024-01-05",
+            train_size="2D",
+            test_size="1D",
+            step="1D",
+        )
+
 def test_mcp_server_build_is_lazy_about_optional_dependency() -> None:
     try:
         server = build_server()
@@ -306,6 +512,7 @@ def test_mcp_baseline_helpers_cover_errors_and_json_ready() -> None:
     assert records == [
         {"timestamp": "2024-01-01T00:00:00", "duration": "1 days 00:00:00", "value": 7}
     ]
+    assert mcp_tools_module._json_ready_object([np.float64(1.5)]) == [1.5]
 
 def test_mcp_server_builds_tools_and_main_runs(monkeypatch) -> None:
     tools = {}
@@ -334,6 +541,9 @@ def test_mcp_server_builds_tools_and_main_runs(monkeypatch) -> None:
     monkeypatch.setattr(mcp_server_module, "plan_walk_forward", lambda *args, **kwargs: {"kind": "plan", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "run_walk_forward", lambda *args, **kwargs: {"kind": "run", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "run_walk_forward_baseline", lambda *args, **kwargs: {"kind": "baseline", "args": args, "kwargs": kwargs})
+    monkeypatch.setattr(mcp_server_module, "compare_retrain_policies", lambda *args, **kwargs: {"kind": "compare", "args": args, "kwargs": kwargs})
+    monkeypatch.setattr(mcp_server_module, "find_train_history_window", lambda *args, **kwargs: {"kind": "history", "args": args, "kwargs": kwargs})
+    monkeypatch.setattr(mcp_server_module, "monitor_decay", lambda *args, **kwargs: {"kind": "decay", "args": args, "kwargs": kwargs})
 
     server = build_server()
     assert server.name == "Jano"
@@ -347,6 +557,30 @@ def test_mcp_server_builds_tools_and_main_runs(monkeypatch) -> None:
         "ts",
         "target",
     )["kind"] == "baseline"
+    assert tools["compare_retrain_policy_baselines"](
+        "data.csv",
+        {"layout": "train_test"},
+        "1D",
+        "ts",
+        "target",
+    )["kind"] == "compare"
+    assert tools["find_train_history_window_baseline"](
+        "data.csv",
+        "ts",
+        "2024-01-01",
+        ["7D"],
+        "1D",
+        "target",
+    )["kind"] == "history"
+    assert tools["monitor_decay_baseline"](
+        "data.csv",
+        "ts",
+        "2024-01-01",
+        "7D",
+        "1D",
+        "1D",
+        "target",
+    )["kind"] == "decay"
 
     monkeypatch.setattr(mcp_server_module, "build_server", lambda: server)
     mcp_server_module.main()

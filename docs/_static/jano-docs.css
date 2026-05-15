@@ -130,6 +130,7 @@ div.body {
   border: 1px solid var(--panel-border);
   border-radius: 30px;
   box-shadow: var(--panel-shadow);
+  overflow-x: auto;
   padding: 2.5rem 2.9rem 2.8rem;
 }
 
@@ -481,6 +482,7 @@ div.highlight,
 pre,
 div.literal-block-wrapper {
   border-radius: 18px;
+  max-width: 100%;
 }
 
 div.highlight pre {
@@ -491,7 +493,21 @@ div.highlight pre {
   font-family: var(--mono-font);
   font-size: 0.95rem;
   line-height: 1.72;
+  overflow-x: auto;
   padding: 1.15rem 1.2rem;
+  scrollbar-color: var(--brand-deep) transparent;
+  white-space: pre;
+}
+
+table.highlighttable {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-color: var(--brand-deep) transparent;
+}
+
+table.highlighttable td.code {
+  width: 100%;
 }
 
 html[data-jano-theme="dark"] div.highlight,
@@ -646,10 +662,20 @@ blockquote {
 table.docutils {
   border-collapse: separate;
   border-spacing: 0;
+  display: block;
+  max-width: 100%;
   overflow: hidden;
+  overflow-x: auto;
   border: 1px solid var(--panel-border);
   border-radius: 16px;
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.04);
+  scrollbar-color: var(--brand-deep) transparent;
+}
+
+table.docutils tbody {
+  display: table;
+  min-width: min(760px, 100%);
+  width: 100%;
 }
 
 .simulation-preview {
@@ -786,7 +812,45 @@ dl.method > dt {
   border-radius: 14px;
   box-shadow: 0 8px 26px rgba(15, 23, 42, 0.04);
   color: var(--text-main);
+  overflow-x: auto;
   padding: 0.85rem 0.95rem;
+  scrollbar-color: var(--brand-deep) transparent;
+}
+
+dl.class > dt .sig,
+dl.function > dt .sig,
+dl.method > dt .sig {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.12rem 0.2rem;
+  line-height: 1.6;
+}
+
+.sig-name,
+code.descname {
+  color: var(--brand-deep);
+  font-weight: 900;
+}
+
+.sig-param,
+.sig-return {
+  color: var(--text-soft);
+}
+
+a.viewcode-link,
+a.headerlink {
+  color: var(--text-muted);
+  font-family: var(--body-font);
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+a.viewcode-link:hover,
+a.headerlink:hover {
+  color: var(--brand-deep);
 }
 
 dl.class > dd,
@@ -932,5 +996,54 @@ hr.docutils {
   .benchmark-bar {
     gap: 0.45rem;
     grid-template-columns: 64px minmax(120px, 1fr) 62px;
+  }
+
+  div.highlight pre {
+    font-size: 0.86rem;
+    line-height: 1.62;
+    padding: 0.95rem 1rem;
+  }
+
+  table.docutils th,
+  table.docutils td {
+    font-size: 0.86rem;
+    padding: 0.58rem 0.65rem;
+  }
+
+  dl.class > dt,
+  dl.function > dt,
+  dl.method > dt {
+    font-size: 0.88rem;
+    padding: 0.75rem;
+  }
+
+  .theme-toggle {
+    bottom: 0.85rem;
+    font-size: 0.72rem;
+    padding: 0.4rem 0.62rem;
+    right: 0.85rem;
+  }
+}
+
+@media (max-width: 560px) {
+  div.body {
+    padding: 1.35rem 1rem;
+  }
+
+  .landing-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .simulation-preview .preview-meta {
+    display: grid;
+  }
+
+  .benchmark-bar {
+    align-items: start;
+    grid-template-columns: 1fr;
+  }
+
+  .benchmark-value {
+    text-align: left;
   }
 }

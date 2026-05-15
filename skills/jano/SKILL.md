@@ -27,6 +27,9 @@ Use Jano when:
 - Use `report_data()`, `metric_trajectory()` and `fold_summary()` for agent-readable outputs.
 - Use the MCP tool `run_walk_forward_baseline_model` for quick local sanity checks
   before writing custom model code.
+- Use MCP study tools for baseline temporal hypotheses:
+  `compare_retrain_policy_baselines`, `find_train_history_window_baseline` and
+  `monitor_decay_baseline`.
 
 ## Rules
 

@@ -8,14 +8,18 @@ Esto sirve cuando querés que un agente:
 - inspeccione un dataset local,
 - precalcule un plan walk-forward,
 - corra una simulación temporal,
-- y ejecute un baseline simple sin escribir Python manualmente.
+- ejecute un baseline simple,
+- y corra estudios temporales baseline sin escribir Python manualmente.
 
 La primera superficie MCP es deliberadamente angosta. Se enfoca en el workflow más estable y más legible para agentes:
 
 - previsualizar un dataset,
 - planificar una simulación walk-forward,
 - correr una simulación walk-forward,
-- correr un baseline sobre los mismos folds.
+- correr un baseline sobre los mismos folds,
+- comparar policies de reentrenamiento,
+- evaluar ventanas de historia de entrenamiento,
+- monitorear decay con train fijo.
 
 Por qué MCP además de la librería Python
 ----------------------------------------
@@ -74,6 +78,20 @@ Tools MCP disponibles
   y una preview acotada de predicciones opcional. Usá ``model="mean"`` para targets
   numéricos de regresión y ``model="majority_class"`` para targets de clasificación.
 
+``compare_retrain_policy_baselines``
+  Ejecuta el mismo baseline sobre la misma geometría temporal cambiando la policy de
+  reentrenamiento. Devuelve una fila de comparación por policy y previews por policy
+  de folds y métricas.
+
+``find_train_history_window_baseline``
+  Evalúa distintas ventanas de historia de entrenamiento contra un test fijo y devuelve
+  la ventana más chica que queda dentro de la tolerancia configurada respecto del mejor
+  score.
+
+``monitor_decay_baseline``
+  Mantiene fijo el train, mueve el test hacia adelante y devuelve la primera ventana
+  donde la métrica elegida cruza el umbral de degradación configurado.
+
 Las tools de planning y ejecución aceptan ``engine`` con los mismos valores que la API Python: ``"auto"``,
 ``"pandas"``, ``"polars"`` o ``"numpy"``.
 
@@ -102,6 +120,64 @@ Ejemplo de baseline runner
 Esta tool es intencionalmente un baseline, no un ejecutor general de modelos arbitrarios.
 Para estimadores productivos, usá ``WalkForwardRunner`` directamente desde Python para
 controlar construcción del modelo, feature engineering y métricas custom.
+
+Ejemplos de estudios temporales
+-------------------------------
+
+Comparar policies de reentrenamiento sobre la misma geometría:
+
+.. code-block:: json
+
+   {
+     "dataset_path": "data/flights.csv",
+     "partition": {
+       "layout": "train_test",
+       "train_size": "14D",
+       "test_size": "1D"
+     },
+     "step": "1D",
+     "time_col": "scheduled_departure_at",
+     "target_col": "arrival_delay",
+     "model": "mean",
+     "metrics": ["mae", "rmse"],
+     "policies": [
+       {"name": "always", "retrain": "always"},
+       {"name": "never", "retrain": "never"},
+       {"name": "weekly", "retrain": "periodic", "retrain_interval": 7}
+     ]
+   }
+
+Buscar una ventana compacta de train history contra un test fijo:
+
+.. code-block:: json
+
+   {
+     "dataset_path": "data/flights.csv",
+     "time_col": "scheduled_departure_at",
+     "cutoff": "2024-02-01",
+     "train_sizes": ["7D", "14D", "30D"],
+     "test_size": "3D",
+     "target_col": "arrival_delay",
+     "metric": "mae",
+     "tolerance": 0.02
+   }
+
+Monitorear decay con train fijo:
+
+.. code-block:: json
+
+   {
+     "dataset_path": "data/flights.csv",
+     "time_col": "scheduled_departure_at",
+     "cutoff": "2024-02-01",
+     "train_size": "30D",
+     "test_size": "1D",
+     "step": "1D",
+     "target_col": "arrival_delay",
+     "metric": "mae",
+     "threshold": 0.10,
+     "relative": true
+   }
 
 Ejemplo de configuración del cliente MCP
 ----------------------------------------
@@ -173,6 +249,7 @@ Empieza deliberadamente con:
 - preview de datasets,
 - planning,
 - simulación walk-forward,
-- ejecución de baselines.
+- ejecución de baselines,
+- estudios temporales baseline.
 
 La composición low-level y las policies temporales más ligadas a modelos siguen disponibles en la librería Python.

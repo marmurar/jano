@@ -131,12 +131,19 @@ Available MCP tools cover:
 - fold planning with `plan_walk_forward_simulation`
 - simulation execution with `run_walk_forward_simulation`
 - simple baseline-model execution with `run_walk_forward_baseline_model`
+- retraining policy comparison with `compare_retrain_policy_baselines`
+- fixed-test train-history search with `find_train_history_window_baseline`
+- fixed-train decay monitoring with `monitor_decay_baseline`
 
 Use `run_walk_forward_baseline_model` for quick sanity checks over a dataset before
 writing custom model code. It supports `model="mean"` for numeric regression targets
 and `model="majority_class"` for classification targets. For production estimators,
 write Python with `WalkForwardRunner` so the project controls feature engineering,
 model construction and custom metrics explicitly.
+
+Use the baseline study tools when the agent needs fast evidence about temporal
+hypotheses before writing custom model code. These MCP tools are for operational
+triage and dataset inspection, not a substitute for project-owned estimators.
 
 ## Temporal Safety Rules
 

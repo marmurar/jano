@@ -8,14 +8,18 @@ This is useful when you want an agent to:
 - inspect a local dataset,
 - precompute a walk-forward plan,
 - run a temporal simulation,
-- and execute a simple baseline model without writing Python code manually.
+- execute a simple baseline model,
+- and run baseline temporal studies without writing Python code manually.
 
 The initial MCP surface is intentionally narrow. It focuses on the most stable, agent-friendly workflow:
 
 - preview a dataset,
 - plan a walk-forward simulation,
 - run a walk-forward simulation,
-- run a baseline model over the same folds.
+- run a baseline model over the same folds,
+- compare retraining policies,
+- evaluate train-history windows,
+- monitor fixed-train performance decay.
 
 Why MCP instead of only the Python library?
 -------------------------------------------
@@ -75,6 +79,20 @@ Available MCP tools
   numeric regression targets and ``model="majority_class"`` for classification
   targets.
 
+``compare_retrain_policy_baselines``
+  Run the same baseline model over the same fold geometry while changing the
+  retraining policy. The response includes one comparison row per policy plus
+  per-policy fold and metric previews.
+
+``find_train_history_window_baseline``
+  Evaluate multiple training-history windows against one fixed test window and
+  return the smallest train window that stays within the requested tolerance of
+  the best score.
+
+``monitor_decay_baseline``
+  Keep a training window fixed, move the test window forward and return the first
+  window where the chosen metric crosses the configured degradation threshold.
+
 The planning and execution tools accept ``engine`` with the same values as the Python API: ``"auto"``,
 ``"pandas"``, ``"polars"`` or ``"numpy"``.
 
@@ -103,6 +121,64 @@ Baseline runner example
 This tool is intentionally a baseline, not a general arbitrary-model executor.
 For production estimators, use the Python ``WalkForwardRunner`` directly so your
 code controls model construction, feature engineering and custom metrics.
+
+Temporal study examples
+-----------------------
+
+Compare retraining policies over the same geometry:
+
+.. code-block:: json
+
+   {
+     "dataset_path": "data/flights.csv",
+     "partition": {
+       "layout": "train_test",
+       "train_size": "14D",
+       "test_size": "1D"
+     },
+     "step": "1D",
+     "time_col": "scheduled_departure_at",
+     "target_col": "arrival_delay",
+     "model": "mean",
+     "metrics": ["mae", "rmse"],
+     "policies": [
+       {"name": "always", "retrain": "always"},
+       {"name": "never", "retrain": "never"},
+       {"name": "weekly", "retrain": "periodic", "retrain_interval": 7}
+     ]
+   }
+
+Find a compact train-history window against a fixed test horizon:
+
+.. code-block:: json
+
+   {
+     "dataset_path": "data/flights.csv",
+     "time_col": "scheduled_departure_at",
+     "cutoff": "2024-02-01",
+     "train_sizes": ["7D", "14D", "30D"],
+     "test_size": "3D",
+     "target_col": "arrival_delay",
+     "metric": "mae",
+     "tolerance": 0.02
+   }
+
+Monitor decay with a fixed train window:
+
+.. code-block:: json
+
+   {
+     "dataset_path": "data/flights.csv",
+     "time_col": "scheduled_departure_at",
+     "cutoff": "2024-02-01",
+     "train_size": "30D",
+     "test_size": "1D",
+     "step": "1D",
+     "target_col": "arrival_delay",
+     "metric": "mae",
+     "threshold": 0.10,
+     "relative": true
+   }
 
 Example MCP client configuration
 --------------------------------
@@ -174,6 +250,7 @@ It deliberately starts with:
 - dataset preview,
 - planning,
 - walk-forward simulation,
-- baseline-model execution.
+- baseline-model execution,
+- baseline temporal studies.
 
 Lower-level composition and model-specific temporal hypothesis policies remain available in the Python library itself.
