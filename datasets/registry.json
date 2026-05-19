@@ -1,0 +1,58 @@
+{
+  "bike_sharing_hourly": {
+    "title": "UCI Bike Sharing Dataset",
+    "source_url": "https://archive.ics.uci.edu/static/public/275/bike+sharing+dataset.zip",
+    "source_page": "https://archive.ics.uci.edu/dataset/275/bike+sharing+dataset",
+    "license": "CC BY 4.0",
+    "local_path": "bike_sharing/bike_sharing_dataset.zip",
+    "extract_dir": "bike_sharing",
+    "task": "regression",
+    "time_col": "dteday + hr",
+    "target_col": "cnt",
+    "recommended_use": "Small regression and walk-forward examples with hourly temporal folds.",
+    "size_mb": 0.3,
+    "sha256": null
+  },
+  "bts_airline_2024_01": {
+    "title": "BTS Airline On-Time Performance, January 2024",
+    "source_url": "https://transtats.bts.gov/PREZIP/On_Time_Reporting_Carrier_On_Time_Performance_1987_present_2024_1.zip",
+    "source_page": "https://www.transtats.bts.gov/ontime/",
+    "license": "U.S. government public dataset; review BTS terms before redistribution.",
+    "local_path": "bts/bts_ontime_2024_01.zip",
+    "extract_dir": "bts/2024_01",
+    "task": "ordinal_classification",
+    "time_col": "FlightDate + CRSDepTime",
+    "target_col": "ArrDel15 or arrival status class",
+    "recommended_use": "Ordinal delay-cost examples, dynamic retraining policies and notebook demos.",
+    "size_mb": 26.3,
+    "sha256": null
+  },
+  "nyc_tlc_yellow_2024_01": {
+    "title": "NYC TLC Yellow Taxi Trip Records, January 2024",
+    "source_url": "https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2024-01.parquet",
+    "source_page": "https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page",
+    "license": "NYC TLC public dataset; review provider terms before redistribution.",
+    "local_path": "nyc_tlc/yellow_tripdata_2024_01.parquet",
+    "extract_dir": null,
+    "task": "regression_or_classification",
+    "time_col": "tpep_pickup_datetime",
+    "target_col": "fare_amount, tip_amount or derived class",
+    "recommended_use": "Larger local performance and engine benchmarks with Parquet input.",
+    "size_mb": 47.6,
+    "sha256": null
+  },
+  "household_power": {
+    "title": "UCI Individual Household Electric Power Consumption",
+    "source_url": "https://archive.ics.uci.edu/static/public/235/individual+household+electric+power+consumption.zip",
+    "source_page": "https://archive.ics.uci.edu/dataset/235/individual+household+electric+power+consumption",
+    "license": "UCI public dataset; review source terms before redistribution.",
+    "local_path": "household_power/household_power.zip",
+    "extract_dir": "household_power",
+    "task": "time_series_regression",
+    "time_col": "Date + Time",
+    "target_col": "Global_active_power",
+    "recommended_use": "Minute-level temporal granularity, gaps and long-horizon planning examples.",
+    "size_mb": 19.7,
+    "sha256": null
+  }
+}

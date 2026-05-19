@@ -99,7 +99,7 @@ El core actual soporta:
 - una ruta de indexado temporal más numpy-first para reducir overhead en datasets grandes
 
 El paquete está disponible en PyPI como ``jano``. La suite de tests tiene un
-umbral mínimo de cobertura del 99%, y la cobertura medida actualmente es 99.29%.
+umbral mínimo de cobertura del 99%, y la cobertura medida actualmente es 99.15%.
 
 Para uso productivo, conviene fijar una versión explícita y revisar las notas de
 release antes de actualizar. Para experimentación, diseño de validación temporal

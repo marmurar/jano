@@ -2,6 +2,14 @@
 
 from ._version import __version__
 from .engines import PartitionEngineMetadata
+from .evaluation import (
+    ClassificationProfile,
+    EvaluationProfile,
+    OrdinalClassificationProfile,
+    RankingProfile,
+    RegressionProfile,
+    ResolvedEvaluationProfile,
+)
 from .planning import PartitionPlan, PlannedFold, SimulationPlan
 from .policies import (
     PerformanceDecayPolicy,
@@ -13,6 +21,7 @@ from .reporting import SimulationChartData, SimulationSummary
 from .runner import (
     AlwaysRetrain,
     DriftBasedRetrain,
+    FunctionRetrainPolicy,
     NeverRetrain,
     PeriodicRetrain,
     RetrainContext,
@@ -40,18 +49,25 @@ from .workflows import (
 
 __all__ = [
     "AlwaysRetrain",
+    "ClassificationProfile",
     "DriftBasedRetrain",
+    "EvaluationProfile",
     "FeatureLookbackSpec",
     "DriftMonitoringPolicy",
+    "FunctionRetrainPolicy",
     "NeverRetrain",
+    "OrdinalClassificationProfile",
     "PartitionPlan",
     "PartitionEngineMetadata",
     "PerformanceDecayPolicy",
     "PerformanceDecayResult",
     "PeriodicRetrain",
     "PlannedFold",
+    "RankingProfile",
+    "RegressionProfile",
     "RetrainContext",
     "RetrainPolicy",
+    "ResolvedEvaluationProfile",
     "RollingTrainHistoryPolicy",
     "RollingTrainHistoryResult",
     "SegmentBoundaries",

@@ -7,8 +7,8 @@ authors:
 url: "https://github.com/marmurar/jano"
 repository-code: "https://github.com/marmurar/jano"
 license: "MIT"
-version: "0.3.1"
-date-released: "2026-04-28"
+version: "0.4.0"
+date-released: "2026-05-19"
 keywords:
   - "temporal validation"
   - "walk-forward validation"

@@ -85,6 +85,28 @@ Jano includes three surfaces intended to make the project easier for AI agents t
 
 Use the MCP server when an agent should execute Jano operations over local datasets. Use the skill or agent guide when an agent needs to reason about Jano, write code with the library or modify the repository safely.
 
+## Reproducible external datasets
+
+Jano examples should be reproducible without committing large datasets to Git.
+Dataset metadata is versioned in `datasets/registry.json`, while downloaded files
+stay local under `data/raw/`, which is ignored by the repository.
+
+List available datasets:
+
+```bash
+python scripts/download_dataset.py --list
+```
+
+Download one locally:
+
+```bash
+python scripts/download_dataset.py bike_sharing_hourly --extract
+```
+
+The current registry includes Bike Sharing, BTS Airline On-Time Performance,
+NYC TLC Yellow Taxi and Household Power datasets for regression, classification,
+ordinal-cost and larger benchmark examples.
+
 ## Why Jano exists
 
 Many machine learning datasets are not just tabular; they are structured over time and often across multiple entities such as users, routes, sellers or products. In those settings, a more faithful view of the data is not "a bag of independent rows" but a temporally ordered process.
@@ -245,6 +267,43 @@ Supported retrain modes are:
 - `retrain=False` or `retrain="never"` to train once and benchmark a fixed model.
 - `retrain="periodic"` with `retrain_interval=K` to refit every `K` folds.
 - `retrain_policy=DriftBasedRetrain(...)` when the next retrain decision should depend on previously observed fold metrics.
+- `retrain_policy=FunctionRetrainPolicy(...)` when the retrain decision is a custom function of fold history, dates, costs or external thresholds.
+
+Evaluation profiles separate how a run is measured from when a model is retrained.
+Built-in metrics are convenience shortcuts; production-like validation can pass a
+custom loss or score and declare whether lower or higher is better:
+
+```python
+import numpy as np
+
+from jano import EvaluationProfile, FunctionRetrainPolicy, WalkForwardRunner
+
+def daily_cost(y_true, y_pred):
+    return float(np.mean(np.abs(y_true - y_pred)))
+
+def retrain_rule(context):
+    if context.history.empty:
+        return True
+    latest = context.history["daily_cost"].iloc[-1]
+    limit = limit_for_date(context.split.boundaries["test"].end)
+    return latest > limit
+
+runner = WalkForwardRunner(
+    model=model,
+    target_col="target",
+    feature_cols=["feature"],
+    evaluation=EvaluationProfile(
+        metrics={"daily_cost": daily_cost},
+        metric_directions={"daily_cost": "min"},
+        primary_metric="daily_cost",
+    ),
+    retrain_policy=FunctionRetrainPolicy(retrain_rule),
+)
+```
+
+Convenience profiles such as `RegressionProfile`, `ClassificationProfile`,
+`OrdinalClassificationProfile` and `RankingProfile` keep the API explicit without
+splitting the runner into problem-specific classes.
 
 Runner results are intentionally data-first rather than dashboard-first:
 
@@ -547,16 +606,31 @@ Current distribution and quality signals:
 
 - PyPI package: [jano](https://pypi.org/project/jano/).
 - Latest tested release line: `0.4.x`.
-- Test suite: `123 passed`.
+- Test suite: `134 passed`.
 - Coverage gate: `99%` minimum.
-- Current measured coverage: `99.29%`.
+- Current measured coverage: `99.15%`.
 - Documentation: [marmurar.github.io/jano](https://marmurar.github.io/jano/).
 
 For production use, pin an explicit version and review release notes before upgrading. For experimentation, temporal validation design work and prototype evaluation pipelines, the project is ready to use.
 
 ## Citation
 
-If you use Jano in research, technical reports, benchmarks or production validation work, please cite it using the metadata in [CITATION.cff](CITATION.cff).
+If you use Jano in research, technical reports, benchmarks or production validation work, please cite the project with this BibTeX entry:
+
+```bibtex
+@software{muraro_jano_2026,
+  author       = {Muraro, Marcos Manuel},
+  title        = {Jano: Temporal Simulation and Backtesting Toolkit for Time-Dependent Machine Learning Systems},
+  year         = {2026},
+  version      = {0.4.0},
+  url          = {https://github.com/marmurar/jano},
+  repository   = {https://github.com/marmurar/jano},
+  license      = {MIT},
+  note         = {Python toolkit for temporal simulation, walk-forward validation, backtesting, and retraining-policy analysis for time-dependent machine learning systems}
+}
+```
+
+The same citation metadata is also available in [CITATION.cff](CITATION.cff).
 
 ## Authors
 

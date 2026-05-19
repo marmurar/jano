@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping, Sequence
+from typing import Callable, Mapping, Sequence
 
 import numpy as np
 import pandas as pd
 
 from .io import coerce_tabular_input
+from .evaluation import EvaluationProfile
 from .policies import (
     MetricFn,
     _clone_model,
-    _normalize_metric_mapping,
     _prepare_supervised_frame,
 )
 from .simulation import TemporalSimulation
@@ -28,6 +28,7 @@ class RetrainContext:
     history: pd.DataFrame
     metric_directions: Mapping[str, str]
     last_retrain_fold: int | None
+    primary_metric: str | None = None
 
 
 class RetrainPolicy:
@@ -65,6 +66,16 @@ class PeriodicRetrain(RetrainPolicy):
         return (context.fold - context.last_retrain_fold) >= self.every
 
 
+class FunctionRetrainPolicy(RetrainPolicy):
+    """Delegate retraining decisions to a user-provided callable."""
+
+    def __init__(self, rule: Callable[[RetrainContext], bool]) -> None:
+        self.rule = rule
+
+    def should_retrain(self, context: RetrainContext) -> bool:
+        return bool(self.rule(context))
+
+
 class DriftBasedRetrain(RetrainPolicy):
     """Retrain when previously observed degradation crosses a threshold.
 
@@ -74,7 +85,7 @@ class DriftBasedRetrain(RetrainPolicy):
     def __init__(
         self,
         *,
-        metric: str = "rmse",
+        metric: str | None = None,
         threshold: float = 0.05,
         baseline: str = "last_retrain",
         relative: bool = True,
@@ -93,11 +104,12 @@ class DriftBasedRetrain(RetrainPolicy):
     def should_retrain(self, context: RetrainContext) -> bool:
         if context.history.empty:
             return True
-        if self.metric not in context.history.columns:
-            raise ValueError(f"Metric '{self.metric}' is not present in runner history")
+        metric = self._metric_name(context)
+        if metric not in context.history.columns:
+            raise ValueError(f"Metric '{metric}' is not present in runner history")
 
-        latest = float(context.history.iloc[-1][self.metric])
-        direction = context.metric_directions.get(self.metric, "min")
+        latest = float(context.history.iloc[-1][metric])
+        direction = context.metric_directions.get(metric, "min")
         baseline_value = self._baseline_value(context)
 
         if direction == "min":
@@ -113,14 +125,24 @@ class DriftBasedRetrain(RetrainPolicy):
             return (baseline_value - latest) / abs(baseline_value) >= self.threshold
         return baseline_value - latest >= self.threshold
 
+    def _metric_name(self, context: RetrainContext) -> str:
+        if self.metric is not None:
+            return self.metric
+        if context.primary_metric is None:
+            raise ValueError(
+                "DriftBasedRetrain requires metric or an evaluation primary_metric"
+            )
+        return context.primary_metric
+
     def _baseline_value(self, context: RetrainContext) -> float:
-        metric_history = context.history[self.metric].astype(float)
+        metric = self._metric_name(context)
+        metric_history = context.history[metric].astype(float)
         if self.baseline == "first":
             return float(metric_history.iloc[0])
         if self.baseline == "previous_fold":
             return float(metric_history.iloc[-1])
         if self.baseline == "best":
-            direction = context.metric_directions.get(self.metric, "min")
+            direction = context.metric_directions.get(metric, "min")
             return float(metric_history.min() if direction == "min" else metric_history.max())
         if context.last_retrain_fold is None:
             return float(metric_history.iloc[0])
@@ -130,7 +152,7 @@ class DriftBasedRetrain(RetrainPolicy):
         ]
         if baseline_rows.empty:
             return float(metric_history.iloc[0])
-        return float(baseline_rows.iloc[-1][self.metric])
+        return float(baseline_rows.iloc[-1][metric])
 
 
 @dataclass(frozen=True)
@@ -141,6 +163,7 @@ class WalkForwardRunResult:
     predictions: pd.DataFrame
     metric_directions: dict[str, str]
     retrain_policy: str
+    primary_metric: str | None = None
 
     def to_frame(self) -> pd.DataFrame:
         """Return one row per evaluated fold."""
@@ -213,6 +236,7 @@ class WalkForwardRunResult:
             "retrain_events": int(retrained.sum()),
             "retrain_ratio": float(retrained.mean()),
             "metrics": self.metric_names,
+            "primary_metric": self.primary_metric,
         }
         for metric in self.metric_names:
             values = self.records[metric].astype(float)
@@ -234,6 +258,7 @@ class WalkForwardRunResult:
                 "events": _frame_records(self.retrain_events()),
             },
             "metric_directions": dict(self.metric_directions),
+            "primary_metric": self.primary_metric,
         }
         if include_predictions:
             payload["predictions"] = _frame_records(self.predictions_frame())
@@ -274,12 +299,26 @@ class WalkForwardRunner:
         retrain_interval: int | None = None,
         retrain_policy: RetrainPolicy | None = None,
         metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None,
+        metric_directions: Mapping[str, str] | None = None,
+        primary_metric: str | None = None,
+        evaluation: EvaluationProfile | None = None,
         prediction_column: str = "prediction",
     ) -> None:
+        if evaluation is not None and (
+            metrics is not None or metric_directions is not None or primary_metric is not None
+        ):
+            raise ValueError(
+                "evaluation cannot be combined with metrics, metric_directions or primary_metric"
+            )
         self.model = model
         self.target_col = target_col
         self.feature_cols = feature_cols
-        self.metrics = metrics
+        self.evaluation = evaluation or EvaluationProfile(
+            metrics=metrics,
+            metric_directions=metric_directions,
+            primary_metric=primary_metric,
+        )
+        self.metrics = self.evaluation.metrics
         self.prediction_column = prediction_column
         self.retrain_policy = self._normalize_policy(
             retrain=retrain,
@@ -308,7 +347,9 @@ class WalkForwardRunner:
             target_col=target_col,
             feature_cols=self.feature_cols,
         )
-        metric_mapping, metric_directions = _normalize_metric_mapping(self.metrics)
+        evaluation = self.evaluation.resolve()
+        metric_mapping = evaluation.metrics
+        metric_directions = evaluation.metric_directions
 
         current_model = None
         last_retrain_fold: int | None = None
@@ -332,6 +373,7 @@ class WalkForwardRunner:
                 history=pd.DataFrame(records),
                 metric_directions=metric_directions,
                 last_retrain_fold=last_retrain_fold,
+                primary_metric=evaluation.primary_metric,
             )
             should_retrain = current_model is None or self.retrain_policy.should_retrain(context)
             if should_retrain:
@@ -378,6 +420,7 @@ class WalkForwardRunner:
             predictions=pd.DataFrame(prediction_rows),
             metric_directions=metric_directions,
             retrain_policy=type(self.retrain_policy).__name__,
+            primary_metric=evaluation.primary_metric,
         )
 
     def _normalize_policy(

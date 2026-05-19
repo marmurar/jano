@@ -182,6 +182,54 @@ The shorthand retrain modes are:
 - ``retrain="never"`` or ``retrain=False`` to fit once and reuse the same model
 - ``retrain="periodic"`` plus ``retrain_interval=K`` to refit every ``K`` folds
 
+Evaluation profiles
+-------------------
+
+``EvaluationProfile`` separates how a temporal run is measured from when the
+runner should retrain the estimator. Built-in metrics such as ``"mae"``,
+``"rmse"`` and ``"accuracy"`` are convenience shortcuts, but the main contract is
+that users can pass the metric or loss function that matches their problem.
+
+.. code-block:: python
+
+   import numpy as np
+
+   from jano import EvaluationProfile, FunctionRetrainPolicy, WalkForwardRunner
+
+   def daily_cost(y_true, y_pred):
+       return float(np.mean(np.abs(y_true - y_pred)))
+
+   def retrain_rule(context):
+       if context.history.empty:
+           return True
+       latest = context.history["daily_cost"].iloc[-1]
+       limit = limit_for_date(context.split.boundaries["test"].end)
+       return latest > limit
+
+   runner = WalkForwardRunner(
+       model=model,
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       evaluation=EvaluationProfile(
+           metrics={"daily_cost": daily_cost},
+           metric_directions={"daily_cost": "min"},
+           primary_metric="daily_cost",
+       ),
+       retrain_policy=FunctionRetrainPolicy(retrain_rule),
+   )
+
+The profile tells Jano which metrics exist, whether each one should be minimized
+or maximized and which metric is the primary operational signal. ``FunctionRetrainPolicy``
+then gives the user full control over the retrain decision, including dynamic
+thresholds, date-dependent losses or business rules.
+
+Convenience profiles are available when the problem type helps make intent clear:
+
+- ``RegressionProfile`` defaults to ``mae`` and ``rmse`` with ``rmse`` as primary.
+- ``ClassificationProfile`` defaults to ``accuracy`` as a higher-is-better score.
+- ``OrdinalClassificationProfile`` is intended for ordered classes with custom costs.
+- ``RankingProfile`` is intended for ranking or retrieval metrics supplied by the user.
+
 You can also pass an explicit retrain policy object:
 
 .. code-block:: python
@@ -202,6 +250,9 @@ You can also pass an explicit retrain policy object:
 ``DriftBasedRetrain`` uses previously observed fold metrics to decide whether the next
 fold should trigger a retrain. That makes it useful as a first operational benchmark,
 without forcing drift logic into the splitter itself.
+
+When ``DriftBasedRetrain`` is created without an explicit metric, it uses the
+``primary_metric`` from the evaluation profile.
 
 Calendar-aligned duration windows
 ---------------------------------

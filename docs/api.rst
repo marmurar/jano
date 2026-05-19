@@ -64,6 +64,39 @@ Main workflow
    :undoc-members:
    :no-index:
 
+Evaluation profiles
+-------------------
+
+.. autoclass:: jano.evaluation.EvaluationProfile
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.evaluation.ResolvedEvaluationProfile
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.evaluation.RegressionProfile
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.evaluation.ClassificationProfile
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.evaluation.OrdinalClassificationProfile
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.evaluation.RankingProfile
+   :members:
+   :undoc-members:
+   :no-index:
+
 .. autoclass:: jano.planning.SimulationPlan
    :members:
    :undoc-members:
@@ -121,6 +154,11 @@ Retrain policies
    :no-index:
 
 .. autoclass:: jano.runner.PeriodicRetrain
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.runner.FunctionRetrainPolicy
    :members:
    :undoc-members:
    :no-index:

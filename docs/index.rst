@@ -81,6 +81,7 @@ Supported input backends:
    mcp
    ai
    benchmark
+   datasets
    api
    release
    about

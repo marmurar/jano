@@ -74,6 +74,7 @@ Backends soportados:
    mcp
    ai
    benchmark
+   datasets
    api
    release
    about

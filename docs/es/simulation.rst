@@ -175,6 +175,55 @@ Los modos shorthand de retraining son:
 - ``retrain="never"`` o ``retrain=False`` para entrenar una vez y reutilizar el mismo modelo
 - ``retrain="periodic"`` más ``retrain_interval=K`` para refittear cada ``K`` folds
 
+Perfiles de evaluación
+----------------------
+
+``EvaluationProfile`` separa cómo se mide una corrida temporal de cuándo el runner
+debería reentrenar el estimador. Métricas built-in como ``"mae"``, ``"rmse"`` y
+``"accuracy"`` son atajos convenientes, pero el contrato principal es que el usuario
+puede pasar la función de métrica o pérdida que corresponde a su problema.
+
+.. code-block:: python
+
+   import numpy as np
+
+   from jano import EvaluationProfile, FunctionRetrainPolicy, WalkForwardRunner
+
+   def daily_cost(y_true, y_pred):
+       return float(np.mean(np.abs(y_true - y_pred)))
+
+   def retrain_rule(context):
+       if context.history.empty:
+           return True
+       latest = context.history["daily_cost"].iloc[-1]
+       limit = limit_for_date(context.split.boundaries["test"].end)
+       return latest > limit
+
+   runner = WalkForwardRunner(
+       model=model,
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       evaluation=EvaluationProfile(
+           metrics={"daily_cost": daily_cost},
+           metric_directions={"daily_cost": "min"},
+           primary_metric="daily_cost",
+       ),
+       retrain_policy=FunctionRetrainPolicy(retrain_rule),
+   )
+
+El profile le dice a Jano qué métricas existen, si cada una debe minimizarse o
+maximizarse y cuál es la señal operativa principal. ``FunctionRetrainPolicy`` le
+da al usuario control total sobre la decisión de reentrenar, incluyendo thresholds
+dinámicos, losses que cambian por fecha o reglas de negocio.
+
+También hay perfiles convenientes cuando el tipo de problema ayuda a explicitar
+la intención:
+
+- ``RegressionProfile`` usa por defecto ``mae`` y ``rmse`` con ``rmse`` como principal.
+- ``ClassificationProfile`` usa por defecto ``accuracy`` como score donde más alto es mejor.
+- ``OrdinalClassificationProfile`` está pensado para clases ordenadas con costos custom.
+- ``RankingProfile`` está pensado para métricas de ranking o retrieval provistas por el usuario.
+
 También podés pasar una policy explícita:
 
 .. code-block:: python
@@ -195,6 +244,9 @@ También podés pasar una policy explícita:
 ``DriftBasedRetrain`` usa métricas observadas en folds previos para decidir si el fold
 siguiente debería disparar un retraining. Eso lo vuelve útil como benchmark operativo
 inicial, sin meter lógica de drift dentro del splitter.
+
+Cuando ``DriftBasedRetrain`` se crea sin una métrica explícita, usa el
+``primary_metric`` del perfil de evaluación.
 
 Alineación a días calendario
 ----------------------------

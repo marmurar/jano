@@ -18,3 +18,24 @@ Hoy Jano está enfocado en:
 - soporte para inputs pandas, NumPy y Polars
 - splitting eficiente sobre datasets más grandes
 - reporting de simulación útil incluso antes de entrenar modelos
+
+Citación
+--------
+
+Si usás Jano en investigación, reportes técnicos, benchmarks o validación
+productiva, por favor citá el proyecto con este BibTeX:
+
+.. code-block:: bibtex
+
+   @software{muraro_jano_2026,
+     author       = {Muraro, Marcos Manuel},
+     title        = {Jano: Temporal Simulation and Backtesting Toolkit for Time-Dependent Machine Learning Systems},
+     year         = {2026},
+     version      = {0.4.0},
+     url          = {https://github.com/marmurar/jano},
+     repository   = {https://github.com/marmurar/jano},
+     license      = {MIT},
+     note         = {Python toolkit for temporal simulation, walk-forward validation, backtesting, and retraining-policy analysis for time-dependent machine learning systems}
+   }
+
+La misma metadata está disponible en ``CITATION.cff``.

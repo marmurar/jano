@@ -19,6 +19,7 @@ The runner accepts:
 - an estimator with `fit()` and `predict()`
 - `target_col` or a separate `y`
 - optional `feature_cols`
+- an optional `EvaluationProfile` describing metrics, metric directions and the primary metric
 - retraining configuration
 - metric names or custom metric functions
 
@@ -37,6 +38,7 @@ Supported retraining modes:
 - `retrain=False` or `retrain="never"`
 - `retrain="periodic"` with `retrain_interval=K`
 - explicit `RetrainPolicy` objects such as `DriftBasedRetrain`
+- `FunctionRetrainPolicy` for user-owned retrain rules based on the full context
 
 Retraining decisions may only use information observed up to the previous fold.
 
@@ -51,6 +53,7 @@ Retraining decisions may only use information observed up to the previous fold.
 - `predictions_frame()` for row-level test predictions
 - `summary()` for compact aggregate stats
 - `report_data()` and `to_dict()` for agent-friendly structured output
+- `primary_metric` and `metric_directions` so external layers can interpret scores safely
 
 ## Non-Goals
 
@@ -70,4 +73,5 @@ The runner does not:
 - `PeriodicRetrain` retrains at the configured cadence.
 - `DriftBasedRetrain` uses previous fold history only.
 - Result outputs are pandas-friendly and serializable for external visualization.
-
+- Custom metrics can declare whether they should be minimized or maximized.
+- Drift-based retraining can use the evaluation profile's `primary_metric` when no metric is passed directly.

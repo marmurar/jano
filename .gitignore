@@ -13,3 +13,8 @@ docs/_build
 data/
 HANDOFF.md
 FUTURE_IDEAS.md
+
+# Large local dataset artifacts must stay out of git.
+*.csv.gz
+*.parquet
+*.zip
