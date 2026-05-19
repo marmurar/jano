@@ -100,7 +100,7 @@ The current core supports:
 - A numpy-first temporal indexing path that trims overhead on large datasets.
 
 The package is available on PyPI as ``jano``. The test suite is covered by a
-99% minimum coverage gate, and the current measured coverage is 99.25%.
+99% minimum coverage gate, and the current measured coverage is 99.29%.
 
 For production use, pin an explicit version and review release notes before
 upgrading. For experimentation, temporal validation design work and prototype

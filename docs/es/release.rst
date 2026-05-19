@@ -66,8 +66,8 @@ El repositorio incluye un workflow dedicado de GitHub Actions para publicación 
 
    .. code-block:: bash
 
-      git tag v0.3.0
-      git push origin v0.3.0
+      git tag v0.4.0
+      git push origin v0.4.0
 
 5. El workflow ``Publish`` construye los artefactos, los valida con ``twine check`` y publica en PyPI vía trusted publishing.
 

@@ -59,7 +59,7 @@ from jano.splits import TimeSplit
 from jano.types import SegmentBoundaries, SizeSpec
 
 def test_public_version_matches_installed_distribution_metadata() -> None:
-    assert __version__ == "0.3.1"
+    assert __version__ == "0.4.0"
     assert version("jano") == __version__
 
 def test_legacy_import_surface_matches_public_splitter() -> None:

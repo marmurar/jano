@@ -519,7 +519,7 @@ The release path is:
 1. Update `jano/_version.py`.
 2. Run `python -m pytest -q`.
 3. Run `python -m build` and `python -m twine check dist/*`.
-4. Push a tag like `v0.3.0`.
+4. Push a tag like `v0.4.0`.
 
 That tag triggers the `Publish` workflow, which builds the wheel and source distribution and publishes them to PyPI.
 
@@ -546,10 +546,10 @@ The higher-level execution and study APIs, including `WalkForwardRunner`, retrai
 Current distribution and quality signals:
 
 - PyPI package: [jano](https://pypi.org/project/jano/).
-- Latest tested release line: `0.3.x`.
-- Test suite: `114 passed`.
+- Latest tested release line: `0.4.x`.
+- Test suite: `123 passed`.
 - Coverage gate: `99%` minimum.
-- Current measured coverage: `99.25%`.
+- Current measured coverage: `99.29%`.
 - Documentation: [marmurar.github.io/jano](https://marmurar.github.io/jano/).
 
 For production use, pin an explicit version and review release notes before upgrading. For experimentation, temporal validation design work and prototype evaluation pipelines, the project is ready to use.
