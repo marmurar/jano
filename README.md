@@ -191,6 +191,63 @@ It supports:
 - Simulation summaries, HTML timeline reports and plot-ready chart data through `describe_simulation()`.
 - An adaptive partition engine that keeps pandas, NumPy and Polars inputs native for planning when it is safe, and falls back to pandas when stability is more important.
 
+## Example: random splits vs temporal validation
+
+`sklearn.model_selection.train_test_split` is useful for random i.i.d.-style
+evaluation. It is the wrong abstraction when the model will be trained on the
+past and asked to predict the future.
+
+The first snippet assumes scikit-learn is installed only to illustrate the common
+baseline. Jano itself does not require scikit-learn.
+
+```python
+import pandas as pd
+from sklearn.model_selection import train_test_split
+
+frame = pd.DataFrame(
+    {
+        "timestamp": pd.date_range("2025-01-01", periods=120, freq="D"),
+        "feature": range(120),
+        "target": [0] * 80 + [1] * 40,
+    }
+)
+
+train_random, test_random = train_test_split(
+    frame,
+    test_size=0.2,
+    shuffle=True,
+    random_state=7,
+)
+
+print(train_random["timestamp"].max() > test_random["timestamp"].min())
+# True: train contains dates later than some test rows.
+```
+
+With Jano, the evaluation is a temporal policy:
+
+```python
+from jano import TemporalPartitionSpec, WalkForwardPolicy
+
+policy = WalkForwardPolicy(
+    time_col="timestamp",
+    partition=TemporalPartitionSpec(
+        layout="train_test",
+        train_size="60D",
+        test_size="14D",
+        gap_before_test="1D",
+    ),
+    step="14D",
+    strategy="rolling",
+)
+
+plan = policy.plan(frame, title="Production-like temporal validation")
+print(plan.to_frame()[["iteration", "train_end", "test_start", "test_end"]])
+```
+
+That makes the temporal contract inspectable before training: train only sees the
+past, test moves forward, and optional gaps model label or data availability
+latency.
+
 ## Example: run a full simulation without manual iteration
 
 ```python

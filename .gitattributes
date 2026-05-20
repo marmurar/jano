@@ -1,0 +1,6 @@
+# Generated notebook exports should not drive GitHub language statistics.
+notebooks/*.html linguist-generated=true
+
+# Local Sphinx builds are ignored, but keep the Linguist rule explicit if any
+# generated docs artifact is ever committed by mistake.
+docs/_build/** linguist-generated=true

@@ -80,6 +80,7 @@ Supported input backends:
    :caption: Contents
 
    overview
+   train_test_split_example
    concepts
    simulation
    mcp
