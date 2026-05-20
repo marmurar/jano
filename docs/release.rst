@@ -71,6 +71,25 @@ The repository now includes a dedicated GitHub Actions workflow for PyPI publica
 
 5. The ``Publish`` workflow builds the artifacts, validates them with ``twine check`` and publishes them to PyPI via trusted publishing.
 
+Zenodo DOI
+----------
+
+Jano includes repository metadata for Zenodo in ``.zenodo.json`` and citation
+metadata in ``CITATION.cff``.
+
+To mint a DOI for the project:
+
+1. Log in to Zenodo with the GitHub account that owns or administers this repository.
+2. Open the Zenodo GitHub integration page.
+3. Click ``Sync now``.
+4. Enable the ``marmurar/jano`` repository.
+5. Create a new GitHub Release for the next version tag.
+6. Wait for Zenodo to archive the release and assign the DOI.
+7. Add the generated DOI badge and DOI URL back to the README and Sphinx docs.
+
+Do not add a placeholder DOI. Zenodo generates the real DOI only after the
+repository is enabled and a release is archived.
+
 PyPI configuration
 ------------------
 

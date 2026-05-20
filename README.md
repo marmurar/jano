@@ -584,6 +584,24 @@ That tag triggers the `Publish` workflow, which builds the wheel and source dist
 
 In parallel, the repository also includes a `GitHub Release` workflow that can create a GitHub Release and attach the built wheel and source distribution for any `v*` tag.
 
+## Zenodo DOI
+
+Jano includes repository metadata for Zenodo in `.zenodo.json` and citation
+metadata in `CITATION.cff`.
+
+To mint a DOI for the project:
+
+1. Log in to Zenodo with the GitHub account that owns or administers this repository.
+2. Open the Zenodo GitHub integration page.
+3. Click `Sync now`.
+4. Enable the `marmurar/jano` repository.
+5. Create a new GitHub Release for the next version tag.
+6. Wait for Zenodo to archive the release and assign the DOI.
+7. Add the generated DOI badge and DOI URL back to this README and the Sphinx docs.
+
+Do not add a placeholder DOI. Zenodo generates the real DOI only after the
+repository is enabled and a release is archived.
+
 ## Continuous integration and coverage
 
 The repository includes:

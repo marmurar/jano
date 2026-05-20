@@ -1,0 +1,23 @@
+{
+  "title": "Jano: Temporal Simulation and Backtesting Toolkit for Time-Dependent Machine Learning Systems",
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "mit",
+  "language": "eng",
+  "creators": [
+    {
+      "name": "Muraro, Marcos Manuel"
+    }
+  ],
+  "keywords": [
+    "temporal validation",
+    "walk-forward validation",
+    "backtesting",
+    "machine learning",
+    "time-correlated data",
+    "retraining",
+    "model monitoring",
+    "MLOps"
+  ],
+  "description": "Jano is a Python toolkit for temporal simulation, walk-forward validation, backtesting, and retraining-policy analysis for time-dependent machine learning systems."
+}

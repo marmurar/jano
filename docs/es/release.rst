@@ -71,6 +71,25 @@ El repositorio incluye un workflow dedicado de GitHub Actions para publicación 
 
 5. El workflow ``Publish`` construye los artefactos, los valida con ``twine check`` y publica en PyPI vía trusted publishing.
 
+DOI en Zenodo
+-------------
+
+Jano incluye metadata para Zenodo en ``.zenodo.json`` y metadata de citación en
+``CITATION.cff``.
+
+Para acuñar un DOI del proyecto:
+
+1. Iniciá sesión en Zenodo con la cuenta de GitHub que posee o administra este repositorio.
+2. Abrí la página de integración GitHub de Zenodo.
+3. Hacé click en ``Sync now``.
+4. Habilitá el repositorio ``marmurar/jano``.
+5. Creá una nueva GitHub Release para el próximo tag de versión.
+6. Esperá a que Zenodo archive la release y asigne el DOI.
+7. Agregá el badge y la URL del DOI generado al README y a la documentación Sphinx.
+
+No agregues un DOI placeholder. Zenodo genera el DOI real recién después de
+habilitar el repositorio y archivar una release.
+
 Configuración de PyPI
 ---------------------
 
