@@ -7,7 +7,7 @@
 [![CI](https://github.com/marmurar/jano/actions/workflows/ci.yml/badge.svg)](https://github.com/marmurar/jano/actions/workflows/ci.yml)
 [![Docs](https://github.com/marmurar/jano/actions/workflows/docs.yml/badge.svg)](https://github.com/marmurar/jano/actions/workflows/docs.yml)
 [![codecov](https://codecov.io/gh/marmurar/jano/graph/badge.svg)](https://codecov.io/gh/marmurar/jano)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20301006.svg)](https://doi.org/10.5281/zenodo.20301006)
+[![DOI](https://img.shields.io/badge/DOI-10.5281%2Fzenodo.20301006-blue.svg)](https://doi.org/10.5281/zenodo.20301006)
 [![PyPI](https://img.shields.io/pypi/v/jano.svg)](https://pypi.org/project/jano/)
 [![Python versions](https://img.shields.io/pypi/pyversions/jano.svg)](https://pypi.org/project/jano/)
 [![PyPI Downloads](https://static.pepy.tech/badge/jano/month)](https://pepy.tech/projects/jano)
