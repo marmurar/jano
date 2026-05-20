@@ -87,8 +87,7 @@ Para acuñar un DOI del proyecto:
 6. Esperá a que Zenodo archive la release y asigne el DOI.
 7. Agregá el badge y la URL del DOI generado al README y a la documentación Sphinx.
 
-No agregues un DOI placeholder. Zenodo genera el DOI real recién después de
-habilitar el repositorio y archivar una release.
+DOI actual de Zenodo: `<https://doi.org/10.5281/zenodo.20301006>`_.
 
 Configuración de PyPI
 ---------------------

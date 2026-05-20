@@ -6,6 +6,7 @@ authors:
     given-names: "Marcos Manuel"
 url: "https://github.com/marmurar/jano"
 repository-code: "https://github.com/marmurar/jano"
+doi: "10.5281/zenodo.20301006"
 license: "MIT"
 version: "0.4.1"
 date-released: "2026-05-20"

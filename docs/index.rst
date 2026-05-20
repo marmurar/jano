@@ -5,6 +5,10 @@ Jano
 
    **Language:** English | :doc:`Español <es/index>`
 
+.. image:: https://zenodo.org/badge/DOI/10.5281/zenodo.20301006.svg
+   :target: https://doi.org/10.5281/zenodo.20301006
+   :alt: DOI
+
 .. raw:: html
 
    <div class="landing-hero">

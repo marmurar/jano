@@ -87,8 +87,7 @@ To mint a DOI for the project:
 6. Wait for Zenodo to archive the release and assign the DOI.
 7. Add the generated DOI badge and DOI URL back to the README and Sphinx docs.
 
-Do not add a placeholder DOI. Zenodo generates the real DOI only after the
-repository is enabled and a release is archived.
+Current Zenodo DOI: `<https://doi.org/10.5281/zenodo.20301006>`_.
 
 PyPI configuration
 ------------------

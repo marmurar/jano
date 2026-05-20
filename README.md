@@ -7,6 +7,7 @@
 [![CI](https://github.com/marmurar/jano/actions/workflows/ci.yml/badge.svg)](https://github.com/marmurar/jano/actions/workflows/ci.yml)
 [![Docs](https://github.com/marmurar/jano/actions/workflows/docs.yml/badge.svg)](https://github.com/marmurar/jano/actions/workflows/docs.yml)
 [![codecov](https://codecov.io/gh/marmurar/jano/graph/badge.svg)](https://codecov.io/gh/marmurar/jano)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.20301006.svg)](https://doi.org/10.5281/zenodo.20301006)
 [![PyPI](https://img.shields.io/pypi/v/jano.svg)](https://pypi.org/project/jano/)
 [![Python versions](https://img.shields.io/pypi/pyversions/jano.svg)](https://pypi.org/project/jano/)
 [![PyPI Downloads](https://static.pepy.tech/badge/jano/month)](https://pepy.tech/projects/jano)
@@ -599,8 +600,7 @@ To mint a DOI for the project:
 6. Wait for Zenodo to archive the release and assign the DOI.
 7. Add the generated DOI badge and DOI URL back to this README and the Sphinx docs.
 
-Do not add a placeholder DOI. Zenodo generates the real DOI only after the
-repository is enabled and a release is archived.
+Current Zenodo DOI: [10.5281/zenodo.20301006](https://doi.org/10.5281/zenodo.20301006).
 
 ## Continuous integration and coverage
 
@@ -643,6 +643,7 @@ If you use Jano in research, technical reports, benchmarks or production validat
   version      = {0.4.1},
   url          = {https://github.com/marmurar/jano},
   repository   = {https://github.com/marmurar/jano},
+  doi          = {10.5281/zenodo.20301006},
   license      = {MIT},
   note         = {Python toolkit for temporal simulation, walk-forward validation, backtesting, and retraining-policy analysis for time-dependent machine learning systems}
 }
