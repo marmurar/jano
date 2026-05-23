@@ -125,7 +125,15 @@ las responsabilidades separadas:
 
 .. code-block:: python
 
+   import numpy as np
+
    from jano import TemporalPartitionSpec, WalkForwardPolicy, WalkForwardRunner
+
+   def mae(y_true, y_pred):
+       return float(np.mean(np.abs(np.asarray(y_true) - np.asarray(y_pred))))
+
+   def rmse(y_true, y_pred):
+       return float(np.sqrt(np.mean((np.asarray(y_true) - np.asarray(y_pred)) ** 2)))
 
    policy = WalkForwardPolicy(
        time_col="timestamp",
@@ -143,7 +151,7 @@ las responsabilidades separadas:
        target_col="target",
        feature_cols=["feature_a", "feature_b"],
        retrain="always",
-       metrics=["mae", "rmse"],
+       metrics={"mae": mae, "rmse": rmse},
    )
 
    run = runner.run(policy, frame)
@@ -173,9 +181,9 @@ Perfiles de evaluación
 ----------------------
 
 ``EvaluationProfile`` separa cómo se mide una corrida temporal de cuándo el runner
-debería reentrenar el estimador. Métricas built-in como ``"mae"``, ``"rmse"`` y
-``"accuracy"`` son atajos convenientes, pero el contrato principal es que el usuario
-puede pasar la función de métrica o pérdida que corresponde a su problema.
+debería reentrenar el estimador. Jano no implementa fórmulas de métricas; el
+contrato principal es que el usuario pase la función de métrica o pérdida que
+corresponde a su problema.
 
 .. code-block:: python
 
@@ -211,10 +219,11 @@ da al usuario control total sobre la decisión de reentrenar, incluyendo thresho
 dinámicos, losses que cambian por fecha o reglas de negocio.
 
 También hay perfiles convenientes cuando el tipo de problema ayuda a explicitar
-la intención:
+la intención. No agregan fórmulas de métricas; agrupan métricas provistas por el
+usuario según el estilo del problema:
 
-- ``RegressionProfile`` usa por defecto ``mae`` y ``rmse`` con ``rmse`` como principal.
-- ``ClassificationProfile`` usa por defecto ``accuracy`` como score donde más alto es mejor.
+- ``RegressionProfile`` etiqueta pérdidas de regresión provistas por el usuario.
+- ``ClassificationProfile`` etiqueta scores de clasificación provistos por el usuario.
 - ``OrdinalClassificationProfile`` está pensado para clases ordenadas con costos custom.
 - ``RankingProfile`` está pensado para métricas de ranking o retrieval provistas por el usuario.
 
@@ -232,7 +241,7 @@ También podés pasar una policy explícita:
            threshold=0.05,
            baseline="last_retrain",
        ),
-       metrics=["mae"],
+       metrics={"mae": mae},
    )
 
 ``DriftBasedRetrain`` usa métricas observadas en folds previos para decidir si el fold
@@ -264,7 +273,7 @@ incremental real vía ``partial_fit``:
        feature_cols=["feature_a", "feature_b"],
        initial_train_size="30D",
        update_size=1,
-       metrics=["mae", "rmse"],
+       metrics={"mae": mae, "rmse": rmse},
        update_strategy=PartialFitUpdateStrategy(),
    )
 
@@ -300,7 +309,7 @@ No todos los estimadores soportan ``partial_fit``. Para modelos clásicos
        feature_cols=["feature_a", "feature_b"],
        initial_train_size="30D",
        update_size="1D",
-       metrics="mae",
+       metrics={"mae": mae},
        update_strategy=RefitUpdateStrategy(max_train_rows=10_000),
    )
 
@@ -330,7 +339,7 @@ por calendario o por evidencia acumulada:
            OnlineUpdatePolicy("every-100-events", update_size=100, update_strategy=RefitUpdateStrategy()),
            OnlineUpdatePolicy("daily", update_size="1D", update_strategy=RefitUpdateStrategy()),
        ],
-       metrics="mae",
+       metrics={"mae": mae},
    )
 
    comparison = study.run(frame)
@@ -523,7 +532,7 @@ Jano los expone como policies temporales dedicadas en lugar de dejarlos como rec
        model=model,
        target_col="target",
        feature_cols=["feature_1", "feature_2"],
-       metrics=["mae", "rmse"],
+       metrics={"mae": mae, "rmse": rmse},
    )
 
    print(result.to_frame()[["train_size", "mae", "rmse"]])
@@ -555,7 +564,7 @@ El caso opuesto también es común: dejar train fijo y mover test día a día pa
        model=model,
        target_col="target",
        feature_cols=["feature_1", "feature_2"],
-       metrics=["mae", "rmse"],
+       metrics={"mae": mae, "rmse": rmse},
    )
 
    print(result.to_frame()[["window", "test_start", "rmse"]])
@@ -592,7 +601,7 @@ score para el test fijo de esa iteración.
        model=model,
        target_col="target",
        feature_cols=["feature_1", "feature_2"],
-       metrics="rmse",
+       metrics={"rmse": rmse},
        metric="rmse",
        tolerance=0.01,
    )

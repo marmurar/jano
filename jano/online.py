@@ -8,7 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .evaluation import EvaluationProfile
-from .policies import MetricFn, _clone_model, _prepare_supervised_frame
+from .policies import MetricFn, MetricSpec, _clone_model, _prepare_supervised_frame
 from .types import ColumnRef, SizeSpec, TemporalSemanticsSpec
 
 
@@ -331,7 +331,7 @@ class OnlineTemporalRunner:
         feature_cols: Optional feature columns. If omitted, all non-temporal,
             non-target columns are used.
         update_strategy: Strategy that initializes and updates the model.
-        metrics: Metric name, sequence of names or custom mapping.
+        metrics: Mapping of metric names to user-provided callables.
         metric_directions: Optional metric direction overrides.
         primary_metric: Primary metric used by downstream analysis.
         evaluation: Optional explicit ``EvaluationProfile``.
@@ -348,7 +348,7 @@ class OnlineTemporalRunner:
         update_size=1,
         feature_cols: Sequence[ColumnRef] | None = None,
         update_strategy: OnlineUpdateStrategy | None = None,
-        metrics: str | Sequence[str] | dict[str, MetricFn] | None = None,
+        metrics: MetricSpec = None,
         metric_directions: dict[str, str] | None = None,
         primary_metric: str | None = None,
         evaluation: EvaluationProfile | None = None,
@@ -548,7 +548,7 @@ class OnlineUpdatePolicyStudy:
         initial_train_size,
         policies: Sequence[OnlineUpdatePolicy],
         feature_cols: Sequence[ColumnRef] | None = None,
-        metrics: str | Sequence[str] | dict[str, MetricFn] | None = None,
+        metrics: MetricSpec = None,
         metric_directions: dict[str, str] | None = None,
         primary_metric: str | None = None,
         evaluation: EvaluationProfile | None = None,

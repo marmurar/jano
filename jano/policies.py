@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 from dataclasses import dataclass
-from typing import Callable, Mapping, Sequence
+from typing import Callable, Mapping, Optional, Sequence
 
 import numpy as np
 import pandas as pd
@@ -14,37 +14,7 @@ from .types import ColumnRef, SizeSpec, TemporalSemanticsSpec
 from .validation import validate_temporal_semantics
 
 MetricFn = Callable[[np.ndarray, np.ndarray], float]
-
-
-def _mae(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-    return float(np.mean(np.abs(y_true - y_pred)))
-
-
-def _mse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-    return float(np.mean((y_true - y_pred) ** 2))
-
-
-def _rmse(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-    return float(np.sqrt(_mse(y_true, y_pred)))
-
-
-def _accuracy(y_true: np.ndarray, y_pred: np.ndarray) -> float:
-    return float(np.mean(y_true == y_pred))
-
-
-_BUILTIN_METRICS: dict[str, MetricFn] = {
-    "mae": _mae,
-    "mse": _mse,
-    "rmse": _rmse,
-    "accuracy": _accuracy,
-}
-
-_METRIC_DIRECTIONS: dict[str, str] = {
-    "mae": "min",
-    "mse": "min",
-    "rmse": "min",
-    "accuracy": "max",
-}
+MetricSpec = Optional[Mapping[str, MetricFn]]
 
 
 def _coerce_semantics(time_col: str | int | TemporalSemanticsSpec) -> TemporalSemanticsSpec:
@@ -64,35 +34,18 @@ def _resolve_columns(frame: pd.DataFrame, refs: Sequence[ColumnRef]) -> list[obj
 
 
 def _normalize_metric_mapping(
-    metrics: str | Sequence[str] | Mapping[str, MetricFn] | None,
+    metrics: MetricSpec,
 ) -> tuple[dict[str, MetricFn], dict[str, str]]:
     if metrics is None:
-        names = ("mae", "rmse")
-        return (
-            {name: _BUILTIN_METRICS[name] for name in names},
-            {name: _METRIC_DIRECTIONS[name] for name in names},
-        )
-
-    if isinstance(metrics, str):
-        if metrics not in _BUILTIN_METRICS:
-            raise ValueError(f"Unknown metric '{metrics}'")
-        return {metrics: _BUILTIN_METRICS[metrics]}, {metrics: _METRIC_DIRECTIONS[metrics]}
-
-    if isinstance(metrics, Mapping):
-        if not metrics:
-            raise ValueError("metrics mapping must not be empty")
-        return dict(metrics), {name: _METRIC_DIRECTIONS.get(name, "min") for name in metrics}
-
-    normalized: dict[str, MetricFn] = {}
-    directions: dict[str, str] = {}
-    for name in metrics:
-        if name not in _BUILTIN_METRICS:
-            raise ValueError(f"Unknown metric '{name}'")
-        normalized[name] = _BUILTIN_METRICS[name]
-        directions[name] = _METRIC_DIRECTIONS[name]
-    if not normalized:
+        return {}, {}
+    if isinstance(metrics, str) or not isinstance(metrics, Mapping):
+        raise TypeError("metrics must be a mapping of metric names to callables")
+    if not metrics:
         raise ValueError("metrics must not be empty")
-    return normalized, directions
+    for name, metric in metrics.items():
+        if not callable(metric):
+            raise TypeError(f"Metric '{name}' must be callable")
+    return dict(metrics), {name: "min" for name in metrics}
 
 
 def _clone_model(model):
@@ -308,7 +261,7 @@ class TrainGrowthPolicy:
         model,
         target_col: ColumnRef,
         feature_cols: Sequence[ColumnRef] | None = None,
-        metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None,
+        metrics: MetricSpec = None,
     ) -> TrainGrowthResult:
         """Run the fixed-test evaluation over all configured train sizes.
 
@@ -319,8 +272,7 @@ class TrainGrowthPolicy:
             target_col: Target column name or position.
             feature_cols: Optional feature column names or positions. If omitted, all
                 non-temporal, non-target columns are used.
-            metrics: Metric name, sequence of metric names or mapping of custom metric
-                functions.
+            metrics: Mapping of metric names to user-provided callables.
 
         Returns:
             A ``TrainGrowthResult`` containing one metric row per candidate train size.
@@ -378,7 +330,7 @@ class TrainGrowthPolicy:
 
         return TrainGrowthResult(records=pd.DataFrame(records), metric_directions=metric_directions)
 
-    def find_optimal_train_size(self, X, *, model, target_col: ColumnRef, feature_cols: Sequence[ColumnRef] | None = None, metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None, metric: str = "rmse", tolerance: float = 0.0, relative: bool = True) -> dict[str, object]:
+    def find_optimal_train_size(self, X, *, model, target_col: ColumnRef, feature_cols: Sequence[ColumnRef] | None = None, metrics: MetricSpec = None, metric: str = "rmse", tolerance: float = 0.0, relative: bool = True) -> dict[str, object]:
         """Return the smallest train size that stays within tolerance of the best score.
 
         Args:
@@ -386,7 +338,7 @@ class TrainGrowthPolicy:
             model: Estimator with ``fit`` and ``predict`` methods.
             target_col: Target column name or position.
             feature_cols: Optional feature column names or positions.
-            metrics: Metric name, sequence of metric names or custom metric mapping.
+            metrics: Mapping of metric names to user-provided callables.
             metric: Metric column used to choose the optimal train size.
             tolerance: Allowed distance from the best score.
             relative: Whether ``tolerance`` is proportional instead of absolute.
@@ -450,7 +402,7 @@ class PerformanceDecayPolicy:
         model,
         target_col: ColumnRef,
         feature_cols: Sequence[ColumnRef] | None = None,
-        metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None,
+        metrics: MetricSpec = None,
     ) -> PerformanceDecayResult:
         """Run the fixed-train evaluation over moving test windows.
 
@@ -461,8 +413,7 @@ class PerformanceDecayPolicy:
             target_col: Target column name or position.
             feature_cols: Optional feature column names or positions. If omitted, all
                 non-temporal, non-target columns are used.
-            metrics: Metric name, sequence of metric names or mapping of custom metric
-                functions.
+            metrics: Mapping of metric names to user-provided callables.
 
         Returns:
             A ``PerformanceDecayResult`` containing one metric row per test window.
@@ -529,7 +480,7 @@ class PerformanceDecayPolicy:
             metric_directions=metric_directions,
         )
 
-    def find_drift_onset(self, X, *, model, target_col: ColumnRef, feature_cols: Sequence[ColumnRef] | None = None, metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None, metric: str = "rmse", threshold: float = 0.1, baseline: str | float = "first", relative: bool = True) -> dict[str, object] | None:
+    def find_drift_onset(self, X, *, model, target_col: ColumnRef, feature_cols: Sequence[ColumnRef] | None = None, metrics: MetricSpec = None, metric: str = "rmse", threshold: float = 0.1, baseline: str | float = "first", relative: bool = True) -> dict[str, object] | None:
         """Return the first test window whose metric crosses the degradation threshold.
 
         Args:
@@ -537,7 +488,7 @@ class PerformanceDecayPolicy:
             model: Estimator with ``fit`` and ``predict`` methods.
             target_col: Target column name or position.
             feature_cols: Optional feature column names or positions.
-            metrics: Metric name, sequence of metric names or custom metric mapping.
+            metrics: Mapping of metric names to user-provided callables.
             metric: Metric column used to detect degradation.
             threshold: Allowed degradation before a window is flagged.
             baseline: ``"first"``, ``"best"`` or an explicit numeric baseline.

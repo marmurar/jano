@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from conftest import MeanRegressor, RunningMeanPartialFitRegressor, build_frame
+from conftest import MeanRegressor, RunningMeanPartialFitRegressor, build_frame, mae, rmse, accuracy
 from jano import (
     EvaluationProfile,
     OnlineRunResult,
@@ -28,7 +28,7 @@ def test_online_temporal_runner_predicts_before_event_updates() -> None:
         feature_cols=["feature"],
         initial_train_size=4,
         update_size=1,
-        metrics=["mae", "rmse"],
+        metrics={"mae": mae, "rmse": rmse},
     ).run(frame)
 
     assert isinstance(result, OnlineRunResult)
@@ -57,7 +57,7 @@ def test_online_temporal_runner_supports_duration_micro_batches() -> None:
         feature_cols=["feature"],
         initial_train_size="4D",
         update_size="2D",
-        metrics="mae",
+        metrics={"mae": mae},
         include_predictions=False,
     ).run(frame)
 
@@ -124,7 +124,7 @@ def test_partial_fit_update_strategy_passes_classes_once() -> None:
         feature_cols=["feature"],
         initial_train_size=3,
         update_size=1,
-        metrics="accuracy",
+        metrics={"accuracy": accuracy},
         update_strategy=PartialFitUpdateStrategy(classes=[0, 1]),
     ).run(frame)
 
@@ -143,7 +143,7 @@ def test_refit_update_strategy_supports_fit_only_models() -> None:
         feature_cols=["feature"],
         initial_train_size=4,
         update_size=1,
-        metrics="mae",
+        metrics={"mae": mae},
         update_strategy=RefitUpdateStrategy(),
     ).run(frame)
 
@@ -161,7 +161,7 @@ def test_refit_update_strategy_can_keep_bounded_history() -> None:
         feature_cols=["feature"],
         initial_train_size=4,
         update_size=1,
-        metrics="mae",
+        metrics={"mae": mae},
         update_strategy=RefitUpdateStrategy(max_train_rows=3),
     ).run(frame)
 
@@ -235,7 +235,7 @@ def test_online_temporal_runner_skips_empty_duration_windows() -> None:
         feature_cols=["feature"],
         initial_train_size="1D",
         update_size="1D",
-        metrics="mae",
+        metrics={"mae": mae},
     ).run(frame)
 
     assert result.to_frame()["batch_start"].tolist() == [
@@ -254,7 +254,7 @@ def test_online_temporal_runner_supports_duration_train_and_event_updates() -> N
         feature_cols=["feature"],
         initial_train_size="3D",
         update_size=1,
-        metrics="mae",
+        metrics={"mae": mae},
     ).run(frame)
 
     assert result.to_frame()["batch_rows"].tolist() == [1, 1, 1]
@@ -272,7 +272,7 @@ def test_online_temporal_runner_supports_numpy_time_positions() -> None:
         feature_cols=[1],
         initial_train_size=3,
         update_size=2,
-        metrics="mae",
+        metrics={"mae": mae},
     ).run(values)
 
     assert result.to_frame()["batch_rows"].tolist() == [2, 1]
@@ -285,8 +285,8 @@ def test_online_temporal_runner_validates_evaluation_arguments_and_empty_inputs(
             time_col="timestamp",
             target_col="target",
             initial_train_size=2,
-            metrics="mae",
-            evaluation=EvaluationProfile(metrics="rmse"),
+            metrics={"mae": mae},
+            evaluation=EvaluationProfile(metrics={"rmse": rmse}),
         )
 
     with pytest.raises(ValueError, match="at least one row"):
@@ -379,7 +379,7 @@ def test_online_update_policy_study_compares_event_and_batch_policies() -> None:
                 update_cost=1.5,
             ),
         ],
-        metrics="mae",
+        metrics={"mae": mae},
     )
 
     result = study.run(frame)

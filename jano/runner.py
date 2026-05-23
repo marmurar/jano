@@ -298,7 +298,7 @@ class WalkForwardRunner:
         retrain: bool | str = True,
         retrain_interval: int | None = None,
         retrain_policy: RetrainPolicy | None = None,
-        metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None,
+        metrics: MetricSpec = None,
         metric_directions: Mapping[str, str] | None = None,
         primary_metric: str | None = None,
         evaluation: EvaluationProfile | None = None,

@@ -132,7 +132,15 @@ responsibilities separated:
 
 .. code-block:: python
 
+   import numpy as np
+
    from jano import TemporalPartitionSpec, WalkForwardPolicy, WalkForwardRunner
+
+   def mae(y_true, y_pred):
+       return float(np.mean(np.abs(np.asarray(y_true) - np.asarray(y_pred))))
+
+   def rmse(y_true, y_pred):
+       return float(np.sqrt(np.mean((np.asarray(y_true) - np.asarray(y_pred)) ** 2)))
 
    policy = WalkForwardPolicy(
        time_col="timestamp",
@@ -150,7 +158,7 @@ responsibilities separated:
        target_col="target",
        feature_cols=["feature_a", "feature_b"],
        retrain="always",
-       metrics=["mae", "rmse"],
+       metrics={"mae": mae, "rmse": rmse},
    )
 
    run = runner.run(policy, frame)
@@ -180,9 +188,9 @@ Evaluation profiles
 -------------------
 
 ``EvaluationProfile`` separates how a temporal run is measured from when the
-runner should retrain the estimator. Built-in metrics such as ``"mae"``,
-``"rmse"`` and ``"accuracy"`` are convenience shortcuts, but the main contract is
-that users can pass the metric or loss function that matches their problem.
+runner should retrain the estimator. Jano does not implement metric formulas;
+the main contract is that users pass the metric or loss function that matches
+their problem.
 
 .. code-block:: python
 
@@ -217,10 +225,12 @@ or maximized and which metric is the primary operational signal. ``FunctionRetra
 then gives the user full control over the retrain decision, including dynamic
 thresholds, date-dependent losses or business rules.
 
-Convenience profiles are available when the problem type helps make intent clear:
+Convenience profiles are available when the problem type helps make intent clear.
+They do not add metric formulas; they keep user-provided metrics grouped by
+problem style:
 
-- ``RegressionProfile`` defaults to ``mae`` and ``rmse`` with ``rmse`` as primary.
-- ``ClassificationProfile`` defaults to ``accuracy`` as a higher-is-better score.
+- ``RegressionProfile`` labels regression-style losses supplied by the user.
+- ``ClassificationProfile`` labels classification-style scores supplied by the user.
 - ``OrdinalClassificationProfile`` is intended for ordered classes with custom costs.
 - ``RankingProfile`` is intended for ranking or retrieval metrics supplied by the user.
 
@@ -238,7 +248,7 @@ You can also pass an explicit retrain policy object:
            threshold=0.05,
            baseline="last_retrain",
        ),
-       metrics=["mae"],
+       metrics={"mae": mae},
    )
 
 ``DriftBasedRetrain`` uses previously observed fold metrics to decide whether the next
@@ -269,7 +279,7 @@ updates through ``partial_fit``:
        feature_cols=["feature_a", "feature_b"],
        initial_train_size="30D",
        update_size=1,
-       metrics=["mae", "rmse"],
+       metrics={"mae": mae, "rmse": rmse},
        update_strategy=PartialFitUpdateStrategy(),
    )
 
@@ -305,7 +315,7 @@ use ``RefitUpdateStrategy`` instead:
        feature_cols=["feature_a", "feature_b"],
        initial_train_size="30D",
        update_size="1D",
-       metrics="mae",
+       metrics={"mae": mae},
        update_strategy=RefitUpdateStrategy(max_train_rows=10_000),
    )
 
@@ -335,7 +345,7 @@ calendar time or by accumulated evidence:
            OnlineUpdatePolicy("every-100-events", update_size=100, update_strategy=RefitUpdateStrategy()),
            OnlineUpdatePolicy("daily", update_size="1D", update_strategy=RefitUpdateStrategy()),
        ],
-       metrics="mae",
+       metrics={"mae": mae},
    )
 
    comparison = study.run(frame)
@@ -527,7 +537,7 @@ Jano now exposes them as dedicated temporal policies instead of leaving them as 
        model=model,
        target_col="target",
        feature_cols=["feature_1", "feature_2"],
-       metrics=["mae", "rmse"],
+       metrics={"mae": mae, "rmse": rmse},
    )
 
    print(result.to_frame()[["train_size", "mae", "rmse"]])
@@ -568,7 +578,7 @@ In other words:
        model=model,
        target_col="target",
        feature_cols=["feature_1", "feature_2"],
-       metrics=["mae", "rmse"],
+       metrics={"mae": mae, "rmse": rmse},
    )
 
    print(result.to_frame()[["window", "test_start", "rmse"]])
@@ -611,7 +621,7 @@ iteration's fixed test slice.
        model=model,
        target_col="target",
        feature_cols=["feature_1", "feature_2"],
-       metrics="rmse",
+       metrics={"rmse": rmse},
        metric="rmse",
        tolerance=0.01,
    )

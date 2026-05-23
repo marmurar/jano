@@ -31,9 +31,15 @@ Studies should compose lower-level primitives:
 - splitters for temporal geometry
 - plans for fold boundaries and counts
 - simulations for materialized fold execution
-- runners for model execution and metrics
+- runners for model execution and user-provided metric callables
 
 Studies should not replace these primitives or hide them completely.
+
+## Metric Contract
+
+Studies may organize metric outputs and optimize over metric names, but they must
+not define generic metric formulas in Jano core. Users own metric functions and
+pass them explicitly as callables.
 
 ## Output Shape
 
@@ -60,4 +66,3 @@ Studies should not become:
 - target-aware decay studies
 - cost-aware train history search
 - feature-group lookback studies
-

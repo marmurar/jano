@@ -21,7 +21,7 @@ The runner accepts:
 - optional `feature_cols`
 - an optional `EvaluationProfile` describing metrics, metric directions and the primary metric
 - retraining configuration
-- metric names or custom metric functions
+- user-provided metric functions passed as a mapping from output name to callable
 
 Supported workflow inputs include:
 
@@ -73,5 +73,6 @@ The runner does not:
 - `PeriodicRetrain` retrains at the configured cadence.
 - `DriftBasedRetrain` uses previous fold history only.
 - Result outputs are pandas-friendly and serializable for external visualization.
-- Custom metrics can declare whether they should be minimized or maximized.
+- Jano does not implement metric formulas; users provide metric callables.
+- User-owned metrics can declare whether they should be minimized or maximized.
 - Drift-based retraining can use the evaluation profile's `primary_metric` when no metric is passed directly.

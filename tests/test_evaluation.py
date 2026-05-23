@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from conftest import MeanRegressor, SimpleLinearRegressor, build_frame
+from conftest import MeanRegressor, SimpleLinearRegressor, build_frame, rmse
 from jano import (
     ClassificationProfile,
     DriftBasedRetrain,
@@ -105,8 +105,9 @@ def test_function_retrain_policy_receives_context_for_dynamic_rules() -> None:
 
 
 def test_evaluation_profiles_validate_metric_metadata() -> None:
-    assert RegressionProfile().resolve().primary_metric == "rmse"
-    assert ClassificationProfile().resolve().primary_metric == "accuracy"
+    assert RegressionProfile().resolve().primary_metric is None
+    assert ClassificationProfile().resolve().primary_metric is None
+    assert EvaluationProfile().resolve().metrics == {}
     assert (
         OrdinalClassificationProfile(
             {"ordinal_cost": lambda y_true, y_pred: float(np.mean(np.abs(y_true - y_pred)))}
@@ -125,6 +126,8 @@ def test_evaluation_profiles_validate_metric_metadata() -> None:
         == "max"
     )
 
+    with pytest.raises(TypeError, match="mapping"):
+        EvaluationProfile(metrics="rmse").resolve()  # type: ignore[arg-type]
     with pytest.raises(ValueError, match="unknown metrics"):
         EvaluationProfile(metrics={"loss": lambda y_true, y_pred: 0.0}, metric_directions={"x": "min"}).resolve()
     with pytest.raises(ValueError, match="either 'min' or 'max'"):
@@ -142,7 +145,7 @@ def test_runner_rejects_mixed_legacy_and_profile_evaluation_inputs() -> None:
             model=SimpleLinearRegressor(),
             target_col="target",
             evaluation=RegressionProfile(),
-            metrics="rmse",
+            metrics={"rmse": rmse},
         )
 
 

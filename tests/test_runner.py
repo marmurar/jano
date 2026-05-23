@@ -20,7 +20,7 @@ import jano.planning as planning_module
 import jano.policies as policies_module
 import jano.runner as runner_module
 import jano.validation as validation_module
-from conftest import build_frame, write_csv_frame, SimpleLinearRegressor, MeanRegressor
+from conftest import build_frame, write_csv_frame, SimpleLinearRegressor, MeanRegressor, mae, rmse
 from jano import (
     AlwaysRetrain,
     DriftBasedRetrain,
@@ -71,7 +71,7 @@ def test_walk_forward_runner_retrains_every_fold_by_default() -> None:
         model=SimpleLinearRegressor(),
         target_col="target",
         feature_cols=["feature"],
-        metrics="rmse",
+        metrics={"rmse": rmse},
     ).run(policy, frame)
 
     assert isinstance(result, WalkForwardRunResult)
@@ -95,7 +95,7 @@ def test_walk_forward_run_result_exposes_plot_ready_execution_data() -> None:
         feature_cols=["feature"],
         retrain="periodic",
         retrain_interval=2,
-        metrics=["mae", "rmse"],
+        metrics={"mae": mae, "rmse": rmse},
     ).run(policy, frame)
 
     fold_summary = result.fold_summary()
@@ -194,7 +194,7 @@ def test_walk_forward_runner_can_keep_same_model_without_retraining() -> None:
         target_col="target",
         feature_cols=["feature"],
         retrain=False,
-        metrics="rmse",
+        metrics={"rmse": rmse},
     ).run(splitter, frame)
 
     assert result.retrain_policy == "NeverRetrain"
@@ -216,7 +216,7 @@ def test_walk_forward_runner_supports_periodic_retraining() -> None:
         feature_cols=["feature"],
         retrain="periodic",
         retrain_interval=2,
-        metrics="rmse",
+        metrics={"rmse": rmse},
     ).run(policy, frame)
 
     assert result.retrain_policy == "PeriodicRetrain"
@@ -234,7 +234,7 @@ def test_walk_forward_runner_accepts_separate_y_input() -> None:
     result = WalkForwardRunner(
         model=SimpleLinearRegressor(),
         feature_cols=["feature"],
-        metrics="rmse",
+        metrics={"rmse": rmse},
     ).run(policy, frame[["timestamp", "feature"]], frame["target"])
 
     assert "rmse" in result.to_frame().columns
@@ -255,7 +255,7 @@ def test_walk_forward_runner_respects_policy_max_folds() -> None:
         target_col="target",
         feature_cols=["feature"],
         retrain="always",
-        metrics="rmse",
+        metrics={"rmse": rmse},
     ).run(policy, frame)
 
     assert len(result.to_frame()) == 2
@@ -280,7 +280,7 @@ def test_walk_forward_runner_can_retrain_on_observed_drift() -> None:
         target_col="target",
         feature_cols=["feature"],
         retrain_policy=DriftBasedRetrain(metric="mae", threshold=0.5, baseline="last_retrain"),
-        metrics="mae",
+        metrics={"mae": mae},
     ).run(policy, frame)
 
     assert result.retrain_policy == "DriftBasedRetrain"
@@ -408,7 +408,7 @@ def test_walk_forward_runner_covers_error_paths_and_workflow_variants(tmp_path) 
         model=SimpleLinearRegressor(),
         target_col="target",
         feature_cols=["feature"],
-        metrics="rmse",
+        metrics={"rmse": rmse},
     ).run(simulation, frame)
     assert len(result.to_frame()) == 2
 
@@ -498,7 +498,7 @@ def test_remaining_planning_runner_simulation_and_splitter_branches(monkeypatch)
     assert sim_plan.select_until_iteration(0).total_folds == 1
     assert sim_plan.exclude_windows(validation=[("2024-01-01", "2024-01-02")]).total_folds == sim_plan.total_folds
 
-    assert policies_module._normalize_metric_mapping(["rmse"])[1]["rmse"] == "min"
+    assert policies_module._normalize_metric_mapping({"rmse": rmse})[1]["rmse"] == "min"
 
     no_default_split = TimeSplit(
         fold=0,
