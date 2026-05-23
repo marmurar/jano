@@ -241,7 +241,8 @@ def run_walk_forward_baseline(
     target_col: str | int | None = None,
     feature_cols: list[str | int] | None = None,
     model: str = "mean",
-    metrics: str | list[str] | None = None,
+    metrics: dict[str, Any] | None = None,
+    metric_directions: dict[str, str] | None = None,
     retrain: bool | str = "always",
     retrain_interval: int | None = None,
     drift_metric: str = "rmse",
@@ -276,8 +277,9 @@ def run_walk_forward_baseline(
             ``WalkForwardRunner``.
         model: Baseline estimator: ``"mean"`` for numeric regression or
             ``"majority_class"`` for classification.
-        metrics: Metric name or list of metric names accepted by
-            ``WalkForwardRunner``.
+        metrics: Mapping of metric names to user-provided callables.
+        metric_directions: Optional mapping declaring ``"min"`` or ``"max"`` per
+            metric.
         retrain: Retraining policy: ``"always"``, ``"never"``, ``"periodic"``,
             ``"on_drift"``, ``True`` or ``False``.
         retrain_interval: Fold interval required by ``retrain="periodic"``.
@@ -331,6 +333,7 @@ def run_walk_forward_baseline(
         "target_col": target_col,
         "feature_cols": feature_cols,
         "metrics": metrics,
+        "metric_directions": metric_directions,
     }
     if retrain == "on_drift":
         runner_kwargs["retrain_policy"] = DriftBasedRetrain(
@@ -371,7 +374,7 @@ def compare_retrain_policies(
     target_col: str | int | None = None,
     feature_cols: list[str | int] | None = None,
     model: str = "mean",
-    metrics: str | list[str] | None = None,
+    metrics: dict[str, Any] | None = None,
     policies: list[dict[str, Any]] | None = None,
     strategy: str = "rolling",
     allow_partial: bool = False,
@@ -457,7 +460,7 @@ def find_train_history_window(
     target_col: str | int | None = None,
     feature_cols: list[str | int] | None = None,
     model: str = "mean",
-    metrics: str | list[str] | None = None,
+    metrics: dict[str, Any] | None = None,
     metric: str = "rmse",
     tolerance: float = 0.0,
     relative: bool = True,
@@ -530,7 +533,7 @@ def monitor_decay(
     target_col: str | int | None = None,
     feature_cols: list[str | int] | None = None,
     model: str = "mean",
-    metrics: str | list[str] | None = None,
+    metrics: dict[str, Any] | None = None,
     metric: str = "rmse",
     threshold: float = 0.1,
     baseline: str | float = "first",

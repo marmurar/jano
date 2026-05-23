@@ -17,12 +17,6 @@ El workflow general está pensado por capas:
 - inspeccionar o recortar iteraciones con ``plan()`` cuando haga falta
 - y caer al modo manual de folds cuando querés componer todo por tu cuenta
 
-El workflow general está pensado por capas:
-
-- usar clases high-level cuando la pregunta ya está encapsulada
-- inspeccionar o recortar iteraciones con ``plan()`` cuando haga falta
-- y caer al modo manual de folds cuando querés componer todo por tu cuenta
-
 La misma API acepta tres inputs tabulares:
 
 - ``pandas.DataFrame``
@@ -131,7 +125,15 @@ las responsabilidades separadas:
 
 .. code-block:: python
 
+   import numpy as np
+
    from jano import TemporalPartitionSpec, WalkForwardPolicy, WalkForwardRunner
+
+   def mae(y_true, y_pred):
+       return float(np.mean(np.abs(np.asarray(y_true) - np.asarray(y_pred))))
+
+   def rmse(y_true, y_pred):
+       return float(np.sqrt(np.mean((np.asarray(y_true) - np.asarray(y_pred)) ** 2)))
 
    policy = WalkForwardPolicy(
        time_col="timestamp",
@@ -149,7 +151,7 @@ las responsabilidades separadas:
        target_col="target",
        feature_cols=["feature_a", "feature_b"],
        retrain="always",
-       metrics=["mae", "rmse"],
+       metrics={"mae": mae, "rmse": rmse},
    )
 
    run = runner.run(policy, frame)
@@ -179,9 +181,9 @@ Perfiles de evaluación
 ----------------------
 
 ``EvaluationProfile`` separa cómo se mide una corrida temporal de cuándo el runner
-debería reentrenar el estimador. Métricas built-in como ``"mae"``, ``"rmse"`` y
-``"accuracy"`` son atajos convenientes, pero el contrato principal es que el usuario
-puede pasar la función de métrica o pérdida que corresponde a su problema.
+debería reentrenar el estimador. Jano no implementa fórmulas de métricas; el
+contrato principal es que el usuario pase la función de métrica o pérdida que
+corresponde a su problema.
 
 .. code-block:: python
 
@@ -217,10 +219,11 @@ da al usuario control total sobre la decisión de reentrenar, incluyendo thresho
 dinámicos, losses que cambian por fecha o reglas de negocio.
 
 También hay perfiles convenientes cuando el tipo de problema ayuda a explicitar
-la intención:
+la intención. No agregan fórmulas de métricas; agrupan métricas provistas por el
+usuario según el estilo del problema:
 
-- ``RegressionProfile`` usa por defecto ``mae`` y ``rmse`` con ``rmse`` como principal.
-- ``ClassificationProfile`` usa por defecto ``accuracy`` como score donde más alto es mejor.
+- ``RegressionProfile`` etiqueta pérdidas de regresión provistas por el usuario.
+- ``ClassificationProfile`` etiqueta scores de clasificación provistos por el usuario.
 - ``OrdinalClassificationProfile`` está pensado para clases ordenadas con costos custom.
 - ``RankingProfile`` está pensado para métricas de ranking o retrieval provistas por el usuario.
 
@@ -238,7 +241,7 @@ También podés pasar una policy explícita:
            threshold=0.05,
            baseline="last_retrain",
        ),
-       metrics=["mae"],
+       metrics={"mae": mae},
    )
 
 ``DriftBasedRetrain`` usa métricas observadas en folds previos para decidir si el fold
@@ -247,6 +250,108 @@ inicial, sin meter lógica de drift dentro del splitter.
 
 Cuando ``DriftBasedRetrain`` se crea sin una métrica explícita, usa el
 ``primary_metric`` del perfil de evaluación.
+
+Evaluación online por evento
+----------------------------
+
+``OnlineTemporalRunner`` cubre la política de actualización más extrema:
+predecir el próximo evento o micro-batch, observar su target y actualizar el
+modelo inmediatamente. Este patrón también se conoce como evaluación
+prequential.
+
+Usá ``PartialFitUpdateStrategy`` cuando el modelo soporta actualización
+incremental real vía ``partial_fit``:
+
+.. code-block:: python
+
+   from jano import OnlineTemporalRunner, PartialFitUpdateStrategy
+
+   runner = OnlineTemporalRunner(
+       model=model,
+       time_col="timestamp",
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       initial_train_size="30D",
+       update_size=1,
+       metrics={"mae": mae, "rmse": rmse},
+       update_strategy=PartialFitUpdateStrategy(),
+   )
+
+   run = runner.run(frame)
+   print(run.to_frame().head())
+   print(run.metric_trajectory().head())
+   print(run.summary())
+
+La secuencia es causal por diseño:
+
+- inicializa el modelo sobre la ventana inicial de train
+- predice el próximo evento o micro-batch
+- mide la predicción cuando se observa el target
+- actualiza el modelo con ese batch observado
+- repite
+
+``update_size=1`` significa actualización por evento. También podés usar batches
+por filas como ``update_size=100`` o por duración como ``update_size="1D"``. Eso
+permite comparar políticas diarias, semanales, por batch o por evento sin cambiar
+el contrato del splitter.
+
+No todos los estimadores soportan ``partial_fit``. Para modelos clásicos
+``fit/predict``, usá ``RefitUpdateStrategy``:
+
+.. code-block:: python
+
+   from jano import OnlineTemporalRunner, RefitUpdateStrategy
+
+   runner = OnlineTemporalRunner(
+       model=model,
+       time_col="timestamp",
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       initial_train_size="30D",
+       update_size="1D",
+       metrics={"mae": mae},
+       update_strategy=RefitUpdateStrategy(max_train_rows=10_000),
+   )
+
+Esta estrategia refittea después de cada batch observado. Es más costosa que
+``partial_fit``, pero funciona con estimadores estándar y puede mantener historia
+acotada con ``max_train_rows``.
+
+Encontrar una policy de actualización por observaciones
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``OnlineUpdatePolicyStudy`` compara varias cadencias de actualización sobre el
+mismo stream temporal. Eso permite preguntar si el retraining debería dispararse
+por calendario o por evidencia acumulada:
+
+.. code-block:: python
+
+   from jano import OnlineUpdatePolicy, OnlineUpdatePolicyStudy, RefitUpdateStrategy
+
+   study = OnlineUpdatePolicyStudy(
+       model=model,
+       time_col="timestamp",
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       initial_train_size="30D",
+       policies=[
+           OnlineUpdatePolicy("every-event", update_size=1, update_strategy=RefitUpdateStrategy()),
+           OnlineUpdatePolicy("every-100-events", update_size=100, update_strategy=RefitUpdateStrategy()),
+           OnlineUpdatePolicy("daily", update_size="1D", update_strategy=RefitUpdateStrategy()),
+       ],
+       metrics={"mae": mae},
+   )
+
+   comparison = study.run(frame)
+
+   print(comparison.to_frame())
+   print(comparison.metric_trajectory().head())
+   print(comparison.find_optimal_policy(metric="mae", update_cost_weight=0.01))
+
+El parámetro opcional ``update_cost_weight`` penaliza policies que actualizan muy
+seguido. Así el output sigue siendo data-first, pero el tradeoff queda explícito:
+una policy puede ganar porque predice mejor, porque actualiza menos o porque
+ofrece el mejor compromiso ajustado por costo.
 
 Alineación a días calendario
 ----------------------------
@@ -427,7 +532,7 @@ Jano los expone como policies temporales dedicadas en lugar de dejarlos como rec
        model=model,
        target_col="target",
        feature_cols=["feature_1", "feature_2"],
-       metrics=["mae", "rmse"],
+       metrics={"mae": mae, "rmse": rmse},
    )
 
    print(result.to_frame()[["train_size", "mae", "rmse"]])
@@ -459,7 +564,7 @@ El caso opuesto también es común: dejar train fijo y mover test día a día pa
        model=model,
        target_col="target",
        feature_cols=["feature_1", "feature_2"],
-       metrics=["mae", "rmse"],
+       metrics={"mae": mae, "rmse": rmse},
    )
 
    print(result.to_frame()[["window", "test_start", "rmse"]])
@@ -496,7 +601,7 @@ score para el test fijo de esa iteración.
        model=model,
        target_col="target",
        feature_cols=["feature_1", "feature_2"],
-       metrics="rmse",
+       metrics={"rmse": rmse},
        metric="rmse",
        tolerance=0.01,
    )

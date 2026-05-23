@@ -43,6 +43,26 @@ long does a model or rule remain useful after a fixed training window?
 Use `RollingTrainHistoryPolicy` when the question is: how much history is optimal on
 average across walk-forward iterations?
 
+## Metric Contract
+
+Jano does not implement metric formulas. Agents should not pass strings such as
+`"mae"`, `"rmse"` or `"accuracy"` expecting Jano to resolve them.
+
+Define the metric in user code and pass a mapping:
+
+```python
+import numpy as np
+
+def mae(y_true, y_pred):
+    return float(np.mean(np.abs(np.asarray(y_true) - np.asarray(y_pred))))
+
+metrics = {"mae": mae}
+```
+
+Metric names are labels used in result frames, trajectories and retraining rules.
+Metric formulas belong to the user or to external metric libraries chosen by the
+user.
+
 ## Core Patterns
 
 ### Inspect Before Running
@@ -85,7 +105,15 @@ chart_data = result.chart_data.to_dict()
 Use this when the user wants metrics, predictions or retraining behavior.
 
 ```python
+import numpy as np
+
 from jano import WalkForwardRunner
+
+def mae(y_true, y_pred):
+    return float(np.mean(np.abs(np.asarray(y_true) - np.asarray(y_pred))))
+
+def rmse(y_true, y_pred):
+    return float(np.sqrt(np.mean((np.asarray(y_true) - np.asarray(y_pred)) ** 2)))
 
 runner = WalkForwardRunner(
     model=model,
@@ -93,7 +121,7 @@ runner = WalkForwardRunner(
     feature_cols=["feature_a", "feature_b"],
     retrain="periodic",
     retrain_interval=2,
-    metrics=["mae", "rmse"],
+    metrics={"mae": mae, "rmse": rmse},
 )
 
 run = runner.run(policy, frame)
@@ -189,6 +217,7 @@ Important architecture rules:
 
 - the splitter remains model-agnostic
 - runner execution does not redefine fold geometry
+- metrics are user-owned callables, not Jano built-ins
 - runner outputs are data-first
 - manual fold iteration remains public
 - studies compose lower-level primitives

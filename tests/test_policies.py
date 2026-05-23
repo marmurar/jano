@@ -20,7 +20,7 @@ import jano.planning as planning_module
 import jano.policies as policies_module
 import jano.runner as runner_module
 import jano.validation as validation_module
-from conftest import build_frame, write_csv_frame, SimpleLinearRegressor, MeanRegressor
+from conftest import build_frame, write_csv_frame, SimpleLinearRegressor, MeanRegressor, mae, rmse
 from jano import (
     AlwaysRetrain,
     DriftBasedRetrain,
@@ -74,7 +74,12 @@ def test_train_growth_policy_finds_smallest_train_with_best_rmse() -> None:
         test_size="5D",
     )
 
-    result = policy.evaluate(frame, model=SimpleLinearRegressor(), target_col="target")
+    result = policy.evaluate(
+        frame,
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        metrics={"rmse": rmse},
+    )
     best = result.find_optimal_train_size(metric="rmse", tolerance=0.0)
 
     assert result.to_frame()["train_size"].tolist() == ["5 days 00:00:00", "10 days 00:00:00", "15 days 00:00:00"]
@@ -101,14 +106,14 @@ def test_train_growth_policy_convenience_method_returns_best_variant() -> None:
         frame,
         model=SimpleLinearRegressor(),
         target_col="target",
-        metrics="mae",
+        metrics={"mae": mae},
     )
     best = policy.find_optimal_train_size(
         frame,
         model=SimpleLinearRegressor(),
         target_col="target",
         metric="mae",
-        metrics="mae",
+        metrics={"mae": mae},
     )
 
     assert best == evaluated.find_optimal_train_size(metric="mae")
@@ -133,7 +138,12 @@ def test_performance_decay_policy_detects_first_problem_window() -> None:
         max_windows=5,
     )
 
-    result = policy.evaluate(frame, model=SimpleLinearRegressor(), target_col="target")
+    result = policy.evaluate(
+        frame,
+        model=SimpleLinearRegressor(),
+        target_col="target",
+        metrics={"rmse": rmse},
+    )
     onset = result.find_drift_onset(metric="rmse", threshold=10.0, relative=False)
 
     assert result.to_frame()["window"].tolist() == [0, 1, 2, 3, 4]
@@ -165,6 +175,7 @@ def test_performance_decay_policy_convenience_method_uses_first_window_baseline(
         model=SimpleLinearRegressor(),
         target_col="target",
         metric="mae",
+        metrics={"mae": mae},
         threshold=5.0,
         relative=False,
     )
@@ -263,13 +274,13 @@ def test_train_growth_policy_rejects_invalid_metric_inputs() -> None:
         test_size="2D",
     )
 
-    with pytest.raises(ValueError, match="Unknown metric"):
+    with pytest.raises(TypeError, match="mapping"):
         policy.evaluate(frame, model=SimpleLinearRegressor(), target_col="target", metrics="bogus")
 
-    with pytest.raises(ValueError, match="metrics mapping must not be empty"):
+    with pytest.raises(ValueError, match="metrics must not be empty"):
         policy.evaluate(frame, model=SimpleLinearRegressor(), target_col="target", metrics={})
 
-    with pytest.raises(ValueError, match="metrics must not be empty"):
+    with pytest.raises(TypeError, match="mapping"):
         policy.evaluate(frame, model=SimpleLinearRegressor(), target_col="target", metrics=[])
 
 def test_train_growth_policy_supports_custom_metric_mapping() -> None:
@@ -439,7 +450,7 @@ def test_train_history_policy_wraps_train_growth_policy() -> None:
         model=SimpleLinearRegressor(),
         target_col="target",
         feature_cols=["feature"],
-        metrics="rmse",
+        metrics={"rmse": rmse},
     )
 
     best = policy.find_optimal_train_size(
@@ -447,7 +458,7 @@ def test_train_history_policy_wraps_train_growth_policy() -> None:
         model=SimpleLinearRegressor(),
         target_col="target",
         feature_cols=["feature"],
-        metrics="rmse",
+        metrics={"rmse": rmse},
         metric="rmse",
         tolerance=0.0,
     )
@@ -472,14 +483,14 @@ def test_drift_monitoring_policy_wraps_performance_decay_policy() -> None:
         model=SimpleLinearRegressor(),
         target_col="target",
         feature_cols=["feature"],
-        metrics="rmse",
+        metrics={"rmse": rmse},
     )
     onset = policy.find_drift_onset(
         frame,
         model=SimpleLinearRegressor(),
         target_col="target",
         feature_cols=["feature"],
-        metrics="rmse",
+        metrics={"rmse": rmse},
         metric="rmse",
         threshold=0.0,
         baseline="first",
@@ -507,7 +518,7 @@ def test_rolling_train_history_policy_optimizes_inner_train_size_per_iteration()
         model=SimpleLinearRegressor(),
         target_col="target",
         feature_cols=["feature"],
-        metrics="rmse",
+        metrics={"rmse": rmse},
         metric="rmse",
         tolerance=0.0,
     )

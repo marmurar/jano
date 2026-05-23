@@ -197,6 +197,11 @@ Hipótesis temporales
 Las secciones anteriores describen la mecánica de particionado temporal. Encima de esa base,
 Jano también puede codificar hipótesis de evaluación sobre cómo se comporta un modelo en el tiempo.
 
+Jano no provee fórmulas de métricas. Los ejemplos de studies y runners asumen que
+funciones como ``mae`` o ``rmse`` fueron definidas en el código del usuario o
+importadas desde la librería de métricas que el usuario prefiera, y luego pasadas
+como ``{"metric_name": metric_fn}``.
+
 La progresión está pensada para ser incremental:
 
 - primero particiones explícitas

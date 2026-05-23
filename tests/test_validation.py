@@ -208,17 +208,19 @@ def test_slicing_validation_types_and_policy_helpers_cover_error_branches(monkey
             TemporalSemanticsSpec(timeline_col="timestamp", segment_time_cols={"train": None})  # type: ignore[arg-type]
         )
 
-    assert policies_module._accuracy(np.array([1, 0]), np.array([1, 1])) == 0.5
     assert policies_module._resolve_column(frame, 1) == "feature"
     assert policies_module._resolve_columns(frame, [0, "feature"]) == ["timestamp", "feature"]
-    with pytest.raises(ValueError, match="Unknown metric"):
+    with pytest.raises(TypeError, match="mapping"):
         policies_module._normalize_metric_mapping("unknown")
     with pytest.raises(ValueError, match="must not be empty"):
         policies_module._normalize_metric_mapping({})
-    with pytest.raises(ValueError, match="Unknown metric"):
+    with pytest.raises(TypeError, match="mapping"):
         policies_module._normalize_metric_mapping(["rmse", "weird"])
-    with pytest.raises(ValueError, match="metrics must not be empty"):
+    with pytest.raises(TypeError, match="mapping"):
         policies_module._normalize_metric_mapping([])
+    with pytest.raises(TypeError, match="must be callable"):
+        policies_module._normalize_metric_mapping({"custom": "not-callable"})
+    assert policies_module._normalize_metric_mapping(None) == ({}, {})
     assert policies_module._normalize_metric_mapping({"custom": lambda y, p: 0.0})[1]["custom"] == "min"
 
     with pytest.raises(ValueError, match="X must contain at least one row"):

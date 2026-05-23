@@ -20,7 +20,7 @@ import jano.planning as planning_module
 import jano.policies as policies_module
 import jano.runner as runner_module
 import jano.validation as validation_module
-from conftest import build_frame, write_csv_frame, SimpleLinearRegressor, MeanRegressor
+from conftest import build_frame, write_csv_frame, SimpleLinearRegressor, MeanRegressor, mae, rmse, accuracy
 from jano import (
     AlwaysRetrain,
     DriftBasedRetrain,
@@ -136,7 +136,7 @@ def test_mcp_run_walk_forward_baseline_returns_runner_data(tmp_path) -> None:
         time_col="timestamp",
         target_col="target",
         model="mean",
-        metrics=["mae", "rmse"],
+        metrics={"mae": mae, "rmse": rmse},
         retrain="periodic",
         retrain_interval=2,
         max_folds=3,
@@ -164,7 +164,8 @@ def test_mcp_run_walk_forward_baseline_supports_classification_and_drift(tmp_pat
         time_col="timestamp",
         target_col="class_target",
         model="majority_class",
-        metrics="accuracy",
+        metrics={"accuracy": accuracy},
+        metric_directions={"accuracy": "max"},
         retrain="on_drift",
         drift_metric="accuracy",
         drift_threshold=0.1,
@@ -207,7 +208,7 @@ def test_mcp_compare_retrain_policies_returns_agent_ready_comparison(tmp_path) -
         time_col="timestamp",
         target_col="target",
         model="mean",
-        metrics="mae",
+        metrics={"mae": mae},
         max_folds=2,
     )
     assert [row["policy"] for row in default_result["comparison"]] == [
@@ -223,7 +224,7 @@ def test_mcp_compare_retrain_policies_returns_agent_ready_comparison(tmp_path) -
         time_col="timestamp",
         target_col="target",
         model="mean",
-        metrics="mae",
+        metrics={"mae": mae},
         policies=[
             {"name": "always", "retrain": "always"},
             {"name": "periodic_2", "retrain": "periodic", "retrain_interval": 2},
@@ -247,7 +248,7 @@ def test_mcp_train_history_and_decay_tools_return_json_ready_results(tmp_path) -
         test_size="2D",
         target_col="target",
         model="mean",
-        metrics=["mae", "rmse"],
+        metrics={"mae": mae, "rmse": rmse},
         metric="mae",
     )
     assert history["total_variants"] == 3
@@ -264,7 +265,7 @@ def test_mcp_train_history_and_decay_tools_return_json_ready_results(tmp_path) -
         step="2D",
         target_col="target",
         model="mean",
-        metrics="mae",
+        metrics={"mae": mae},
         metric="mae",
         threshold=0.0,
         relative=False,

@@ -17,6 +17,7 @@ Use Jano when:
 - the user wants to inspect temporal fold geometry
 - the user wants to compare retraining policies
 - the user wants structured fold, metric or prediction outputs for external plotting
+- the user will provide project-specific metric or loss functions
 
 ## Preferred APIs
 
@@ -31,9 +32,32 @@ Use Jano when:
   `compare_retrain_policy_baselines`, `find_train_history_window_baseline` and
   `monitor_decay_baseline`.
 
+## Metric Contract
+
+Jano does not implement or copy common metric formulas. Do not pass metric names
+as strings and do not assume built-in `mae`, `rmse` or `accuracy` helpers exist.
+
+Define metric functions in user code and pass them as a mapping:
+
+```python
+def business_cost(y_true, y_pred):
+    ...
+
+runner = WalkForwardRunner(
+    model=model,
+    target_col="target",
+    metrics={"business_cost": business_cost},
+    metric_directions={"business_cost": "min"},
+)
+```
+
+Metric names are labels for output columns and policy decisions; metric formulas
+belong to the user.
+
 ## Rules
 
 - Do not use random `train_test_split` for time-dependent evaluation.
 - Do not add model logic to `TemporalBacktestSplitter`.
+- Do not add metric formulas to Jano core.
 - Prefer structured outputs over generated HTML for runner results.
 - Read `docs/architecture/` before changing public APIs.

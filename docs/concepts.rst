@@ -200,6 +200,10 @@ Temporal hypotheses
 The previous sections describe the mechanics of temporal partitioning. On top of that base,
 Jano can also encode higher-level evaluation hypotheses about how a model behaves across time.
 
+Jano does not provide metric formulas. Study and runner examples assume that metric
+functions such as ``mae`` or ``rmse`` are defined in user code or imported from the
+user's preferred metric library, then passed as ``{"metric_name": metric_fn}``.
+
 The progression is meant to stay incremental:
 
 - start with explicit partitions,
@@ -233,7 +237,7 @@ Two core hypothesis policies are now part of the package, and each also has a sm
          model=model,
          target_col="target",
          feature_cols=["feature_1", "feature_2"],
-         metrics=["mae", "rmse"],
+         metrics={"mae": mae, "rmse": rmse},
      )
 
      best = result.find_optimal_train_size(metric="rmse", tolerance=0.01)
@@ -265,7 +269,7 @@ Two core hypothesis policies are now part of the package, and each also has a sm
          model=model,
          target_col="target",
          feature_cols=["feature_1", "feature_2"],
-         metrics=["mae", "rmse"],
+         metrics={"mae": mae, "rmse": rmse},
      )
 
      onset = result.find_drift_onset(metric="rmse", threshold=0.15, baseline="first")
@@ -311,7 +315,7 @@ There is also a composed hypothesis built on top of those pieces.
          model=model,
          target_col="target",
          feature_cols=["feature_1", "feature_2"],
-         metrics="rmse",
+         metrics={"rmse": rmse},
          metric="rmse",
          tolerance=0.01,
      )

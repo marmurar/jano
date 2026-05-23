@@ -19,6 +19,8 @@ It defines temporal geometry, validates partition semantics and yields folds. It
 not fit models, compute predictions, evaluate metrics or decide retraining policies.
 
 Model execution belongs in `WalkForwardRunner` and future execution/study layers.
+Metric formulas belong to user code or external metric libraries selected by the
+user; Jano only organizes when and where those callables are evaluated.
 
 ## Consequences
 
@@ -31,5 +33,6 @@ Model execution belongs in `WalkForwardRunner` and future execution/study layers
 
 - Splitter APIs should not require a model, target column or metric.
 - Runner and study APIs may consume splitters, policies or simulations.
+- Runner and study APIs may accept metric callables, but Jano core should not add
+  generic metric implementations.
 - Changes to execution behavior should not alter fold geometry.
-

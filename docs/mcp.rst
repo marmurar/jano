@@ -112,15 +112,15 @@ Baseline runner example
      "time_col": "FL_DATE",
      "target_col": "arrival_state",
      "model": "majority_class",
-     "metrics": "accuracy",
      "retrain": "periodic",
      "retrain_interval": 2,
      "max_folds": 5
    }
 
 This tool is intentionally a baseline, not a general arbitrary-model executor.
-For production estimators, use the Python ``WalkForwardRunner`` directly so your
-code controls model construction, feature engineering and custom metrics.
+MCP JSON cannot transport Python callables, so metric-evaluated production runs
+should use the Python ``WalkForwardRunner`` directly. That keeps model
+construction, feature engineering and custom metrics in user code.
 
 Temporal study examples
 -----------------------
@@ -140,7 +140,6 @@ Compare retraining policies over the same geometry:
      "time_col": "scheduled_departure_at",
      "target_col": "arrival_delay",
      "model": "mean",
-     "metrics": ["mae", "rmse"],
      "policies": [
        {"name": "always", "retrain": "always"},
        {"name": "never", "retrain": "never"},

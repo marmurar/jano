@@ -184,7 +184,7 @@ def build_server():
         target_col: str,
         feature_cols: list[str] | None = None,
         model: str = "mean",
-        metrics: str | list[str] | None = None,
+        metrics: dict[str, Any] | None = None,
         retrain: bool | str = "always",
         retrain_interval: int | None = None,
         drift_metric: str = "rmse",
@@ -217,7 +217,7 @@ def build_server():
             feature_cols: Optional feature columns.
             model: ``"mean"`` for numeric regression or ``"majority_class"`` for
                 classification.
-            metrics: Metric name or list accepted by ``WalkForwardRunner``.
+            metrics: Python-only mapping of metric names to callables; MCP JSON clients cannot pass callables.
             retrain: ``"always"``, ``"never"``, ``"periodic"``, ``"on_drift"``,
                 ``True`` or ``False``.
             retrain_interval: Fold interval required by ``retrain="periodic"``.
@@ -280,7 +280,7 @@ def build_server():
         target_col: str,
         feature_cols: list[str] | None = None,
         model: str = "mean",
-        metrics: str | list[str] | None = None,
+        metrics: dict[str, Any] | None = None,
         policies: list[dict] | None = None,
         strategy: str = "rolling",
         allow_partial: bool = False,
@@ -330,7 +330,7 @@ def build_server():
         target_col: str,
         feature_cols: list[str] | None = None,
         model: str = "mean",
-        metrics: str | list[str] | None = None,
+        metrics: dict[str, Any] | None = None,
         metric: str = "rmse",
         tolerance: float = 0.0,
         relative: bool = True,
@@ -376,7 +376,7 @@ def build_server():
         target_col: str,
         feature_cols: list[str] | None = None,
         model: str = "mean",
-        metrics: str | list[str] | None = None,
+        metrics: dict[str, Any] | None = None,
         metric: str = "rmse",
         threshold: float = 0.1,
         baseline: str | float = "first",
