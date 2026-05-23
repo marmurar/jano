@@ -37,11 +37,13 @@ results should prioritize stable, plot-ready and JSON-ready data.
 - Users can choose their own visualization layer and style.
 - The runner avoids assumptions about regression, binary classification, multiclass
 classification or custom cost functions.
+- The runner avoids implementing generic metric formulas; user code supplies the
+  callable and Jano reports the resulting values.
 - Future target-aware reporting should be implemented as structured metadata first.
 
 ## Invariants
 
 - Runner output methods should not assume a target type by default.
+- Metric names are output labels, not references to built-in Jano formulas.
 - New reporting helpers should return pandas objects or serializable dictionaries.
 - HTML should not become the primary execution-reporting contract.
-

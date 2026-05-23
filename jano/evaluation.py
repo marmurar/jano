@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping, Sequence
+from typing import Mapping
 
-from .policies import MetricFn, _normalize_metric_mapping
+from .policies import MetricFn, MetricSpec, _normalize_metric_mapping
 
 MetricDirection = str
 
@@ -22,14 +22,14 @@ class EvaluationProfile:
     """Define how a temporal run should be measured.
 
     Args:
-        metrics: Built-in metric name, sequence of built-in metric names, mapping of
-            custom metric functions, or ``None`` for Jano's default regression metrics.
+        metrics: Mapping of metric names to user-defined callables. ``None`` means
+            no metrics are computed by Jano.
         metric_directions: Optional mapping from metric name to ``"min"`` or ``"max"``.
             Custom metrics default to ``"min"`` unless explicitly overridden.
         primary_metric: Metric used as the default optimization or retraining signal.
     """
 
-    metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None
+    metrics: MetricSpec = None
     metric_directions: Mapping[str, MetricDirection] | None = None
     primary_metric: str | None = None
 
@@ -63,19 +63,15 @@ class EvaluationProfile:
 
 
 class RegressionProfile(EvaluationProfile):
-    """Convenience profile for regression-style losses."""
+    """Convenience profile for user-provided regression-style losses."""
 
     def __init__(
         self,
-        metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None,
+        metrics: MetricSpec = None,
         *,
         metric_directions: Mapping[str, MetricDirection] | None = None,
         primary_metric: str | None = None,
     ) -> None:
-        if metrics is None:
-            metrics = ("mae", "rmse")
-        if primary_metric is None and _contains_metric(metrics, "rmse"):
-            primary_metric = "rmse"
         super().__init__(
             metrics=metrics,
             metric_directions=metric_directions,
@@ -84,19 +80,15 @@ class RegressionProfile(EvaluationProfile):
 
 
 class ClassificationProfile(EvaluationProfile):
-    """Convenience profile for classification-style scores."""
+    """Convenience profile for user-provided classification-style scores."""
 
     def __init__(
         self,
-        metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None,
+        metrics: MetricSpec = None,
         *,
         metric_directions: Mapping[str, MetricDirection] | None = None,
         primary_metric: str | None = None,
     ) -> None:
-        if metrics is None:
-            metrics = "accuracy"
-        if primary_metric is None and _contains_metric(metrics, "accuracy"):
-            primary_metric = "accuracy"
         super().__init__(
             metrics=metrics,
             metric_directions=metric_directions,
@@ -109,7 +101,7 @@ class OrdinalClassificationProfile(EvaluationProfile):
 
     def __init__(
         self,
-        metrics: str | Sequence[str] | Mapping[str, MetricFn],
+        metrics: Mapping[str, MetricFn],
         *,
         metric_directions: Mapping[str, MetricDirection] | None = None,
         primary_metric: str | None = None,
@@ -126,7 +118,7 @@ class RankingProfile(EvaluationProfile):
 
     def __init__(
         self,
-        metrics: str | Sequence[str] | Mapping[str, MetricFn],
+        metrics: Mapping[str, MetricFn],
         *,
         metric_directions: Mapping[str, MetricDirection] | None = None,
         primary_metric: str | None = None,
@@ -139,12 +131,4 @@ class RankingProfile(EvaluationProfile):
 
 
 def _default_primary_metric(metrics: Mapping[str, MetricFn]) -> str | None:
-    if "rmse" in metrics:
-        return "rmse"
     return next(iter(metrics), None)
-
-
-def _contains_metric(metrics: str | Sequence[str] | Mapping[str, MetricFn], name: str) -> bool:
-    if isinstance(metrics, str):
-        return metrics == name
-    return name in metrics

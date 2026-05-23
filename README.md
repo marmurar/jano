@@ -153,6 +153,7 @@ The recommended high-level surface is intentionally small:
 
 - `WalkForwardPolicy` for production-like walk-forward evaluation,
 - `WalkForwardRunner` when you want Jano to execute a model over those folds and manage retraining cadence,
+- `OnlineTemporalRunner` for event-level or micro-batch prequential evaluation,
 - `TrainHistoryPolicy` for fixed-test, growing-train questions,
 - `DriftMonitoringPolicy` for fixed-train, moving-test questions.
 
@@ -175,9 +176,15 @@ The cleanest mental model is to treat Jano as five layers that can stay independ
 - `plan()` for inspecting and filtering that geometry before materialization.
 - `TemporalSimulation` and `WalkForwardPolicy` for fold-level simulation and reporting.
 - `WalkForwardRunner` for training, predicting and measuring over temporal folds with explicit retrain rules.
+- `OnlineTemporalRunner` for causal `predict -> observe -> update` evaluation with incremental models.
 - higher-level studies and policies for operational questions such as train sufficiency, decay and retraining cadence.
 
 That separation is deliberate. The splitter remains the free-form core. Runners and studies extend what Jano can do at the simulation layer, but they do not replace manual fold iteration.
+
+Jano does not ship metric formulas. When a runner or study needs a score, pass a
+mapping of names to callables from your own code or from the metric library you
+trust, for example `metrics={"business_cost": business_cost}`. Metric names are
+labels in outputs and retraining rules, not references to built-in Jano metrics.
 
 It supports:
 
@@ -287,7 +294,15 @@ By default, `engine="auto"` lets Jano choose the safest fast path for partitioni
 ## Example: run a model over the walk-forward policy
 
 ```python
+import numpy as np
+
 from jano import TemporalPartitionSpec, WalkForwardPolicy, WalkForwardRunner
+
+def mae(y_true, y_pred):
+    return float(np.mean(np.abs(np.asarray(y_true) - np.asarray(y_pred))))
+
+def rmse(y_true, y_pred):
+    return float(np.sqrt(np.mean((np.asarray(y_true) - np.asarray(y_pred)) ** 2)))
 
 policy = WalkForwardPolicy(
     time_col="timestamp",
@@ -306,7 +321,7 @@ runner = WalkForwardRunner(
     feature_cols=["feature"],
     retrain="periodic",
     retrain_interval=2,
-    metrics=["mae", "rmse"],
+    metrics={"mae": mae, "rmse": rmse},
 )
 
 run = runner.run(policy, frame)
@@ -319,6 +334,87 @@ print(run.retrain_events())
 report_data = run.report_data(include_predictions=False)
 ```
 
+## Example: evaluate event-level online updates
+
+Jano can simulate the most extreme update cadence: predict an event, observe its
+target, update the model, and repeat. This keeps the splitter core unchanged
+while extending the simulation layer.
+
+```python
+from jano import OnlineTemporalRunner, PartialFitUpdateStrategy
+
+runner = OnlineTemporalRunner(
+    model=model,
+    time_col="timestamp",
+    target_col="target",
+    feature_cols=["feature"],
+    initial_train_size="30D",
+    update_size=1,
+    metrics={"mae": mae, "rmse": rmse},
+    update_strategy=PartialFitUpdateStrategy(),
+)
+
+run = runner.run(frame)
+
+print(run.to_frame().head())
+print(run.metric_trajectory().head())
+print(run.summary())
+```
+
+Use `update_size=1` for event-level updates, an integer such as `update_size=100`
+for row micro-batches, or a duration such as `update_size="1D"` for time-based
+micro-batches.
+
+`PartialFitUpdateStrategy` is for estimators that support real incremental
+updates. For standard `fit/predict` estimators, use `RefitUpdateStrategy`:
+
+```python
+from jano import OnlineTemporalRunner, RefitUpdateStrategy
+
+runner = OnlineTemporalRunner(
+    model=model,
+    time_col="timestamp",
+    target_col="target",
+    feature_cols=["feature"],
+    initial_train_size="30D",
+    update_size="1D",
+    metrics={"mae": mae},
+    update_strategy=RefitUpdateStrategy(max_train_rows=10_000),
+)
+```
+
+That refits the estimator after each observed batch, optionally keeping only the
+most recent `max_train_rows` rows to approximate bounded production history.
+
+You can also compare several observation-driven policies over the same stream:
+
+```python
+from jano import OnlineUpdatePolicy, OnlineUpdatePolicyStudy, RefitUpdateStrategy
+
+study = OnlineUpdatePolicyStudy(
+    model=model,
+    time_col="timestamp",
+    target_col="target",
+    feature_cols=["feature"],
+    initial_train_size="30D",
+    policies=[
+        OnlineUpdatePolicy("every-event", update_size=1, update_strategy=RefitUpdateStrategy()),
+        OnlineUpdatePolicy("every-100-events", update_size=100, update_strategy=RefitUpdateStrategy()),
+        OnlineUpdatePolicy("daily", update_size="1D", update_strategy=RefitUpdateStrategy()),
+    ],
+    metrics={"mae": mae},
+)
+
+comparison = study.run(frame)
+
+print(comparison.to_frame())
+print(comparison.find_optimal_policy(metric="mae", update_cost_weight=0.01))
+```
+
+This shifts the question from "which date should trigger retraining?" to "how
+much new evidence should trigger retraining, and is the predictive gain worth
+the update cost?".
+
 Supported retrain modes are:
 
 - `retrain=True` or `retrain="always"` to refit on every fold.
@@ -328,8 +424,8 @@ Supported retrain modes are:
 - `retrain_policy=FunctionRetrainPolicy(...)` when the retrain decision is a custom function of fold history, dates, costs or external thresholds.
 
 Evaluation profiles separate how a run is measured from when a model is retrained.
-Built-in metrics are convenience shortcuts; production-like validation can pass a
-custom loss or score and declare whether lower or higher is better:
+Jano does not implement metric formulas. Pass the loss or score functions that
+match your problem and declare whether lower or higher is better:
 
 ```python
 import numpy as np
@@ -480,7 +576,7 @@ result = policy.evaluate(
     model=model,
     target_col="target",
     feature_cols=["feature_1", "feature_2"],
-    metrics=["mae", "rmse"],
+    metrics={"mae": mae, "rmse": rmse},
 )
 
 print(result.to_frame()[["train_size", "rmse"]])
@@ -513,7 +609,7 @@ result = policy.evaluate(
     model=model,
     target_col="target",
     feature_cols=["feature_1", "feature_2"],
-    metrics=["mae", "rmse"],
+    metrics={"mae": mae, "rmse": rmse},
 )
 
 print(result.to_frame()[["window", "test_start", "rmse"]])
@@ -545,7 +641,7 @@ result = policy.evaluate(
     model=model,
     target_col="target",
     feature_cols=["feature_1", "feature_2"],
-    metrics="rmse",
+    metrics={"rmse": rmse},
     metric="rmse",
     tolerance=0.01,
 )
@@ -681,9 +777,9 @@ Current distribution and quality signals:
 
 - PyPI package: [jano](https://pypi.org/project/jano/).
 - Latest tested release line: `0.4.x`.
-- Test suite: `134 passed`.
+- Test suite: `152 passed`.
 - Coverage gate: `99%` minimum.
-- Current measured coverage: `99.15%`.
+- Current measured coverage: `99.30%`.
 - Documentation: [marmurar.github.io/jano](https://marmurar.github.io/jano/).
 
 For production use, pin an explicit version and review release notes before upgrading. For experimentation, temporal validation design work and prototype evaluation pipelines, the project is ready to use.

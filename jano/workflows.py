@@ -178,7 +178,7 @@ class TrainHistoryPolicy:
         model,
         target_col: ColumnRef,
         feature_cols: Sequence[ColumnRef] | None = None,
-        metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None,
+        metrics: MetricSpec = None,
     ) -> TrainGrowthResult:
         """Evaluate all configured train-history variants against one fixed test slice.
 
@@ -189,9 +189,8 @@ class TrainHistoryPolicy:
             target_col: Target column name or position.
             feature_cols: Optional feature column names or positions. If omitted, all
                 non-temporal, non-target columns are used.
-            metrics: Metric name, list of metric names or mapping of custom metric
-                functions. Built-ins include ``"mae"``, ``"mse"``, ``"rmse"`` and
-                ``"accuracy"``.
+            metrics: Mapping of metric names to user-provided callables, such as
+                ``{"business_cost": cost_fn}``.
         """
         return self._policy.evaluate(
             X,
@@ -247,7 +246,7 @@ class DriftMonitoringPolicy:
         model,
         target_col: ColumnRef,
         feature_cols: Sequence[ColumnRef] | None = None,
-        metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None,
+        metrics: MetricSpec = None,
     ) -> PerformanceDecayResult:
         """Evaluate how performance evolves as the test window moves forward.
 
@@ -258,8 +257,7 @@ class DriftMonitoringPolicy:
             target_col: Target column name or position.
             feature_cols: Optional feature column names or positions. If omitted, all
                 non-temporal, non-target columns are used.
-            metrics: Metric name, list of metric names or mapping of custom metric
-                functions.
+            metrics: Mapping of metric names to user-provided callables.
         """
         return self._policy.evaluate(
             X,
@@ -335,7 +333,7 @@ class RollingTrainHistoryPolicy:
         model,
         target_col: ColumnRef,
         feature_cols: Sequence[ColumnRef] | None = None,
-        metrics: str | Sequence[str] | Mapping[str, MetricFn] | None = None,
+        metrics: MetricSpec = None,
         metric: str = "rmse",
         tolerance: float = 0.0,
         relative: bool = True,
@@ -349,8 +347,7 @@ class RollingTrainHistoryPolicy:
             model: Estimator with ``fit`` and ``predict`` methods.
             target_col: Target column name or position.
             feature_cols: Optional feature column names or positions.
-            metrics: Metric name, list of metric names or mapping of custom metric
-                functions.
+            metrics: Mapping of metric names to user-provided callables.
             metric: Metric column used to choose the optimal train size.
             tolerance: Allowed distance from the best score.
             relative: Whether ``tolerance`` is proportional instead of absolute.

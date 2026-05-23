@@ -22,6 +22,7 @@ Jano is organized as a set of layers that should remain separable:
 - Plan: precomputed fold boundaries and row counts before materialization.
 - Simulation: materialized temporal experiments and fold-level reporting.
 - Runner: model execution over temporal folds with explicit retraining rules.
+- Online runner: event-level or micro-batch prequential learning simulation.
 - Study: higher-level operational hypotheses built from lower-level primitives.
 - MCP: local tool surface for AI agents and other MCP-aware clients.
 
@@ -38,9 +39,10 @@ Jano is organized as a set of layers that should remain separable:
 ## Starting Points
 
 - [Spec: Walk-forward runner](specs/walk-forward-runner.md)
+- [Spec: Online temporal runner](specs/online-temporal-runner.md)
 - [Spec: Study layer](specs/study-layer.md)
 - [RFC: Study layer](rfcs/0001-study-layer.md)
+- [RFC: Online temporal runner](rfcs/0002-online-temporal-runner.md)
 - [ADR 0001: Keep the splitter model-agnostic](adrs/0001-keep-splitter-model-agnostic.md)
 - [ADR 0002: Keep runner reporting data-first](adrs/0002-runner-reporting-data-first.md)
 - [ADR 0003: Keep manual fold iteration public](adrs/0003-manual-fold-iteration-remains-public.md)
-

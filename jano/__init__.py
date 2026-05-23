@@ -10,6 +10,16 @@ from .evaluation import (
     RegressionProfile,
     ResolvedEvaluationProfile,
 )
+from .online import (
+    OnlineRunResult,
+    OnlineTemporalRunner,
+    OnlineUpdatePolicy,
+    OnlineUpdatePolicyStudy,
+    OnlineUpdatePolicyStudyResult,
+    OnlineUpdateStrategy,
+    PartialFitUpdateStrategy,
+    RefitUpdateStrategy,
+)
 from .planning import PartitionPlan, PlannedFold, SimulationPlan
 from .policies import (
     PerformanceDecayPolicy,
@@ -57,13 +67,21 @@ __all__ = [
     "FunctionRetrainPolicy",
     "NeverRetrain",
     "OrdinalClassificationProfile",
+    "OnlineRunResult",
+    "OnlineTemporalRunner",
+    "OnlineUpdatePolicy",
+    "OnlineUpdatePolicyStudy",
+    "OnlineUpdatePolicyStudyResult",
+    "OnlineUpdateStrategy",
     "PartitionPlan",
     "PartitionEngineMetadata",
     "PerformanceDecayPolicy",
     "PerformanceDecayResult",
+    "PartialFitUpdateStrategy",
     "PeriodicRetrain",
     "PlannedFold",
     "RankingProfile",
+    "RefitUpdateStrategy",
     "RegressionProfile",
     "RetrainContext",
     "RetrainPolicy",
