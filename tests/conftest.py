@@ -40,3 +40,19 @@ class MeanRegressor:
 
     def predict(self, X: pd.DataFrame) -> np.ndarray:
         return np.repeat(self.mean_, len(X))
+
+
+class RunningMeanPartialFitRegressor:
+    def __init__(self) -> None:
+        self.total_ = 0.0
+        self.count_ = 0
+
+    def partial_fit(self, X: pd.DataFrame, y: pd.Series):
+        values = np.asarray(y, dtype=float)
+        self.total_ += float(values.sum())
+        self.count_ += int(len(values))
+        self.mean_ = self.total_ / self.count_
+        return self
+
+    def predict(self, X: pd.DataFrame) -> np.ndarray:
+        return np.repeat(self.mean_, len(X))

@@ -13,6 +13,11 @@ docs/_build
 data/
 HANDOFF.md
 FUTURE_IDEAS.md
+LOCAL_CONTEXT_HANDOFF.md
+competition.md
+*_HANDOFF.md
+*_CONTEXT.md
+*_CONTEXT_*.md
 
 # Large local dataset artifacts must stay out of git.
 *.csv.gz

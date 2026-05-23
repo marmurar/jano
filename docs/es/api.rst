@@ -64,6 +64,26 @@ Workflow principal
    :undoc-members:
    :no-index:
 
+.. autoclass:: jano.online.OnlineTemporalRunner
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.online.OnlineRunResult
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.online.OnlineUpdatePolicyStudy
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.online.OnlineUpdatePolicyStudyResult
+   :members:
+   :undoc-members:
+   :no-index:
+
 Perfiles de evaluación
 ----------------------
 
@@ -132,9 +152,6 @@ Perfiles de evaluación
    :undoc-members:
    :no-index:
 
-Policies temporales
--------------------
-
 Policies de retraining
 ----------------------
 
@@ -167,6 +184,32 @@ Policies de retraining
    :members:
    :undoc-members:
    :no-index:
+
+Estrategias de actualización online
+-----------------------------------
+
+.. autoclass:: jano.online.OnlineUpdateStrategy
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.online.OnlineUpdatePolicy
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.online.PartialFitUpdateStrategy
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.online.RefitUpdateStrategy
+   :members:
+   :undoc-members:
+   :no-index:
+
+Policies temporales
+-------------------
 
 .. autoclass:: jano.policies.TrainGrowthPolicy
    :members:

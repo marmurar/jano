@@ -17,12 +17,6 @@ The overall workflow is deliberately layered:
 - inspect or prune iterations through ``plan()`` when needed,
 - and fall back to manual fold iteration when you want to compose everything yourself.
 
-The overall workflow is deliberately layered:
-
-- use high-level classes when the question is already encapsulated,
-- inspect or prune iterations through ``plan()`` when needed,
-- and fall back to manual fold iteration when you want to compose everything yourself.
-
 The same API accepts three tabular inputs:
 
 - ``pandas.DataFrame``
@@ -253,6 +247,107 @@ without forcing drift logic into the splitter itself.
 
 When ``DriftBasedRetrain`` is created without an explicit metric, it uses the
 ``primary_metric`` from the evaluation profile.
+
+Online event-level evaluation
+-----------------------------
+
+``OnlineTemporalRunner`` covers the most extreme retraining policy: predict the
+next event or micro-batch, observe its target, and update the model immediately.
+This is also known as prequential evaluation.
+
+Use ``PartialFitUpdateStrategy`` when the model supports real incremental
+updates through ``partial_fit``:
+
+.. code-block:: python
+
+   from jano import OnlineTemporalRunner, PartialFitUpdateStrategy
+
+   runner = OnlineTemporalRunner(
+       model=model,
+       time_col="timestamp",
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       initial_train_size="30D",
+       update_size=1,
+       metrics=["mae", "rmse"],
+       update_strategy=PartialFitUpdateStrategy(),
+   )
+
+   run = runner.run(frame)
+   print(run.to_frame().head())
+   print(run.metric_trajectory().head())
+   print(run.summary())
+
+The sequence is deliberately causal:
+
+- initialize the model on the initial train window,
+- predict the next event or micro-batch,
+- score the prediction once the target is observed,
+- update the model with that observed batch,
+- repeat.
+
+``update_size=1`` means event-level updates. You can also use row batches such as
+``update_size=100`` or duration batches such as ``update_size="1D"``. This lets
+you compare daily, weekly, batch-level and event-level update policies without
+changing the splitter contract.
+
+Not every estimator supports ``partial_fit``. For regular ``fit/predict`` models,
+use ``RefitUpdateStrategy`` instead:
+
+.. code-block:: python
+
+   from jano import OnlineTemporalRunner, RefitUpdateStrategy
+
+   runner = OnlineTemporalRunner(
+       model=model,
+       time_col="timestamp",
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       initial_train_size="30D",
+       update_size="1D",
+       metrics="mae",
+       update_strategy=RefitUpdateStrategy(max_train_rows=10_000),
+   )
+
+This strategy refits after each observed batch. It is more expensive than
+``partial_fit``, but it works with standard estimators and can keep bounded
+history through ``max_train_rows``.
+
+Finding an observation-driven update policy
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``OnlineUpdatePolicyStudy`` compares multiple update cadences over the same
+temporal stream. That lets you ask whether retraining should be triggered by
+calendar time or by accumulated evidence:
+
+.. code-block:: python
+
+   from jano import OnlineUpdatePolicy, OnlineUpdatePolicyStudy, RefitUpdateStrategy
+
+   study = OnlineUpdatePolicyStudy(
+       model=model,
+       time_col="timestamp",
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       initial_train_size="30D",
+       policies=[
+           OnlineUpdatePolicy("every-event", update_size=1, update_strategy=RefitUpdateStrategy()),
+           OnlineUpdatePolicy("every-100-events", update_size=100, update_strategy=RefitUpdateStrategy()),
+           OnlineUpdatePolicy("daily", update_size="1D", update_strategy=RefitUpdateStrategy()),
+       ],
+       metrics="mae",
+   )
+
+   comparison = study.run(frame)
+
+   print(comparison.to_frame())
+   print(comparison.metric_trajectory().head())
+   print(comparison.find_optimal_policy(metric="mae", update_cost_weight=0.01))
+
+The optional ``update_cost_weight`` penalizes policies that update too often. This
+keeps the output data-first while making the tradeoff explicit: a policy can win
+because it predicts better, because it updates less, or because it offers the best
+cost-adjusted compromise.
 
 Calendar-aligned duration windows
 ---------------------------------

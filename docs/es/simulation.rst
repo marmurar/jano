@@ -17,12 +17,6 @@ El workflow general está pensado por capas:
 - inspeccionar o recortar iteraciones con ``plan()`` cuando haga falta
 - y caer al modo manual de folds cuando querés componer todo por tu cuenta
 
-El workflow general está pensado por capas:
-
-- usar clases high-level cuando la pregunta ya está encapsulada
-- inspeccionar o recortar iteraciones con ``plan()`` cuando haga falta
-- y caer al modo manual de folds cuando querés componer todo por tu cuenta
-
 La misma API acepta tres inputs tabulares:
 
 - ``pandas.DataFrame``
@@ -247,6 +241,108 @@ inicial, sin meter lógica de drift dentro del splitter.
 
 Cuando ``DriftBasedRetrain`` se crea sin una métrica explícita, usa el
 ``primary_metric`` del perfil de evaluación.
+
+Evaluación online por evento
+----------------------------
+
+``OnlineTemporalRunner`` cubre la política de actualización más extrema:
+predecir el próximo evento o micro-batch, observar su target y actualizar el
+modelo inmediatamente. Este patrón también se conoce como evaluación
+prequential.
+
+Usá ``PartialFitUpdateStrategy`` cuando el modelo soporta actualización
+incremental real vía ``partial_fit``:
+
+.. code-block:: python
+
+   from jano import OnlineTemporalRunner, PartialFitUpdateStrategy
+
+   runner = OnlineTemporalRunner(
+       model=model,
+       time_col="timestamp",
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       initial_train_size="30D",
+       update_size=1,
+       metrics=["mae", "rmse"],
+       update_strategy=PartialFitUpdateStrategy(),
+   )
+
+   run = runner.run(frame)
+   print(run.to_frame().head())
+   print(run.metric_trajectory().head())
+   print(run.summary())
+
+La secuencia es causal por diseño:
+
+- inicializa el modelo sobre la ventana inicial de train
+- predice el próximo evento o micro-batch
+- mide la predicción cuando se observa el target
+- actualiza el modelo con ese batch observado
+- repite
+
+``update_size=1`` significa actualización por evento. También podés usar batches
+por filas como ``update_size=100`` o por duración como ``update_size="1D"``. Eso
+permite comparar políticas diarias, semanales, por batch o por evento sin cambiar
+el contrato del splitter.
+
+No todos los estimadores soportan ``partial_fit``. Para modelos clásicos
+``fit/predict``, usá ``RefitUpdateStrategy``:
+
+.. code-block:: python
+
+   from jano import OnlineTemporalRunner, RefitUpdateStrategy
+
+   runner = OnlineTemporalRunner(
+       model=model,
+       time_col="timestamp",
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       initial_train_size="30D",
+       update_size="1D",
+       metrics="mae",
+       update_strategy=RefitUpdateStrategy(max_train_rows=10_000),
+   )
+
+Esta estrategia refittea después de cada batch observado. Es más costosa que
+``partial_fit``, pero funciona con estimadores estándar y puede mantener historia
+acotada con ``max_train_rows``.
+
+Encontrar una policy de actualización por observaciones
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``OnlineUpdatePolicyStudy`` compara varias cadencias de actualización sobre el
+mismo stream temporal. Eso permite preguntar si el retraining debería dispararse
+por calendario o por evidencia acumulada:
+
+.. code-block:: python
+
+   from jano import OnlineUpdatePolicy, OnlineUpdatePolicyStudy, RefitUpdateStrategy
+
+   study = OnlineUpdatePolicyStudy(
+       model=model,
+       time_col="timestamp",
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       initial_train_size="30D",
+       policies=[
+           OnlineUpdatePolicy("every-event", update_size=1, update_strategy=RefitUpdateStrategy()),
+           OnlineUpdatePolicy("every-100-events", update_size=100, update_strategy=RefitUpdateStrategy()),
+           OnlineUpdatePolicy("daily", update_size="1D", update_strategy=RefitUpdateStrategy()),
+       ],
+       metrics="mae",
+   )
+
+   comparison = study.run(frame)
+
+   print(comparison.to_frame())
+   print(comparison.metric_trajectory().head())
+   print(comparison.find_optimal_policy(metric="mae", update_cost_weight=0.01))
+
+El parámetro opcional ``update_cost_weight`` penaliza policies que actualizan muy
+seguido. Así el output sigue siendo data-first, pero el tradeoff queda explícito:
+una policy puede ganar porque predice mejor, porque actualiza menos o porque
+ofrece el mejor compromiso ajustado por costo.
 
 Alineación a días calendario
 ----------------------------
