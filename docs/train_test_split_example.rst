@@ -16,8 +16,8 @@ test.
 The first snippet assumes scikit-learn is installed only to illustrate the common
 baseline. Jano itself does not require scikit-learn.
 
-The Failure Mode
-----------------
+The scikit-learn way
+--------------------
 
 Imagine a daily dataset where the target distribution changes near the end of the
 period:
