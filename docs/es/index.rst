@@ -24,8 +24,8 @@ Jano
          <p>Definí layouts train/test o train/validation/test con duraciones, filas o proporciones.</p>
        </div>
        <div class="landing-card">
-         <h3>Particiones temporales y por evento</h3>
-         <p>Particioná por calendario, filas o batches de eventos online según cómo el sistema observa los datos.</p>
+         <h3>Relojes temporales</h3>
+         <p>Avanzá por calendario, filas, batches online o checkpoints de retraining definidos por el usuario.</p>
        </div>
        <div class="landing-card">
          <h3>El drift se vuelve visible</h3>
@@ -48,7 +48,7 @@ Jano
 
       Resumen visual de cómo Jano organiza particiones temporales, folds y reporting a lo largo del tiempo.
 
-Jano es un toolkit de Python para estructurar, ejecutar y analizar particiones y simulaciones temporales sobre sistemas de machine learning que operan con datos correlacionados en el tiempo. Proporciona un marco explícito para definir políticas de partición temporal, correr evaluaciones walk-forward, ejecutar modelos bajo reglas explícitas de retraining y generar reportes auditables que reflejan cómo se comportan los sistemas bajo dinámicas de producción más realistas. Para escenarios online, también permite particionar el stream observado por eventos o micro-batches.
+Jano es un toolkit de Python para estructurar, ejecutar y analizar particiones y simulaciones temporales sobre sistemas de machine learning que operan con datos correlacionados en el tiempo. Proporciona un marco explícito para definir políticas de partición temporal, correr evaluaciones walk-forward, ejecutar modelos bajo reglas explícitas de retraining y generar reportes auditables que reflejan cómo se comportan los sistemas bajo dinámicas de producción más realistas. Para escenarios online, también permite avanzar sobre la misma línea temporal por eventos observados, micro-batches o checkpoints de retraining definidos por el usuario.
 
 A diferencia de los splits aleatorios tradicionales, Jano trata la cronología como una restricción de primer nivel. Está pensado para escenarios donde el leakage debe controlarse estrictamente y donde la performance cambia en el tiempo por drift, ciclos de reentrenamiento o cambios en la distribución de los datos.
 

@@ -1,22 +1,25 @@
-Partitioning Modes
-==================
+Temporal Discretization Clocks
+==============================
 
-Jano separates two related ideas that are often mixed together:
+Jano always partitions temporal processes. What changes is the clock used to
+advance the evaluation:
 
-- **Temporal partitioning** divides a historical dataset into train, validation
-  and test windows ordered by time.
-- **Event-based online partitioning** divides an observed stream into events or
-  micro-batches, then evaluates how a model behaves as new observations arrive.
+- **Calendar clock**: days, hours, weeks or months.
+- **Row/event clock**: every event or every ``N`` observed rows.
+- **Micro-batch clock**: each observed batch in an online stream.
+- **Business clock**: a user-defined trigger that marks retraining checkpoints.
 
-Both modes are causal: data observed later must not influence decisions that
-would have been made earlier. The difference is the unit that moves the
-evaluation forward.
+All clocks are causal: data observed later must not influence decisions that
+would have been made earlier. Event-based updates are therefore not outside time;
+they are another way to discretize the same temporal line. When event ``X``
+triggers retraining, Jano records the associated timestamp, turning accumulated
+evidence into an auditable temporal checkpoint.
 
-Temporal Partitioning
----------------------
+Calendar-Driven Partitioning
+----------------------------
 
-Temporal partitioning is the default mode for backtesting tabular ML systems.
-It answers questions such as:
+Calendar-driven partitioning is the default mode for backtesting tabular ML
+systems. It answers questions such as:
 
 - What would performance have looked like if the model had been retrained every
   day?
@@ -45,17 +48,16 @@ fold loop:
 Use ``WalkForwardPolicy`` or ``TemporalSimulation`` when you want Jano to build a
 plan, run the folds, and expose auditable outputs.
 
-Event-Based Online Partitioning
--------------------------------
+Observation-Driven Online Partitioning
+--------------------------------------
 
-Event-based online partitioning is not a walk-forward simulation over fixed
-historical folds. It is a causal online evaluation pattern: initialize a model,
+Observation-driven online partitioning is not a separate non-temporal mode. It
+is a causal online evaluation pattern over the same timeline: initialize a model,
 predict the next event or micro-batch, observe the target, update the model, and
 repeat.
 
-This is useful when the operational question is not only *when should I retrain
-by calendar time?*, but also *how many new observations should I wait for before
-updating the model?*
+This is useful when the operational clock is not only calendar time, but also the
+amount of evidence accumulated since the last update.
 
 Use ``OnlineTemporalRunner`` with ``PartialFitUpdateStrategy`` when the model
 supports real incremental updates through ``partial_fit``:
@@ -88,10 +90,50 @@ The sequence is deliberately causal:
 - update the model with that observed batch,
 - repeat.
 
-``update_size=1`` means event-level updates. You can also use row batches such as
+``update_size=1`` means one temporal tick per observed event. You can also use row batches such as
 ``update_size=100`` or duration batches such as ``update_size="1D"``. This lets
-you compare event-level, row-batch and time-batch update policies without
-changing the rest of the runner configuration.
+you compare event-level, row-batch and calendar-batch clocks without changing
+the rest of the runner configuration.
+
+User-Defined Retrain Checkpoints
+--------------------------------
+
+Online evaluation can also mark the exact temporal checkpoint where your own
+logic says retraining has become necessary. Pass ``retrain_trigger`` to
+``OnlineTemporalRunner``. The trigger receives the accumulated online history and
+the latest scored batch:
+
+.. code-block:: python
+
+   def should_retrain(history, latest):
+       if latest["mae"] > 0.15:
+           return {
+               "retrain": True,
+               "reason": "mae crossed production tolerance",
+               "score": latest["mae"],
+           }
+       return False
+
+   runner = OnlineTemporalRunner(
+       model=model,
+       time_col="timestamp",
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       initial_train_size="30D",
+       update_size=100,
+       metrics={"mae": mae},
+       update_strategy=PartialFitUpdateStrategy(),
+       retrain_trigger=should_retrain,
+   )
+
+   run = runner.run(frame)
+   print(run.retrain_checkpoints())
+
+The trigger can return ``True``, a reason string, or a dictionary such as
+``{"retrain": True, "reason": "...", "score": 0.23}``. Jano records the batch
+number, timestamps, row counts, metrics and optional trigger metadata. The drift
+or business-loss rule remains user-owned; Jano makes the resulting retraining
+checkpoint explicit and reproducible.
 
 Not every estimator supports ``partial_fit``. For regular ``fit/predict`` models,
 use ``RefitUpdateStrategy`` instead:
@@ -115,8 +157,8 @@ This strategy refits after each observed batch. It is more expensive than
 ``partial_fit``, but it works with standard estimators and can keep bounded
 history through ``max_train_rows``.
 
-Finding an Observation-Driven Update Policy
--------------------------------------------
+Finding an Observation-Driven Update Clock
+------------------------------------------
 
 ``OnlineUpdatePolicyStudy`` compares multiple update cadences over the same
 temporal stream. That lets you ask whether model updates should be triggered by

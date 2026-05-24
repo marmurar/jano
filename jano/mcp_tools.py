@@ -85,6 +85,260 @@ def preview_dataset(
     }
 
 
+def inspect_dataset(
+    dataset_path: str,
+    *,
+    dataset_format: str = "auto",
+    sample_rows: int = 5_000,
+    preview_rows: int = 5,
+    full_scan: bool = False,
+) -> dict[str, Any]:
+    """Inspect a local dataset and return agent-ready schema hints.
+
+    Args:
+        dataset_path: Local dataset path.
+        dataset_format: Explicit format or ``"auto"``.
+        sample_rows: Number of rows to scan when ``full_scan`` is false.
+        preview_rows: Number of example records to include.
+        full_scan: Whether to scan the full dataset.
+
+    Returns:
+        JSON-ready dictionary with column profiles and candidate time/target columns.
+    """
+
+    rows_to_read = None if full_scan else sample_rows
+    frame = load_dataset_frame(
+        dataset_path,
+        dataset_format=dataset_format,
+        sample_rows=rows_to_read,
+    )
+    column_profiles = [_profile_column(frame, column) for column in frame.columns]
+    time_candidates = sorted(
+        (
+            _time_candidate_from_profile(profile)
+            for profile in column_profiles
+            if _time_candidate_from_profile(profile) is not None
+        ),
+        key=lambda item: item["score"],
+        reverse=True,
+    )
+    target_candidates = sorted(
+        (
+            _target_candidate_from_profile(profile)
+            for profile in column_profiles
+            if _target_candidate_from_profile(profile) is not None
+        ),
+        key=lambda item: item["score"],
+        reverse=True,
+    )
+    return {
+        "dataset_path": str(Path(dataset_path)),
+        "dataset_format": _resolve_dataset_format(Path(dataset_path), dataset_format),
+        "rows_scanned": int(len(frame)),
+        "sampled": not full_scan,
+        "columns": column_profiles,
+        "time_col_candidates": time_candidates,
+        "target_col_candidates": target_candidates,
+        "numeric_columns": [
+            profile["name"] for profile in column_profiles if profile["kind"] == "numeric"
+        ],
+        "categorical_columns": [
+            profile["name"] for profile in column_profiles if profile["kind"] == "categorical"
+        ],
+        "preview": _frame_records(frame.head(preview_rows)),
+    }
+
+
+def suggest_partition_policy(
+    dataset_path: str,
+    *,
+    dataset_format: str = "auto",
+    time_col: str | int | None = None,
+    objective: str = "walk_forward",
+    sample_rows: int = 5_000,
+) -> dict[str, Any]:
+    """Suggest a conservative Jano partition policy from a local dataset sample.
+
+    The suggestion is intentionally heuristic. It should be validated with
+    ``validate_temporal_policy`` before being used for model evaluation.
+    """
+
+    profile = inspect_dataset(
+        dataset_path,
+        dataset_format=dataset_format,
+        sample_rows=sample_rows,
+        full_scan=False,
+    )
+    selected_time_col = time_col
+    if selected_time_col is None:
+        candidates = profile["time_col_candidates"]
+        if not candidates:
+            raise ValueError("Could not infer a time column; pass time_col explicitly")
+        selected_time_col = candidates[0]["name"]
+    selected_profile = next(
+        (column for column in profile["columns"] if column["name"] == str(selected_time_col)),
+        None,
+    )
+    if selected_profile is not None and _time_candidate_from_profile(selected_profile) is None:
+        raise ValueError(f"time_col '{selected_time_col}' could not be parsed as datetimes")
+
+    frame = load_dataset_frame(dataset_path, dataset_format=dataset_format, sample_rows=sample_rows)
+    timestamps = pd.to_datetime(frame[selected_time_col], errors="coerce").dropna().sort_values()
+    if timestamps.empty:
+        raise ValueError(f"time_col '{selected_time_col}' could not be parsed as datetimes")
+
+    span = timestamps.iloc[-1] - timestamps.iloc[0]
+    median_step = timestamps.diff().dropna().median() if len(timestamps) > 1 else pd.Timedelta(days=1)
+    if not isinstance(median_step, pd.Timedelta) or median_step <= pd.Timedelta(0):
+        median_step = pd.Timedelta(days=1)
+
+    if objective not in {"walk_forward", "daily_retraining", "weekly_retraining", "online"}:
+        raise ValueError(
+            "objective must be 'walk_forward', 'daily_retraining', 'weekly_retraining' or 'online'"
+        )
+
+    if objective == "online":
+        suggestion = {
+            "mode": "event_based_online",
+            "time_col": selected_time_col,
+            "initial_train_size": _duration_string(max(span * 0.3, pd.Timedelta(days=1))),
+            "update_size": 1,
+            "update_size_alternatives": [1, 100, "1D"],
+            "notes": [
+                "Use this mode when the operational unit is an observed event or micro-batch.",
+                "Validate candidate update sizes with OnlineUpdatePolicyStudy before choosing a policy.",
+            ],
+        }
+    else:
+        test_size = pd.Timedelta(days=1)
+        step = pd.Timedelta(days=1)
+        if objective == "weekly_retraining":
+            test_size = pd.Timedelta(days=7)
+            step = pd.Timedelta(days=7)
+        train_size = max(span * 0.6, test_size * 3, median_step * 10)
+        suggestion = {
+            "mode": "temporal_walk_forward",
+            "time_col": selected_time_col,
+            "partition": {
+                "layout": "train_test",
+                "train_size": _duration_string(train_size),
+                "test_size": _duration_string(test_size),
+            },
+            "step": _duration_string(step),
+            "strategy": "rolling",
+            "allow_partial": False,
+            "max_folds": 20,
+            "notes": [
+                "This is a conservative starting point, not an optimal policy.",
+                "Run validate_temporal_policy before materializing folds.",
+            ],
+        }
+
+    return {
+        "dataset_path": str(Path(dataset_path)),
+        "objective": objective,
+        "rows_scanned": profile["rows_scanned"],
+        "time_col_candidates": profile["time_col_candidates"],
+        "suggestion": suggestion,
+    }
+
+
+def validate_temporal_policy(
+    dataset_path: str,
+    *,
+    partition: dict[str, Any],
+    step: object,
+    time_col: str | int | None = None,
+    strategy: str = "rolling",
+    allow_partial: bool = False,
+    engine: str = "auto",
+    start_at: object | None = None,
+    end_at: object | None = None,
+    max_folds: int | None = None,
+    dataset_format: str = "auto",
+    order_col: str | int | None = None,
+    train_time_col: str | int | None = None,
+    validation_time_col: str | int | None = None,
+    test_time_col: str | int | None = None,
+    preview_rows: int = 20,
+) -> dict[str, Any]:
+    """Validate a walk-forward partition policy without running a model."""
+
+    plan_payload = plan_walk_forward(
+        dataset_path,
+        partition=partition,
+        step=step,
+        time_col=time_col,
+        strategy=strategy,
+        allow_partial=allow_partial,
+        engine=engine,
+        start_at=start_at,
+        end_at=end_at,
+        max_folds=max_folds,
+        dataset_format=dataset_format,
+        order_col=order_col,
+        train_time_col=train_time_col,
+        validation_time_col=validation_time_col,
+        test_time_col=test_time_col,
+        preview_rows=10_000,
+    )
+    plan_frame = pd.DataFrame(plan_payload["preview"])
+    issues, warnings = _diagnose_plan_frame(plan_frame)
+    return {
+        "dataset_path": str(Path(dataset_path)),
+        "valid": not issues,
+        "issues": issues,
+        "warnings": warnings,
+        "total_folds": plan_payload["total_folds"],
+        "engine": plan_payload["engine"],
+        "summary": _summarize_plan_frame(plan_frame),
+        "preview": plan_payload["preview"][:preview_rows],
+    }
+
+
+def compare_partition_strategies(
+    dataset_path: str,
+    *,
+    configs: list[dict[str, Any]],
+    dataset_format: str = "auto",
+    preview_rows: int = 5,
+) -> dict[str, Any]:
+    """Compare multiple temporal partition configurations at the plan level."""
+
+    if not configs:
+        raise ValueError("configs must not be empty")
+
+    comparisons = []
+    details = {}
+    for index, config in enumerate(configs):
+        if not isinstance(config, dict):
+            raise ValueError("Each config must be a dictionary")
+        name = str(config.get("name") or f"config_{index}")
+        plan_config = {key: value for key, value in config.items() if key != "name"}
+        validation = validate_temporal_policy(
+            dataset_path,
+            dataset_format=dataset_format,
+            preview_rows=preview_rows,
+            **plan_config,
+        )
+        row = {
+            "name": name,
+            "valid": validation["valid"],
+            "total_folds": validation["total_folds"],
+            "issues": validation["issues"],
+            "warnings": validation["warnings"],
+        }
+        row.update(validation["summary"])
+        comparisons.append(_json_ready_object(row))
+        details[name] = validation
+
+    return {
+        "dataset_path": str(Path(dataset_path)),
+        "comparison": comparisons,
+        "details": details,
+    }
+
+
 def plan_walk_forward(
     dataset_path: str,
     *,
@@ -603,6 +857,153 @@ def monitor_decay(
         "drift_onset": _json_ready_object(drift_onset),
         "windows_preview": _frame_records(records.head(preview_rows)),
     }
+
+
+def _profile_column(frame: pd.DataFrame, column) -> dict[str, Any]:
+    series = frame[column]
+    non_null = series.dropna()
+    dtype = str(series.dtype)
+    if pd.api.types.is_bool_dtype(series):
+        kind = "boolean"
+    elif pd.api.types.is_numeric_dtype(series):
+        kind = "numeric"
+    elif pd.api.types.is_datetime64_any_dtype(series):
+        kind = "datetime"
+    else:
+        kind = "categorical" if non_null.nunique(dropna=True) <= max(20, len(series) * 0.2) else "text"
+
+    profile: dict[str, Any] = {
+        "name": str(column),
+        "dtype": dtype,
+        "kind": kind,
+        "non_null": int(non_null.shape[0]),
+        "nulls": int(series.isna().sum()),
+        "null_ratio": float(series.isna().mean()),
+        "unique_count": int(non_null.nunique(dropna=True)),
+        "examples": [_json_ready(value) for value in non_null.head(3).tolist()],
+    }
+    if kind == "numeric" and not non_null.empty:
+        numeric = pd.to_numeric(non_null, errors="coerce").dropna()
+        if not numeric.empty:
+            profile["min"] = _json_ready(numeric.min())
+            profile["max"] = _json_ready(numeric.max())
+            profile["mean"] = _json_ready(numeric.mean())
+
+    name = str(column).lower()
+    should_try_datetime = (
+        kind == "datetime"
+        or any(token in name for token in ("date", "time", "timestamp", "_at", "dt"))
+    )
+    if should_try_datetime:
+        parsed = pd.to_datetime(non_null, errors="coerce")
+        parse_ratio = float(parsed.notna().mean()) if len(non_null) else 0.0
+        if parse_ratio >= 0.5:
+            parsed = parsed.dropna()
+            profile["datetime_parse_ratio"] = parse_ratio
+            profile["datetime_min"] = _json_ready(parsed.min())
+            profile["datetime_max"] = _json_ready(parsed.max())
+    return profile
+
+
+def _time_candidate_from_profile(profile: dict[str, Any]) -> dict[str, Any] | None:
+    name = str(profile["name"])
+    lower = name.lower()
+    parse_ratio = float(profile.get("datetime_parse_ratio", 0.0))
+    score = parse_ratio
+    if any(token in lower for token in ("date", "time", "timestamp", "_at", "dt")):
+        score += 0.35
+    if profile["kind"] == "datetime":
+        score += 0.4
+    if score < 0.7:
+        return None
+    return {
+        "name": name,
+        "score": round(score, 3),
+        "parse_ratio": round(parse_ratio, 3),
+        "min": profile.get("datetime_min"),
+        "max": profile.get("datetime_max"),
+    }
+
+
+def _target_candidate_from_profile(profile: dict[str, Any]) -> dict[str, Any] | None:
+    name = str(profile["name"])
+    lower = name.lower()
+    score = 0.0
+    if lower in {"target", "y", "label", "class", "outcome"}:
+        score += 0.8
+    if any(token in lower for token in ("target", "label", "class", "outcome", "delay", "sales")):
+        score += 0.45
+    if profile["kind"] in {"numeric", "categorical", "boolean"}:
+        score += 0.2
+    if score < 0.45:
+        return None
+    return {
+        "name": name,
+        "score": round(score, 3),
+        "kind": profile["kind"],
+        "unique_count": profile["unique_count"],
+    }
+
+
+def _duration_string(value: pd.Timedelta) -> str:
+    if value <= pd.Timedelta(0):
+        value = pd.Timedelta(days=1)
+    days = max(1, int(round(value / pd.Timedelta(days=1))))
+    return f"{days}D"
+
+
+def _diagnose_plan_frame(plan_frame: pd.DataFrame) -> tuple[list[str], list[str]]:
+    issues: list[str] = []
+    warnings: list[str] = []
+    if plan_frame.empty:
+        return ["policy produced no folds"], warnings
+
+    for segment in ("train", "validation", "test"):
+        rows_col = f"{segment}_rows"
+        if rows_col in plan_frame and (plan_frame[rows_col] <= 0).any():
+            issues.append(f"{segment} has one or more empty folds")
+
+    if "is_partial" in plan_frame and plan_frame["is_partial"].astype(bool).any():
+        warnings.append("plan contains partial folds")
+
+    if {"train_end", "test_start"}.issubset(plan_frame.columns):
+        train_end = pd.to_datetime(plan_frame["train_end"], errors="coerce")
+        test_start = pd.to_datetime(plan_frame["test_start"], errors="coerce")
+        if (test_start < train_end).any():
+            issues.append("one or more folds have test_start before train_end")
+        if (test_start == train_end).any():
+            warnings.append("one or more folds start test at the same timestamp train ends")
+
+    if "train_rows" in plan_frame:
+        train_rows = pd.to_numeric(plan_frame["train_rows"], errors="coerce").dropna()
+        if not train_rows.empty and train_rows.min() < 10:
+            warnings.append("one or more train folds have fewer than 10 rows")
+    if "test_rows" in plan_frame:
+        test_rows = pd.to_numeric(plan_frame["test_rows"], errors="coerce").dropna()
+        if not test_rows.empty and test_rows.min() < 5:
+            warnings.append("one or more test folds have fewer than 5 rows")
+    return issues, warnings
+
+
+def _summarize_plan_frame(plan_frame: pd.DataFrame) -> dict[str, Any]:
+    summary: dict[str, Any] = {}
+    for segment in ("train", "validation", "test"):
+        rows_col = f"{segment}_rows"
+        if rows_col in plan_frame:
+            rows = pd.to_numeric(plan_frame[rows_col], errors="coerce").dropna()
+            if not rows.empty:
+                summary[f"{segment}_rows_min"] = int(rows.min())
+                summary[f"{segment}_rows_max"] = int(rows.max())
+                summary[f"{segment}_rows_mean"] = float(rows.mean())
+    if "simulation_start" in plan_frame:
+        summary["simulation_start"] = _json_ready(
+            pd.to_datetime(plan_frame["simulation_start"], errors="coerce").min()
+        )
+    if "simulation_end" in plan_frame:
+        summary["simulation_end"] = _json_ready(
+            pd.to_datetime(plan_frame["simulation_end"], errors="coerce").max()
+        )
+    return summary
 
 
 def _resolve_dataset_format(path: Path, dataset_format: str) -> str:

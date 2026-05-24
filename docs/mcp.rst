@@ -6,6 +6,8 @@ Jano ships an optional local MCP server so AI agents can use the library through
 This is useful when you want an agent to:
 
 - inspect a local dataset,
+- infer candidate time and target columns,
+- suggest and validate a partition policy,
 - precompute a walk-forward plan,
 - run a temporal simulation,
 - execute a simple baseline model,
@@ -13,7 +15,10 @@ This is useful when you want an agent to:
 
 The initial MCP surface is intentionally narrow. It focuses on the most stable, agent-friendly workflow:
 
-- preview a dataset,
+- preview and inspect a dataset,
+- suggest a conservative partition policy,
+- validate a policy with ``plan()`` before running models,
+- compare partition strategies,
 - plan a walk-forward simulation,
 - run a walk-forward simulation,
 - run a baseline model over the same folds,
@@ -64,6 +69,26 @@ Available MCP tools
 ``preview_local_dataset``
   Read a local CSV, Parquet file or ZIP-wrapped CSV and return a compact preview.
 
+``inspect_local_dataset``
+  Inspect schema, dtypes, nulls, examples and candidate ``time_col`` /
+  ``target_col`` values. This is the safest first tool when an agent receives a
+  new local file.
+
+``suggest_temporal_partition_policy``
+  Suggest a conservative starting policy from dataset shape. It can return a
+  temporal walk-forward policy or an event-based online policy depending on the
+  requested ``objective``.
+
+``validate_temporal_partition_policy``
+  Run ``plan()`` and return diagnostics before any model is trained. The response
+  flags empty folds, partial folds, small train/test folds and suspicious
+  train/test boundary ordering.
+
+``compare_temporal_partition_strategies``
+  Compare multiple candidate partition configurations at the plan level. This is
+  useful when an agent wants to choose between daily, weekly, rolling or
+  expanding layouts before running model code.
+
 ``plan_walk_forward_simulation``
   Build a walk-forward ``plan()`` and return iteration boundaries, row counts and
   selected partition-engine metadata.
@@ -95,6 +120,34 @@ Available MCP tools
 
 The planning and execution tools accept ``engine`` with the same values as the Python API: ``"auto"``,
 ``"pandas"``, ``"polars"`` or ``"numpy"``.
+
+Agent-first workflow
+--------------------
+
+For a new dataset, prefer this MCP sequence:
+
+1. ``inspect_local_dataset`` to identify candidate time and target columns.
+2. ``suggest_temporal_partition_policy`` to get a conservative starting policy.
+3. ``validate_temporal_partition_policy`` to inspect fold geometry and warnings.
+4. ``compare_temporal_partition_strategies`` if multiple policies are plausible.
+5. ``plan_walk_forward_simulation`` or ``run_walk_forward_simulation`` only after
+   the partition geometry is acceptable.
+
+Example policy validation:
+
+.. code-block:: json
+
+   {
+     "dataset_path": "data/flights.csv",
+     "partition": {
+       "layout": "train_test",
+       "train_size": "30D",
+       "test_size": "7D"
+     },
+     "step": "7D",
+     "time_col": "scheduled_departure_at",
+     "max_folds": 10
+   }
 
 Baseline runner example
 -----------------------

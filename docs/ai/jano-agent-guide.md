@@ -145,6 +145,8 @@ Use:
 - `run.retrain_events()` for folds where the model was refit
 - `run.predictions_frame()` for row-level test predictions
 - `run.report_data()` or `run.to_dict()` for JSON-ready agent output
+- `OnlineRunResult.retrain_checkpoints()` for online batches where a
+  user-defined retrain trigger fired
 
 Do not make HTML dashboards the primary contract for runner results.
 
@@ -156,12 +158,23 @@ through declared tools instead of writing Python ad hoc.
 Available MCP tools cover:
 
 - dataset preview with `preview_local_dataset`
+- schema inspection and column hints with `inspect_local_dataset`
+- conservative policy suggestions with `suggest_temporal_partition_policy`
+- plan-level diagnostics with `validate_temporal_partition_policy`
+- policy geometry comparisons with `compare_temporal_partition_strategies`
 - fold planning with `plan_walk_forward_simulation`
 - simulation execution with `run_walk_forward_simulation`
 - simple baseline-model execution with `run_walk_forward_baseline_model`
 - retraining policy comparison with `compare_retrain_policy_baselines`
 - fixed-test train-history search with `find_train_history_window_baseline`
 - fixed-train decay monitoring with `monitor_decay_baseline`
+
+For unfamiliar datasets, inspect and validate before running models:
+
+1. call `inspect_local_dataset`;
+2. call `suggest_temporal_partition_policy`;
+3. call `validate_temporal_partition_policy`;
+4. compare alternatives with `compare_temporal_partition_strategies` if needed.
 
 Use `run_walk_forward_baseline_model` for quick sanity checks over a dataset before
 writing custom model code. It supports `model="mean"` for numeric regression targets
@@ -180,6 +193,8 @@ triage and dataset inspection, not a substitute for project-owned estimators.
 - Use `gap_before_test`, `gap_before_validation` or `TemporalSemanticsSpec` when leakage is possible.
 - Use calendar alignment with `calendar_frequency` when the user wants complete days or other fixed calendar periods.
 - Keep model fitting and metrics outside `TemporalBacktestSplitter`.
+- Keep online drift/retrain checkpoint logic user-defined. Pass a callable
+  `retrain_trigger` to `OnlineTemporalRunner`; do not add built-in drift formulas.
 - Preserve manual fold iteration as a valid path for advanced users.
 
 ## Multiple Time Columns

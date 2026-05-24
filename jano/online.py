@@ -27,6 +27,7 @@ class OnlineUpdateStrategy:
 
 
 UpdateStrategyFactory = Callable[[], OnlineUpdateStrategy]
+OnlineRetrainTrigger = Callable[[pd.DataFrame, dict[str, object]], object]
 
 
 class PartialFitUpdateStrategy(OnlineUpdateStrategy):
@@ -177,12 +178,18 @@ class OnlineRunResult:
         metadata_columns = {
             "batch",
             "updated",
+            "retrain_checkpoint",
+            "retrain_reason",
             "train_rows_seen",
             "batch_rows",
             "batch_start",
             "batch_end",
         }
-        return [column for column in self.records.columns if column not in metadata_columns]
+        return [
+            column
+            for column in self.records.columns
+            if column not in metadata_columns and not column.startswith("retrain_")
+        ]
 
     def metric_trajectory(self) -> pd.DataFrame:
         """Return metrics in long format, one row per batch and metric."""
@@ -201,14 +208,24 @@ class OnlineRunResult:
 
     def summary(self) -> dict[str, object]:
         """Return compact aggregate statistics for the online run."""
+        checkpoint_count = (
+            int(self.records["retrain_checkpoint"].astype(bool).sum())
+            if "retrain_checkpoint" in self.records
+            else 0
+        )
         summary: dict[str, object] = {
             "batches": int(len(self.records)),
             "update_strategy": self.update_strategy,
             "updates": int(self.records["updated"].astype(bool).sum()),
+            "retrain_checkpoints": checkpoint_count,
             "rows_evaluated": int(self.records["batch_rows"].sum()),
             "metrics": self.metric_names,
             "primary_metric": self.primary_metric,
         }
+        if checkpoint_count:
+            first_checkpoint = self.retrain_checkpoints().iloc[0]
+            summary["first_retrain_checkpoint_batch"] = int(first_checkpoint["batch"])
+            summary["first_retrain_checkpoint_time"] = _json_ready(first_checkpoint["batch_end"])
         for metric in self.metric_names:
             values = self.records[metric].astype(float)
             direction = self.metric_directions.get(metric, "min")
@@ -224,6 +241,7 @@ class OnlineRunResult:
             "summary": self.summary(),
             "batches": _frame_records(self.to_frame()),
             "metrics": _frame_records(self.metric_trajectory()),
+            "retrain_checkpoints": _frame_records(self.retrain_checkpoints()),
             "metric_directions": dict(self.metric_directions),
             "primary_metric": self.primary_metric,
             "update_strategy": self.update_strategy,
@@ -235,6 +253,12 @@ class OnlineRunResult:
     def to_dict(self, *, include_predictions: bool = False) -> dict[str, object]:
         """Return a serializable representation of the online run."""
         return self.report_data(include_predictions=include_predictions)
+
+    def retrain_checkpoints(self) -> pd.DataFrame:
+        """Return batches where the user-defined online retrain trigger fired."""
+        if "retrain_checkpoint" not in self.records:
+            return pd.DataFrame(columns=self.records.columns)
+        return self.records.loc[self.records["retrain_checkpoint"].astype(bool)].copy()
 
 
 @dataclass(frozen=True)
@@ -336,6 +360,11 @@ class OnlineTemporalRunner:
         primary_metric: Primary metric used by downstream analysis.
         evaluation: Optional explicit ``EvaluationProfile``.
         include_predictions: Whether row-level predictions should be stored.
+        retrain_trigger: Optional callable evaluated after each batch is scored.
+            It receives ``history`` (all records up to the current batch) and
+            ``latest`` (the current batch record). Return ``True``, a reason
+            string, or a dictionary such as ``{"retrain": True, "reason": "..."}``
+            to mark that batch as a retraining checkpoint.
     """
 
     def __init__(
@@ -354,6 +383,7 @@ class OnlineTemporalRunner:
         evaluation: EvaluationProfile | None = None,
         include_predictions: bool = True,
         prediction_column: str = "prediction",
+        retrain_trigger: OnlineRetrainTrigger | None = None,
     ) -> None:
         if evaluation is not None and (
             metrics is not None or metric_directions is not None or primary_metric is not None
@@ -375,6 +405,7 @@ class OnlineTemporalRunner:
         )
         self.include_predictions = include_predictions
         self.prediction_column = prediction_column
+        self.retrain_trigger = retrain_trigger
 
     def run(self, X) -> OnlineRunResult:
         """Execute prequential evaluation over ``X``."""
@@ -431,6 +462,8 @@ class OnlineTemporalRunner:
             }
             for name, metric_fn in metric_mapping.items():
                 row[name] = metric_fn(y_true, predictions)
+            trigger_payload = self._evaluate_retrain_trigger(records, row)
+            row.update(trigger_payload)
             records.append(row)
 
             if self.include_predictions:
@@ -458,6 +491,19 @@ class OnlineTemporalRunner:
             ),
             primary_metric=evaluation.primary_metric,
         )
+
+    def _evaluate_retrain_trigger(
+        self,
+        previous_records: list[dict[str, object]],
+        current_row: dict[str, object],
+    ) -> dict[str, object]:
+        if self.retrain_trigger is None:
+            return {"retrain_checkpoint": False, "retrain_reason": None}
+
+        history = pd.DataFrame([*previous_records, current_row])
+        signal = self.retrain_trigger(history.copy(), dict(current_row))
+        normalized = _normalize_retrain_signal(signal)
+        return normalized
 
     def _build_positions(self, ordered: pd.DataFrame) -> tuple[np.ndarray, list[np.ndarray]]:
         total_rows = len(ordered)
@@ -630,6 +676,31 @@ def _row_batches(start: int, stop: int, size: int) -> list[np.ndarray]:
         batches.append(np.arange(cursor, end, dtype=np.int64))
         cursor = end
     return batches
+
+
+def _normalize_retrain_signal(signal: object) -> dict[str, object]:
+    payload: dict[str, object] = {"retrain_checkpoint": False, "retrain_reason": None}
+    if signal is None or signal is False:
+        return payload
+    if signal is True:
+        payload["retrain_checkpoint"] = True
+        return payload
+    if isinstance(signal, str):
+        payload["retrain_checkpoint"] = True
+        payload["retrain_reason"] = signal
+        return payload
+    if isinstance(signal, dict):
+        should_retrain = bool(signal.get("retrain", signal.get("checkpoint", True)))
+        payload["retrain_checkpoint"] = should_retrain
+        payload["retrain_reason"] = signal.get("reason")
+        for key, value in signal.items():
+            if key in {"retrain", "checkpoint", "reason"}:
+                continue
+            payload[f"retrain_{key}"] = value
+        return payload
+    raise TypeError(
+        "retrain_trigger must return None, bool, str or a dictionary with retrain/checkpoint metadata"
+    )
 
 
 def _frame_records(frame: pd.DataFrame) -> list[dict[str, object]]:

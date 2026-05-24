@@ -11,6 +11,7 @@ from .evaluation import (
     ResolvedEvaluationProfile,
 )
 from .online import (
+    OnlineRetrainTrigger,
     OnlineRunResult,
     OnlineTemporalRunner,
     OnlineUpdatePolicy,
@@ -68,6 +69,7 @@ __all__ = [
     "NeverRetrain",
     "OrdinalClassificationProfile",
     "OnlineRunResult",
+    "OnlineRetrainTrigger",
     "OnlineTemporalRunner",
     "OnlineUpdatePolicy",
     "OnlineUpdatePolicyStudy",

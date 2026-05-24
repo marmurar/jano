@@ -44,6 +44,8 @@ def test_online_temporal_runner_predicts_before_event_updates() -> None:
         103.0,
     ]
     assert result.summary()["updates"] == 4
+    assert result.summary()["retrain_checkpoints"] == 0
+    assert result.retrain_checkpoints().empty
     assert result.report_data(include_predictions=True)["summary"]["rows_evaluated"] == 4
 
 
@@ -70,6 +72,90 @@ def test_online_temporal_runner_supports_duration_micro_batches() -> None:
     ]
     assert result.predictions_frame().empty
     assert result.metric_trajectory()["metric"].tolist() == ["mae", "mae", "mae"]
+
+
+def test_online_temporal_runner_marks_user_defined_retrain_checkpoints() -> None:
+    frame = build_frame(size=9)
+
+    def trigger(history: pd.DataFrame, latest: dict[str, object]) -> dict[str, object]:
+        if int(latest["batch"]) >= 2:
+            return {
+                "retrain": True,
+                "reason": "mae exceeded tolerated online drift",
+                "score": latest["mae"],
+            }
+        return {"retrain": False, "score": latest["mae"]}
+
+    result = OnlineTemporalRunner(
+        model=RunningMeanPartialFitRegressor(),
+        time_col="timestamp",
+        target_col="target",
+        feature_cols=["feature"],
+        initial_train_size=4,
+        update_size=1,
+        metrics={"mae": mae},
+        retrain_trigger=trigger,
+    ).run(frame)
+
+    records = result.to_frame()
+    checkpoints = result.retrain_checkpoints()
+
+    assert records["retrain_checkpoint"].tolist() == [False, False, True, True, True]
+    assert checkpoints["batch"].tolist() == [2, 3, 4]
+    assert checkpoints["retrain_reason"].tolist() == [
+        "mae exceeded tolerated online drift",
+        "mae exceeded tolerated online drift",
+        "mae exceeded tolerated online drift",
+    ]
+    assert "retrain_score" in checkpoints.columns
+    assert result.metric_names == ["mae"]
+    assert result.summary()["retrain_checkpoints"] == 3
+    assert result.summary()["first_retrain_checkpoint_batch"] == 2
+    assert result.report_data()["retrain_checkpoints"][0]["batch"] == 2
+
+
+def test_online_retrain_trigger_supports_bool_string_and_validates_return_type() -> None:
+    frame = build_frame(size=6)
+
+    bool_result = OnlineTemporalRunner(
+        model=RunningMeanPartialFitRegressor(),
+        time_col="timestamp",
+        target_col="target",
+        feature_cols=["feature"],
+        initial_train_size=3,
+        update_size=1,
+        metrics={"mae": mae},
+        retrain_trigger=lambda history, latest: latest["batch"] == 1,
+    ).run(frame)
+    assert bool_result.retrain_checkpoints()["batch"].tolist() == [1]
+
+    string_result = OnlineTemporalRunner(
+        model=RunningMeanPartialFitRegressor(),
+        time_col="timestamp",
+        target_col="target",
+        feature_cols=["feature"],
+        initial_train_size=3,
+        update_size=1,
+        metrics={"mae": mae},
+        retrain_trigger=lambda history, latest: "scheduled checkpoint",
+    ).run(frame)
+    assert string_result.retrain_checkpoints()["retrain_reason"].tolist() == [
+        "scheduled checkpoint",
+        "scheduled checkpoint",
+        "scheduled checkpoint",
+    ]
+
+    with pytest.raises(TypeError, match="retrain_trigger must return"):
+        OnlineTemporalRunner(
+            model=RunningMeanPartialFitRegressor(),
+            time_col="timestamp",
+            target_col="target",
+            feature_cols=["feature"],
+            initial_train_size=3,
+            update_size=1,
+            metrics={"mae": mae},
+            retrain_trigger=lambda history, latest: 1.5,
+        ).run(frame)
 
 
 def test_online_temporal_runner_validates_update_strategy_and_sizes() -> None:

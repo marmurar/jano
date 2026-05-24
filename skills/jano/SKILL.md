@@ -26,6 +26,12 @@ Use Jano when:
 - Use `WalkForwardRunner` when fitting and predicting over folds.
 - Use `TemporalBacktestSplitter` for manual control.
 - Use `report_data()`, `metric_trajectory()` and `fold_summary()` for agent-readable outputs.
+- Use `OnlineTemporalRunner(retrain_trigger=...)` when the user wants online
+  event or micro-batch checkpoints for retraining inflection points.
+- Use MCP tools `inspect_local_dataset`, `suggest_temporal_partition_policy` and
+  `validate_temporal_partition_policy` before running models on an unfamiliar file.
+- Use MCP tool `compare_temporal_partition_strategies` when multiple fold geometries
+  are plausible.
 - Use the MCP tool `run_walk_forward_baseline_model` for quick local sanity checks
   before writing custom model code.
 - Use MCP study tools for baseline temporal hypotheses:
@@ -59,5 +65,7 @@ belong to the user.
 - Do not use random `train_test_split` for time-dependent evaluation.
 - Do not add model logic to `TemporalBacktestSplitter`.
 - Do not add metric formulas to Jano core.
+- Do not add built-in online drift formulas; keep retrain checkpoint logic as
+  user-provided callables.
 - Prefer structured outputs over generated HTML for runner results.
 - Read `docs/architecture/` before changing public APIs.

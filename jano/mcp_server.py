@@ -1,13 +1,19 @@
 from __future__ import annotations
 
+from typing import Any
+
 from .mcp_tools import (
     compare_retrain_policies,
+    compare_partition_strategies,
     find_train_history_window,
+    inspect_dataset,
     monitor_decay,
     plan_walk_forward,
     preview_dataset,
     run_walk_forward,
     run_walk_forward_baseline,
+    suggest_partition_policy,
+    validate_temporal_policy,
 )
 
 
@@ -48,6 +54,94 @@ def build_server():
             dataset_path,
             dataset_format=dataset_format,
             sample_rows=sample_rows,
+        )
+
+    @mcp.tool()
+    def inspect_local_dataset(
+        dataset_path: str,
+        dataset_format: str = "auto",
+        sample_rows: int = 5_000,
+        preview_rows: int = 5,
+        full_scan: bool = False,
+    ) -> dict:
+        """Inspect schema, types and candidate time/target columns for a local dataset."""
+        return inspect_dataset(
+            dataset_path,
+            dataset_format=dataset_format,
+            sample_rows=sample_rows,
+            preview_rows=preview_rows,
+            full_scan=full_scan,
+        )
+
+    @mcp.tool()
+    def suggest_temporal_partition_policy(
+        dataset_path: str,
+        dataset_format: str = "auto",
+        time_col: str | None = None,
+        objective: str = "walk_forward",
+        sample_rows: int = 5_000,
+    ) -> dict:
+        """Suggest a conservative temporal or event-based policy from dataset shape."""
+        return suggest_partition_policy(
+            dataset_path,
+            dataset_format=dataset_format,
+            time_col=time_col,
+            objective=objective,
+            sample_rows=sample_rows,
+        )
+
+    @mcp.tool()
+    def validate_temporal_partition_policy(
+        dataset_path: str,
+        partition: dict,
+        step: str,
+        time_col: str,
+        strategy: str = "rolling",
+        allow_partial: bool = False,
+        engine: str = "auto",
+        start_at: str | None = None,
+        end_at: str | None = None,
+        max_folds: int | None = None,
+        dataset_format: str = "auto",
+        order_col: str | None = None,
+        train_time_col: str | None = None,
+        validation_time_col: str | None = None,
+        test_time_col: str | None = None,
+        preview_rows: int = 20,
+    ) -> dict:
+        """Validate a partition policy with plan() before running a model."""
+        return validate_temporal_policy(
+            dataset_path,
+            partition=partition,
+            step=step,
+            time_col=time_col,
+            strategy=strategy,
+            allow_partial=allow_partial,
+            engine=engine,
+            start_at=start_at,
+            end_at=end_at,
+            max_folds=max_folds,
+            dataset_format=dataset_format,
+            order_col=order_col,
+            train_time_col=train_time_col,
+            validation_time_col=validation_time_col,
+            test_time_col=test_time_col,
+            preview_rows=preview_rows,
+        )
+
+    @mcp.tool()
+    def compare_temporal_partition_strategies(
+        dataset_path: str,
+        configs: list[dict],
+        dataset_format: str = "auto",
+        preview_rows: int = 5,
+    ) -> dict:
+        """Compare multiple partition policies without materializing model runs."""
+        return compare_partition_strategies(
+            dataset_path,
+            configs=configs,
+            dataset_format=dataset_format,
+            preview_rows=preview_rows,
         )
 
     @mcp.tool()

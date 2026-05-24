@@ -1,23 +1,26 @@
-Modos de Partición
-==================
+Relojes de Discretización Temporal
+==================================
 
-Jano separa dos ideas relacionadas que suelen mezclarse:
+Jano siempre particiona procesos temporales. Lo que cambia es el reloj usado
+para hacer avanzar la evaluación:
 
-- **Partición temporal**: divide un dataset histórico en ventanas de train,
-  validation y test ordenadas por tiempo.
-- **Partición online basada en eventos**: divide un stream observado en eventos
-  o micro-batches, y evalúa cómo se comporta un modelo a medida que llegan nuevas
-  observaciones.
+- **Reloj calendario**: días, horas, semanas o meses.
+- **Reloj por filas/eventos**: cada evento o cada ``N`` filas observadas.
+- **Reloj por micro-batches**: cada batch observado en un stream online.
+- **Reloj de negocio**: un trigger definido por el usuario que marca checkpoints
+  de retraining.
 
-Ambos modos son causales: los datos observados después no deben influir en
-decisiones que se habrían tomado antes. La diferencia es la unidad que hace
-avanzar la evaluación.
+Todos los relojes son causales: los datos observados después no deben influir en
+decisiones que se habrían tomado antes. Las actualizaciones por evento no quedan
+fuera del tiempo; son otra forma de discretizar la misma línea temporal. Cuando
+el evento ``X`` dispara retraining, Jano registra el timestamp asociado y
+convierte evidencia acumulada en un checkpoint temporal auditable.
 
-Partición Temporal
-------------------
+Partición Guiada por Calendario
+-------------------------------
 
-La partición temporal es el modo base para backtesting de sistemas tabulares de
-machine learning. Responde preguntas como:
+La partición guiada por calendario es el modo base para backtesting de sistemas
+tabulares de machine learning. Responde preguntas como:
 
 - ¿cómo habría sido la performance si el modelo se hubiese reentrenado todos los
   días?
@@ -46,17 +49,16 @@ el loop de folds:
 Usá ``WalkForwardPolicy`` o ``TemporalSimulation`` cuando querés que Jano genere
 un plan, ejecute los folds y exponga resultados auditables.
 
-Partición Online Basada en Eventos
-----------------------------------
+Partición Online Guiada por Observaciones
+-----------------------------------------
 
-La partición online basada en eventos no es una simulación walk-forward sobre
-folds históricos fijos. Es un patrón causal de evaluación online: inicializar un
-modelo, predecir el próximo evento o micro-batch, observar el target, actualizar
-el modelo y repetir.
+La partición online guiada por observaciones no es un modo no-temporal separado.
+Es un patrón causal de evaluación online sobre la misma línea temporal:
+inicializar un modelo, predecir el próximo evento o micro-batch, observar el
+target, actualizar el modelo y repetir.
 
-Sirve cuando la pregunta operativa no es solo *¿cuándo debería reentrenar por
-calendario?*, sino también *¿cuántas observaciones nuevas debería esperar antes
-de actualizar el modelo?*
+Sirve cuando el reloj operativo no es solo el calendario, sino también la
+evidencia acumulada desde la última actualización.
 
 Usá ``OnlineTemporalRunner`` con ``PartialFitUpdateStrategy`` cuando el modelo
 soporta actualización incremental real vía ``partial_fit``:
@@ -89,10 +91,50 @@ La secuencia es causal por diseño:
 - actualiza el modelo con ese batch observado
 - repite
 
-``update_size=1`` significa actualización por evento. También podés usar batches
+``update_size=1`` significa un tick temporal por cada evento observado. También podés usar batches
 por filas como ``update_size=100`` o por duración como ``update_size="1D"``. Eso
-permite comparar políticas de actualización por evento, por batch de filas o por
-batch temporal sin cambiar el resto de la configuración.
+permite comparar relojes por evento, por batch de filas o por calendario sin
+cambiar el resto de la configuración.
+
+Checkpoints de Retraining Definidos por el Usuario
+--------------------------------------------------
+
+La evaluación online también puede marcar el checkpoint temporal exacto donde tu
+propia lógica indica que ya conviene reentrenar. Pasá ``retrain_trigger`` a
+``OnlineTemporalRunner``. El trigger recibe la historia online acumulada y el
+último batch ya evaluado:
+
+.. code-block:: python
+
+   def should_retrain(history, latest):
+       if latest["mae"] > 0.15:
+           return {
+               "retrain": True,
+               "reason": "mae crossed production tolerance",
+               "score": latest["mae"],
+           }
+       return False
+
+   runner = OnlineTemporalRunner(
+       model=model,
+       time_col="timestamp",
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       initial_train_size="30D",
+       update_size=100,
+       metrics={"mae": mae},
+       update_strategy=PartialFitUpdateStrategy(),
+       retrain_trigger=should_retrain,
+   )
+
+   run = runner.run(frame)
+   print(run.retrain_checkpoints())
+
+El trigger puede devolver ``True``, un string con la razón, o un diccionario como
+``{"retrain": True, "reason": "...", "score": 0.23}``. Jano registra batch,
+timestamps, cantidad de filas, métricas y metadata opcional del trigger. La regla
+de drift o costo de negocio sigue siendo propiedad del usuario; Jano vuelve
+explícito y reproducible el checkpoint de retraining resultante.
 
 No todos los estimadores soportan ``partial_fit``. Para modelos clásicos
 ``fit/predict``, usá ``RefitUpdateStrategy``:
@@ -116,8 +158,8 @@ Esta estrategia refittea después de cada batch observado. Es más costosa que
 ``partial_fit``, pero funciona con estimadores estándar y puede mantener historia
 acotada con ``max_train_rows``.
 
-Encontrar una Policy de Actualización por Observaciones
--------------------------------------------------------
+Encontrar un Reloj de Actualización por Observaciones
+-----------------------------------------------------
 
 ``OnlineUpdatePolicyStudy`` compara varias cadencias de actualización sobre el
 mismo stream temporal. Eso permite preguntar si las actualizaciones del modelo

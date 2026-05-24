@@ -32,6 +32,10 @@ Jano also ships an optional local MCP server so AI agents can use the library th
 Current MCP tools:
 
 - `preview_local_dataset`
+- `inspect_local_dataset`
+- `suggest_temporal_partition_policy`
+- `validate_temporal_partition_policy`
+- `compare_temporal_partition_strategies`
 - `plan_walk_forward_simulation`
 - `run_walk_forward_simulation`
 - `run_walk_forward_baseline_model`
@@ -69,7 +73,7 @@ Example MCP client configuration:
 }
 ```
 
-The MCP layer is intentionally opinionated: it exposes planning, walk-forward simulation, baseline-model execution and baseline temporal studies first, while the full Python library remains available when you need custom composition.
+The MCP layer is intentionally opinionated: it exposes dataset inspection, policy suggestions, plan validation, walk-forward simulation, baseline-model execution and baseline temporal studies first, while the full Python library remains available when you need custom composition.
 
 This is meant for MCP-aware coding assistants such as Claude Code, Claude Desktop, Cursor, Codex runtimes with MCP support, and other local agent environments. The server runs locally and reads only the file paths you provide to its tools; Jano does not upload datasets anywhere by itself.
 
@@ -153,7 +157,7 @@ The recommended high-level surface is intentionally small:
 
 - `WalkForwardPolicy` for production-like walk-forward evaluation,
 - `WalkForwardRunner` when you want Jano to execute a model over those folds and manage retraining cadence,
-- `OnlineTemporalRunner` for event-level or micro-batch prequential evaluation,
+- `OnlineTemporalRunner` for observation-driven temporal evaluation with optional user-defined retrain checkpoints,
 - `TrainHistoryPolicy` for fixed-test, growing-train questions,
 - `DriftMonitoringPolicy` for fixed-train, moving-test questions.
 
@@ -176,7 +180,7 @@ The cleanest mental model is to treat Jano as five layers that can stay independ
 - `plan()` for inspecting and filtering that geometry before materialization.
 - `TemporalSimulation` and `WalkForwardPolicy` for fold-level simulation and reporting.
 - `WalkForwardRunner` for training, predicting and measuring over temporal folds with explicit retrain rules.
-- `OnlineTemporalRunner` for causal `predict -> observe -> update` evaluation with incremental models.
+- `OnlineTemporalRunner` for causal `predict -> observe -> update` evaluation with incremental models and checkpoint detection.
 - higher-level studies and policies for operational questions such as train sufficiency, decay and retraining cadence.
 
 That separation is deliberate. The splitter remains the free-form core. Runners and studies extend what Jano can do at the simulation layer, but they do not replace manual fold iteration.
@@ -318,7 +322,7 @@ policy = WalkForwardPolicy(
 runner = WalkForwardRunner(
     model=model,
     target_col="target",
-    feature_cols=["feature"],
+    feature_cols=["feature_a", "feature_b"],
     retrain="periodic",
     retrain_interval=2,
     metrics={"mae": mae, "rmse": rmse},
@@ -334,11 +338,13 @@ print(run.retrain_events())
 report_data = run.report_data(include_predictions=False)
 ```
 
-## Example: evaluate event-level online updates
+## Example: evaluate observation-driven online updates
 
-Jano can simulate the most extreme update cadence: predict an event, observe its
-target, update the model, and repeat. This keeps the splitter core unchanged
-while extending the simulation layer.
+Jano always operates on temporal processes, but the clock does not have to be a
+calendar interval. Online evaluation can advance by observed events or
+micro-batches: predict the next tick, observe its target, update the model, and
+repeat. This keeps the splitter core unchanged while extending the simulation
+layer.
 
 ```python
 from jano import OnlineTemporalRunner, PartialFitUpdateStrategy
@@ -347,7 +353,7 @@ runner = OnlineTemporalRunner(
     model=model,
     time_col="timestamp",
     target_col="target",
-    feature_cols=["feature"],
+    feature_cols=["feature_a", "feature_b"],
     initial_train_size="30D",
     update_size=1,
     metrics={"mae": mae, "rmse": rmse},
@@ -361,9 +367,41 @@ print(run.metric_trajectory().head())
 print(run.summary())
 ```
 
-Use `update_size=1` for event-level updates, an integer such as `update_size=100`
-for row micro-batches, or a duration such as `update_size="1D"` for time-based
-micro-batches.
+Use `update_size=1` for one temporal tick per observed event, an integer such as
+`update_size=100` for row micro-batches, or a duration such as
+`update_size="1D"` for calendar-based micro-batches.
+
+You can also mark retraining inflection points with a user-defined trigger. The
+trigger receives the online history observed so far and the latest scored batch:
+
+```python
+def should_retrain(history, latest):
+    if latest["mae"] > 0.15:
+        return {
+            "retrain": True,
+            "reason": "mae crossed production tolerance",
+            "score": latest["mae"],
+        }
+    return False
+
+runner = OnlineTemporalRunner(
+    model=model,
+    time_col="timestamp",
+    target_col="target",
+    feature_cols=["feature_a", "feature_b"],
+    initial_train_size="30D",
+    update_size=100,
+    metrics={"mae": mae},
+    retrain_trigger=should_retrain,
+)
+
+run = runner.run(frame)
+print(run.retrain_checkpoints())
+```
+
+Jano does not decide the drift formula for you. It records the exact temporal
+checkpoint where your trigger fired, including batch number, timestamps, row
+counts, metrics and optional trigger metadata.
 
 `PartialFitUpdateStrategy` is for estimators that support real incremental
 updates. For standard `fit/predict` estimators, use `RefitUpdateStrategy`:
@@ -375,7 +413,7 @@ runner = OnlineTemporalRunner(
     model=model,
     time_col="timestamp",
     target_col="target",
-    feature_cols=["feature"],
+    feature_cols=["feature_a", "feature_b"],
     initial_train_size="30D",
     update_size="1D",
     metrics={"mae": mae},
@@ -395,7 +433,7 @@ study = OnlineUpdatePolicyStudy(
     model=model,
     time_col="timestamp",
     target_col="target",
-    feature_cols=["feature"],
+    feature_cols=["feature_a", "feature_b"],
     initial_train_size="30D",
     policies=[
         OnlineUpdatePolicy("every-event", update_size=1, update_strategy=RefitUpdateStrategy()),
@@ -445,7 +483,7 @@ def retrain_rule(context):
 runner = WalkForwardRunner(
     model=model,
     target_col="target",
-    feature_cols=["feature"],
+    feature_cols=["feature_a", "feature_b"],
     evaluation=EvaluationProfile(
         metrics={"daily_cost": daily_cost},
         metric_directions={"daily_cost": "min"},

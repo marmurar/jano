@@ -6,6 +6,8 @@ Jano incluye un servidor MCP local opcional para que agentes de IA puedan usar l
 Esto sirve cuando querés que un agente:
 
 - inspeccione un dataset local,
+- infiera columnas candidatas de tiempo y target,
+- sugiera y valide una política de partición,
 - precalcule un plan walk-forward,
 - corra una simulación temporal,
 - ejecute un baseline simple,
@@ -13,7 +15,10 @@ Esto sirve cuando querés que un agente:
 
 La primera superficie MCP es deliberadamente angosta. Se enfoca en el workflow más estable y más legible para agentes:
 
-- previsualizar un dataset,
+- previsualizar e inspeccionar un dataset,
+- sugerir una política conservadora de partición,
+- validar una policy con ``plan()`` antes de correr modelos,
+- comparar estrategias de partición,
 - planificar una simulación walk-forward,
 - correr una simulación walk-forward,
 - correr un baseline sobre los mismos folds,
@@ -64,6 +69,26 @@ Tools MCP disponibles
 ``preview_local_dataset``
   Lee un CSV local, un Parquet o un ZIP con CSV y devuelve una preview compacta.
 
+``inspect_local_dataset``
+  Inspecciona schema, dtypes, nulos, ejemplos y columnas candidatas para
+  ``time_col`` / ``target_col``. Es la primera tool más segura cuando un agente
+  recibe un archivo local nuevo.
+
+``suggest_temporal_partition_policy``
+  Sugiere una policy inicial conservadora según la forma del dataset. Puede
+  devolver una policy temporal walk-forward o una policy online basada en eventos
+  según el ``objective`` pedido.
+
+``validate_temporal_partition_policy``
+  Ejecuta ``plan()`` y devuelve diagnósticos antes de entrenar cualquier modelo.
+  La respuesta marca folds vacíos, folds parciales, train/test demasiado chicos
+  y ordenamientos sospechosos entre límites de train y test.
+
+``compare_temporal_partition_strategies``
+  Compara varias configuraciones candidatas a nivel de plan. Sirve cuando un
+  agente quiere elegir entre layouts diarios, semanales, rolling o expanding
+  antes de correr código de modelo.
+
 ``plan_walk_forward_simulation``
   Construye un ``plan()`` walk-forward y devuelve boundaries por iteración, conteos de filas
   y metadata del motor de particionado elegido.
@@ -94,6 +119,34 @@ Tools MCP disponibles
 
 Las tools de planning y ejecución aceptan ``engine`` con los mismos valores que la API Python: ``"auto"``,
 ``"pandas"``, ``"polars"`` o ``"numpy"``.
+
+Workflow recomendado para agentes
+---------------------------------
+
+Para un dataset nuevo, conviene usar esta secuencia MCP:
+
+1. ``inspect_local_dataset`` para identificar columnas candidatas de tiempo y target.
+2. ``suggest_temporal_partition_policy`` para obtener una policy inicial conservadora.
+3. ``validate_temporal_partition_policy`` para inspeccionar geometría de folds y warnings.
+4. ``compare_temporal_partition_strategies`` si hay varias policies plausibles.
+5. ``plan_walk_forward_simulation`` o ``run_walk_forward_simulation`` recién cuando
+   la geometría de partición sea aceptable.
+
+Ejemplo de validación de policy:
+
+.. code-block:: json
+
+   {
+     "dataset_path": "data/flights.csv",
+     "partition": {
+       "layout": "train_test",
+       "train_size": "30D",
+       "test_size": "7D"
+     },
+     "step": "7D",
+     "time_col": "scheduled_departure_at",
+     "max_folds": 10
+   }
 
 Ejemplo de baseline runner
 --------------------------

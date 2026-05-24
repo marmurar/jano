@@ -24,8 +24,8 @@ Jano
          <p>Define train/test or train/validation/test layouts with durations, row counts or fractions.</p>
        </div>
        <div class="landing-card">
-         <h3>Temporal and event partitions</h3>
-         <p>Partition by calendar time, row counts or online event batches depending on how the system observes data.</p>
+         <h3>Temporal clocks</h3>
+         <p>Advance by calendar time, row counts, online batches or user-defined retraining checkpoints.</p>
        </div>
        <div class="landing-card">
          <h3>Drift becomes visible</h3>
@@ -52,7 +52,7 @@ Jano is a Python toolkit designed to structure, execute and analyze temporal sim
 
 Unlike traditional random splits that implicitly assume i.i.d. data, Jano treats chronology as a first-class constraint. It is built for scenarios where leakage must be tightly controlled and where system performance is expected to evolve over time because of drift, retraining cycles or changing data distributions.
 
-At its core, Jano introduces explicit partitioning abstractions. Users can define train, validation and test segments through durations, row counts or proportions, compose them into rolling, expanding or fixed-window strategies, and use temporal gaps to model the latency that often exists between training, prediction and label availability. For online settings, Jano can also partition the observed stream by events or micro-batches.
+At its core, Jano introduces explicit temporal partitioning abstractions. Users can define train, validation and test segments through durations, row counts or proportions, compose them into rolling, expanding or fixed-window strategies, and use temporal gaps to model the latency that often exists between training, prediction and label availability. For online settings, Jano can advance along the same timeline by observed events, micro-batches or user-defined retraining checkpoints.
 
 The recommended public surface centers on ``TemporalSimulation`` and ``WalkForwardPolicy`` for fold-level simulation, ``WalkForwardRunner`` for model execution over those folds, and ``TemporalBacktestSplitter`` for manual iteration and lower-level control. Jano does not compute drift metrics directly; instead, it exposes temporal structure in evaluation results so drift, regime changes and model decay become easier to inspect fold by fold.
 

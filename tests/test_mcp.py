@@ -52,14 +52,18 @@ from jano.engines import PartitionEngine, detect_backend, missing_columns
 from jano.jano import TemporalBacktestSplitter as LegacyTemporalBacktestSplitter
 from jano.mcp_server import build_server
 from jano.mcp_tools import (
+    compare_partition_strategies,
     compare_retrain_policies,
     find_train_history_window,
+    inspect_dataset,
     load_dataset_frame,
     monitor_decay,
     plan_walk_forward,
     preview_dataset,
     run_walk_forward,
     run_walk_forward_baseline,
+    suggest_partition_policy,
+    validate_temporal_policy,
 )
 from jano.policies import PerformanceDecayResult, TrainGrowthResult
 from jano.reporting import SimulationChartData, SimulationSummary
@@ -83,6 +87,78 @@ def test_mcp_load_dataset_frame_supports_csv(tmp_path) -> None:
 
     assert list(frame.columns) == ["timestamp", "feature", "target"]
     assert len(frame) == 5
+
+def test_mcp_inspect_dataset_returns_schema_and_candidates(tmp_path) -> None:
+    path = write_csv_frame(tmp_path, build_frame(size=12))
+
+    result = inspect_dataset(path, sample_rows=10, preview_rows=2)
+
+    assert result["rows_scanned"] == 10
+    assert result["sampled"] is True
+    assert result["columns"][0]["name"] == "timestamp"
+    assert result["time_col_candidates"][0]["name"] == "timestamp"
+    assert result["target_col_candidates"][0]["name"] == "target"
+    assert "feature" in result["numeric_columns"]
+    assert len(result["preview"]) == 2
+
+def test_mcp_suggest_partition_policy_returns_temporal_and_online_configs(tmp_path) -> None:
+    path = write_csv_frame(tmp_path, build_frame(size=40))
+
+    temporal = suggest_partition_policy(path, objective="walk_forward")
+    weekly = suggest_partition_policy(path, objective="weekly_retraining", time_col="timestamp")
+    online = suggest_partition_policy(path, objective="online", time_col="timestamp")
+
+    assert temporal["suggestion"]["mode"] == "temporal_walk_forward"
+    assert temporal["suggestion"]["time_col"] == "timestamp"
+    assert temporal["suggestion"]["partition"]["layout"] == "train_test"
+    assert weekly["suggestion"]["step"] == "7D"
+    assert weekly["suggestion"]["partition"]["test_size"] == "7D"
+    assert online["suggestion"]["mode"] == "event_based_online"
+    assert online["suggestion"]["update_size"] == 1
+
+def test_mcp_validate_temporal_policy_returns_diagnostics(tmp_path) -> None:
+    path = write_csv_frame(tmp_path, build_frame(size=18))
+
+    result = validate_temporal_policy(
+        path,
+        partition={"layout": "train_test", "train_size": "4D", "test_size": "2D"},
+        step="1D",
+        time_col="timestamp",
+        max_folds=3,
+    )
+
+    assert result["valid"] is True
+    assert result["issues"] == []
+    assert result["total_folds"] == 3
+    assert result["summary"]["train_rows_min"] > 0
+    assert len(result["preview"]) == 3
+
+def test_mcp_compare_partition_strategies_returns_plan_level_comparison(tmp_path) -> None:
+    path = write_csv_frame(tmp_path, build_frame(size=22))
+
+    result = compare_partition_strategies(
+        path,
+        configs=[
+            {
+                "name": "daily",
+                "partition": {"layout": "train_test", "train_size": "5D", "test_size": "1D"},
+                "step": "1D",
+                "time_col": "timestamp",
+                "max_folds": 3,
+            },
+            {
+                "name": "weekly",
+                "partition": {"layout": "train_test", "train_size": "7D", "test_size": "2D"},
+                "step": "2D",
+                "time_col": "timestamp",
+                "max_folds": 2,
+            },
+        ],
+    )
+
+    assert [row["name"] for row in result["comparison"]] == ["daily", "weekly"]
+    assert result["comparison"][0]["valid"] is True
+    assert result["details"]["weekly"]["total_folds"] == 2
 
 def test_mcp_plan_walk_forward_returns_preview_rows(tmp_path) -> None:
     path = write_csv_frame(tmp_path, build_frame(size=20))
@@ -539,6 +615,10 @@ def test_mcp_server_builds_tools_and_main_runs(monkeypatch) -> None:
     fake_module.FastMCP = FakeMCP
     monkeypatch.setitem(sys.modules, "mcp.server.fastmcp", fake_module)
     monkeypatch.setattr(mcp_server_module, "preview_dataset", lambda *args, **kwargs: {"kind": "preview", "args": args, "kwargs": kwargs})
+    monkeypatch.setattr(mcp_server_module, "inspect_dataset", lambda *args, **kwargs: {"kind": "inspect", "args": args, "kwargs": kwargs})
+    monkeypatch.setattr(mcp_server_module, "suggest_partition_policy", lambda *args, **kwargs: {"kind": "suggest", "args": args, "kwargs": kwargs})
+    monkeypatch.setattr(mcp_server_module, "validate_temporal_policy", lambda *args, **kwargs: {"kind": "validate", "args": args, "kwargs": kwargs})
+    monkeypatch.setattr(mcp_server_module, "compare_partition_strategies", lambda *args, **kwargs: {"kind": "compare_partitions", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "plan_walk_forward", lambda *args, **kwargs: {"kind": "plan", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "run_walk_forward", lambda *args, **kwargs: {"kind": "run", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "run_walk_forward_baseline", lambda *args, **kwargs: {"kind": "baseline", "args": args, "kwargs": kwargs})
@@ -549,6 +629,18 @@ def test_mcp_server_builds_tools_and_main_runs(monkeypatch) -> None:
     server = build_server()
     assert server.name == "Jano"
     assert tools["preview_local_dataset"]("data.csv")["kind"] == "preview"
+    assert tools["inspect_local_dataset"]("data.csv")["kind"] == "inspect"
+    assert tools["suggest_temporal_partition_policy"]("data.csv")["kind"] == "suggest"
+    assert tools["validate_temporal_partition_policy"](
+        "data.csv",
+        {"layout": "train_test"},
+        "1D",
+        "ts",
+    )["kind"] == "validate"
+    assert tools["compare_temporal_partition_strategies"](
+        "data.csv",
+        [{"partition": {"layout": "train_test"}, "step": "1D", "time_col": "ts"}],
+    )["kind"] == "compare_partitions"
     assert tools["plan_walk_forward_simulation"]("data.csv", {"layout": "train_test"}, "1D", "ts")["kind"] == "plan"
     assert tools["run_walk_forward_simulation"]("data.csv", {"layout": "train_test"}, "1D", "ts")["kind"] == "run"
     assert tools["run_walk_forward_baseline_model"](
@@ -602,6 +694,82 @@ def test_mcp_server_builds_tools_and_main_runs(monkeypatch) -> None:
 def test_remaining_mcp_tool_and_server_branches(monkeypatch, tmp_path) -> None:
     assert mcp_tools_module._resolve_dataset_format(Path("frame.parquet"), "auto") == "parquet"
     assert mcp_tools_module._resolve_dataset_format(Path("frame.zip"), "auto") == "zip"
+    assert mcp_tools_module._duration_string(pd.Timedelta(0)) == "1D"
+
+    no_time_path = write_csv_frame(
+        tmp_path,
+        pd.DataFrame({"feature": [1, 2, 3], "value": [4, 5, 6]}),
+    )
+    with pytest.raises(ValueError, match="Could not infer a time column"):
+        suggest_partition_policy(no_time_path)
+    with pytest.raises(ValueError, match="could not be parsed"):
+        suggest_partition_policy(no_time_path, time_col="feature")
+    valid_time_path = write_csv_frame(tmp_path, build_frame(size=6))
+    with pytest.raises(ValueError, match="objective must be"):
+        suggest_partition_policy(valid_time_path, time_col="timestamp", objective="unsupported")
+    with pytest.raises(ValueError, match="configs must not be empty"):
+        compare_partition_strategies(no_time_path, configs=[])
+    with pytest.raises(ValueError, match="Each config must be a dictionary"):
+        compare_partition_strategies(no_time_path, configs=["bad"])
+    duplicate_time_path = write_csv_frame(
+        tmp_path,
+        pd.DataFrame(
+            {
+                "timestamp": ["2024-01-01", "2024-01-01", "2024-01-01"],
+                "target": [1, 2, 3],
+            }
+        ),
+    )
+    assert suggest_partition_policy(duplicate_time_path, time_col="timestamp")["suggestion"]["step"] == "1D"
+
+    typed = pd.DataFrame(
+        {
+            "event_time": pd.date_range("2024-01-01", periods=3, freq="D"),
+            "flag": [True, False, True],
+            "description": ["long free text a", "long free text b", "long free text c"],
+            "label": ["a", "b", "a"],
+        }
+    )
+    profile = inspect_dataset(write_csv_frame(tmp_path, typed), full_scan=True)
+    kinds = {column["name"]: column["kind"] for column in profile["columns"]}
+    assert profile["time_col_candidates"][0]["name"] == "event_time"
+    assert mcp_tools_module._profile_column(typed, "flag")["kind"] == "boolean"
+    datetime_profile = mcp_tools_module._profile_column(typed, "event_time")
+    assert datetime_profile["kind"] == "datetime"
+    assert mcp_tools_module._time_candidate_from_profile(datetime_profile)["score"] > 1.0
+    assert mcp_tools_module._target_candidate_from_profile({"name": "notes", "kind": "text", "unique_count": 3}) is None
+    invalid_time_profile = mcp_tools_module._profile_column(
+        pd.DataFrame({"event_time": ["not a date", "still not a date"]}),
+        "event_time",
+    )
+    assert "datetime_parse_ratio" not in invalid_time_profile
+    assert profile["target_col_candidates"][0]["name"] == "label"
+
+    issues, warnings = mcp_tools_module._diagnose_plan_frame(
+        pd.DataFrame(
+            {
+                "train_rows": [0, 4],
+                "test_rows": [3, 4],
+                "is_partial": [True, False],
+                "train_end": ["2024-01-02", "2024-01-04"],
+                "test_start": ["2024-01-01", "2024-01-04"],
+            }
+        )
+    )
+    assert "train has one or more empty folds" in issues
+    assert "one or more folds have test_start before train_end" in issues
+    assert "plan contains partial folds" in warnings
+    assert "one or more folds start test at the same timestamp train ends" in warnings
+    assert mcp_tools_module._diagnose_plan_frame(pd.DataFrame())[0] == ["policy produced no folds"]
+    clean_issues, clean_warnings = mcp_tools_module._diagnose_plan_frame(
+        pd.DataFrame({"train_rows": [20], "test_rows": [8], "is_partial": [False]})
+    )
+    assert clean_issues == []
+    assert clean_warnings == []
+    assert mcp_tools_module._diagnose_plan_frame(pd.DataFrame({"validation_rows": [0]}))[0] == [
+        "validation has one or more empty folds"
+    ]
+    assert mcp_tools_module._summarize_plan_frame(pd.DataFrame({"train_rows": []})) == {}
 
     class FakeMCP:
         def __init__(self, *args, **kwargs):
