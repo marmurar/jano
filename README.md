@@ -33,6 +33,7 @@ Current MCP tools:
 
 - `preview_local_dataset`
 - `inspect_local_dataset`
+- `inspect_and_recommend_local_dataset`
 - `suggest_temporal_partition_policy`
 - `validate_temporal_partition_policy`
 - `compare_temporal_partition_strategies`
@@ -73,7 +74,7 @@ Example MCP client configuration:
 }
 ```
 
-The MCP layer is intentionally opinionated: it exposes dataset inspection, policy suggestions, plan validation, walk-forward simulation, baseline-model execution and baseline temporal studies first, while the full Python library remains available when you need custom composition.
+The MCP layer is intentionally opinionated: it exposes dataset inspection, policy suggestions, plan validation, walk-forward simulation, baseline-model execution and baseline temporal studies first, while the full Python library remains available when you need custom composition. The fastest first call for an agent is usually `inspect_and_recommend_local_dataset`, which bundles inspection and a conservative starting policy in one response.
 
 This is meant for MCP-aware coding assistants such as Claude Code, Claude Desktop, Cursor, Codex runtimes with MCP support, and other local agent environments. The server runs locally and reads only the file paths you provide to its tools; Jano does not upload datasets anywhere by itself.
 

@@ -54,6 +54,7 @@ from jano.mcp_server import build_server
 from jano.mcp_tools import (
     compare_partition_strategies,
     compare_retrain_policies,
+    inspect_and_recommend_dataset,
     find_train_history_window,
     inspect_dataset,
     load_dataset_frame,
@@ -100,6 +101,22 @@ def test_mcp_inspect_dataset_returns_schema_and_candidates(tmp_path) -> None:
     assert result["target_col_candidates"][0]["name"] == "target"
     assert "feature" in result["numeric_columns"]
     assert len(result["preview"]) == 2
+    assert result["summary"]["time_candidate_count"] >= 1
+    assert result["warnings"] == []
+    assert result["recommendations"]
+
+
+def test_mcp_inspect_and_recommend_dataset_returns_combined_payload(tmp_path) -> None:
+    path = write_csv_frame(tmp_path, build_frame(size=12))
+
+    result = inspect_and_recommend_dataset(path, sample_rows=10, preview_rows=2)
+
+    assert result["summary"]["objective"] == "walk_forward"
+    assert "inspection" in result
+    assert "suggestion" in result
+    assert len(result["preview"]) == 2
+    assert result["warnings"]
+    assert result["recommendations"]
 
 def test_mcp_suggest_partition_policy_returns_temporal_and_online_configs(tmp_path) -> None:
     path = write_csv_frame(tmp_path, build_frame(size=40))
@@ -616,6 +633,7 @@ def test_mcp_server_builds_tools_and_main_runs(monkeypatch) -> None:
     monkeypatch.setitem(sys.modules, "mcp.server.fastmcp", fake_module)
     monkeypatch.setattr(mcp_server_module, "preview_dataset", lambda *args, **kwargs: {"kind": "preview", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "inspect_dataset", lambda *args, **kwargs: {"kind": "inspect", "args": args, "kwargs": kwargs})
+    monkeypatch.setattr(mcp_server_module, "inspect_and_recommend_dataset", lambda *args, **kwargs: {"kind": "inspect_and_recommend", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "suggest_partition_policy", lambda *args, **kwargs: {"kind": "suggest", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "validate_temporal_policy", lambda *args, **kwargs: {"kind": "validate", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "compare_partition_strategies", lambda *args, **kwargs: {"kind": "compare_partitions", "args": args, "kwargs": kwargs})
@@ -630,6 +648,7 @@ def test_mcp_server_builds_tools_and_main_runs(monkeypatch) -> None:
     assert server.name == "Jano"
     assert tools["preview_local_dataset"]("data.csv")["kind"] == "preview"
     assert tools["inspect_local_dataset"]("data.csv")["kind"] == "inspect"
+    assert tools["inspect_and_recommend_local_dataset"]("data.csv")["kind"] == "inspect_and_recommend"
     assert tools["suggest_temporal_partition_policy"]("data.csv")["kind"] == "suggest"
     assert tools["validate_temporal_partition_policy"](
         "data.csv",

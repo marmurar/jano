@@ -79,6 +79,14 @@ def preview_dataset(
     frame = load_dataset_frame(dataset_path, dataset_format=dataset_format, sample_rows=sample_rows)
     return {
         "dataset_path": str(Path(dataset_path)),
+        "summary": {
+            "rows_previewed": int(len(frame)),
+            "column_count": int(len(frame.columns)),
+        },
+        "warnings": [],
+        "recommendations": [
+            "Use inspect_dataset next if you need schema hints or candidate time/target columns.",
+        ],
         "columns": [str(column) for column in frame.columns],
         "sample_rows": int(len(frame)),
         "preview": frame.head(sample_rows).to_dict(orient="records"),
@@ -131,9 +139,25 @@ def inspect_dataset(
         key=lambda item: item["score"],
         reverse=True,
     )
+    warnings = []
+    if not time_candidates:
+        warnings.append("No obvious time column candidates were detected.")
+    if not target_candidates:
+        warnings.append("No obvious target column candidates were detected.")
     return {
         "dataset_path": str(Path(dataset_path)),
         "dataset_format": _resolve_dataset_format(Path(dataset_path), dataset_format),
+        "summary": {
+            "rows_scanned": int(len(frame)),
+            "column_count": int(len(frame.columns)),
+            "time_candidate_count": int(len(time_candidates)),
+            "target_candidate_count": int(len(target_candidates)),
+        },
+        "warnings": warnings,
+        "recommendations": [
+            "Use suggest_partition_policy next to get a conservative starting policy.",
+            "Use validate_temporal_policy before materializing folds.",
+        ],
         "rows_scanned": int(len(frame)),
         "sampled": not full_scan,
         "columns": column_profiles,
@@ -234,12 +258,73 @@ def suggest_partition_policy(
             ],
         }
 
+    warnings = []
+    if objective == "online":
+        warnings.append("Online policies require user-defined retrain checkpoints or update triggers.")
+    else:
+        warnings.append("This is a heuristic starting point; validate it before running models.")
     return {
         "dataset_path": str(Path(dataset_path)),
         "objective": objective,
+        "summary": {
+            "rows_scanned": int(profile["rows_scanned"]),
+            "time_candidate_count": int(len(profile["time_col_candidates"])),
+            "selected_time_col": str(selected_time_col),
+        },
+        "warnings": warnings,
+        "recommendations": [
+            "Run validate_temporal_policy before using this suggestion for evaluation.",
+        ],
         "rows_scanned": profile["rows_scanned"],
         "time_col_candidates": profile["time_col_candidates"],
         "suggestion": suggestion,
+    }
+
+
+def inspect_and_recommend_dataset(
+    dataset_path: str,
+    *,
+    dataset_format: str = "auto",
+    time_col: str | int | None = None,
+    objective: str = "walk_forward",
+    sample_rows: int = 5_000,
+    preview_rows: int = 5,
+    full_scan: bool = False,
+) -> dict[str, Any]:
+    """Return a single agent-friendly inspection and recommendation payload."""
+
+    inspection = inspect_dataset(
+        dataset_path,
+        dataset_format=dataset_format,
+        sample_rows=sample_rows,
+        preview_rows=preview_rows,
+        full_scan=full_scan,
+    )
+    suggestion = suggest_partition_policy(
+        dataset_path,
+        dataset_format=dataset_format,
+        time_col=time_col,
+        objective=objective,
+        sample_rows=sample_rows,
+    )
+    warnings = [*inspection["warnings"], *suggestion["warnings"]]
+    recommendations = [
+        "Validate the suggested policy with validate_temporal_policy.",
+        "Compare alternatives with compare_partition_strategies if there is ambiguity.",
+    ]
+    return {
+        "dataset_path": str(Path(dataset_path)),
+        "dataset_format": inspection["dataset_format"],
+        "summary": {
+            **inspection["summary"],
+            "objective": objective,
+            "selected_time_col": suggestion["summary"]["selected_time_col"],
+        },
+        "warnings": warnings,
+        "recommendations": recommendations,
+        "inspection": inspection,
+        "suggestion": suggestion,
+        "preview": inspection["preview"],
     }
 
 
@@ -284,11 +369,23 @@ def validate_temporal_policy(
     )
     plan_frame = pd.DataFrame(plan_payload["preview"])
     issues, warnings = _diagnose_plan_frame(plan_frame)
+    recommendations = []
+    if issues:
+        recommendations.append("Fix the reported issues before training a model.")
+    else:
+        recommendations.append("If this geometry looks right, move on to plan_walk_forward_simulation or run_walk_forward_simulation.")
     return {
         "dataset_path": str(Path(dataset_path)),
         "valid": not issues,
-        "issues": issues,
+        "overview": {
+            "valid": not issues,
+            "issue_count": int(len(issues)),
+            "warning_count": int(len(warnings)),
+            "total_folds": int(plan_payload["total_folds"]),
+        },
         "warnings": warnings,
+        "recommendations": recommendations,
+        "issues": issues,
         "total_folds": plan_payload["total_folds"],
         "engine": plan_payload["engine"],
         "summary": _summarize_plan_frame(plan_frame),
@@ -334,6 +431,14 @@ def compare_partition_strategies(
 
     return {
         "dataset_path": str(Path(dataset_path)),
+        "summary": {
+            "comparison_count": int(len(comparisons)),
+            "valid_count": int(sum(1 for row in comparisons if row["valid"])),
+        },
+        "warnings": [],
+        "recommendations": [
+            "Pick the configuration with valid folds and the most useful geometry before running models.",
+        ],
         "comparison": comparisons,
         "details": details,
     }
@@ -405,6 +510,14 @@ def plan_walk_forward(
     plan_frame = plan.to_frame()
     return {
         "dataset_path": str(Path(dataset_path)),
+        "summary": {
+            "total_folds": int(plan.total_folds),
+            "engine": plan.partition_plan.engine_metadata.to_dict(),
+        },
+        "warnings": [],
+        "recommendations": [
+            "Review the preview before calling run_walk_forward_simulation.",
+        ],
         "total_folds": int(plan.total_folds),
         "engine": plan.partition_plan.engine_metadata.to_dict(),
         "columns": [str(column) for column in plan_frame.columns],
@@ -478,6 +591,14 @@ def run_walk_forward(
     summary_frame = result.to_frame()
     return {
         "dataset_path": str(Path(dataset_path)),
+        "summary": {
+            "total_folds": int(result.total_folds),
+            "engine": result.engine_metadata.to_dict(),
+        },
+        "warnings": [],
+        "recommendations": [
+            "Use the chart data or HTML for external reporting, not for the core simulation contract.",
+        ],
         "total_folds": int(result.total_folds),
         "engine": result.engine_metadata.to_dict(),
         "summary_preview": summary_frame.head(preview_rows).to_dict(orient="records"),
@@ -605,6 +726,15 @@ def run_walk_forward_baseline(
     response: dict[str, Any] = {
         "dataset_path": str(Path(dataset_path)),
         "model": model,
+        "overview": {
+            "folds": int(payload["summary"]["folds"]),
+            "metric_count": int(len(payload["summary"]["metrics"])),
+            "retrain_policy": result.retrain_policy,
+        },
+        "warnings": [],
+        "recommendations": [
+            "If the baseline is only for triage, move custom metrics and models to the Python API.",
+        ],
         "retrain_policy": result.retrain_policy,
         "summary": payload["summary"],
         "folds_preview": payload["folds"][:preview_rows],
@@ -697,6 +827,14 @@ def compare_retrain_policies(
     return {
         "dataset_path": str(Path(dataset_path)),
         "model": model,
+        "summary": {
+            "comparison_count": int(len(comparison)),
+            "policy_count": int(len(normalized_policies)),
+        },
+        "warnings": [],
+        "recommendations": [
+            "Use these comparisons to choose one retraining policy, then run the full Python flow.",
+        ],
         "policies": normalized_policies,
         "metric_directions": metric_directions,
         "comparison": comparison,
@@ -769,6 +907,14 @@ def find_train_history_window(
         "dataset_path": str(Path(dataset_path)),
         "model": model,
         "metric": metric,
+        "summary": {
+            "variant_count": int(len(records)),
+            "optimal_train_size": optimal.get("train_size"),
+        },
+        "warnings": [],
+        "recommendations": [
+            "Use the optimal window as a starting point, then verify it with a full runner or study.",
+        ],
         "metric_directions": result.metric_directions,
         "total_variants": int(len(records)),
         "optimal": _json_ready_object(optimal),
@@ -852,6 +998,14 @@ def monitor_decay(
         "threshold": float(threshold),
         "baseline": baseline,
         "relative": bool(relative),
+        "summary": {
+            "window_count": int(len(records)),
+            "drift_onset": _json_ready_object(drift_onset),
+        },
+        "warnings": [],
+        "recommendations": [
+            "Use the drift onset as a checkpoint, not as an automatic retrain rule.",
+        ],
         "metric_directions": result.metric_directions,
         "total_windows": int(len(records)),
         "drift_onset": _json_ready_object(drift_onset),

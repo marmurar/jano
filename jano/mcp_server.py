@@ -5,6 +5,7 @@ from typing import Any
 from .mcp_tools import (
     compare_retrain_policies,
     compare_partition_strategies,
+    inspect_and_recommend_dataset,
     find_train_history_window,
     inspect_dataset,
     monitor_decay,
@@ -68,6 +69,27 @@ def build_server():
         return inspect_dataset(
             dataset_path,
             dataset_format=dataset_format,
+            sample_rows=sample_rows,
+            preview_rows=preview_rows,
+            full_scan=full_scan,
+        )
+
+    @mcp.tool()
+    def inspect_and_recommend_local_dataset(
+        dataset_path: str,
+        dataset_format: str = "auto",
+        time_col: str | None = None,
+        objective: str = "walk_forward",
+        sample_rows: int = 5_000,
+        preview_rows: int = 5,
+        full_scan: bool = False,
+    ) -> dict:
+        """Inspect a dataset and return one combined diagnosis + recommendation payload."""
+        return inspect_and_recommend_dataset(
+            dataset_path,
+            dataset_format=dataset_format,
+            time_col=time_col,
+            objective=objective,
             sample_rows=sample_rows,
             preview_rows=preview_rows,
             full_scan=full_scan,

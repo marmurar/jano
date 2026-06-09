@@ -6,6 +6,7 @@ Jano ships an optional local MCP server so AI agents can use the library through
 This is useful when you want an agent to:
 
 - inspect a local dataset,
+- inspect and recommend a first policy in one call,
 - infer candidate time and target columns,
 - suggest and validate a partition policy,
 - precompute a walk-forward plan,
@@ -73,6 +74,12 @@ Available MCP tools
   Inspect schema, dtypes, nulls, examples and candidate ``time_col`` /
   ``target_col`` values. This is the safest first tool when an agent receives a
   new local file.
+
+``inspect_and_recommend_local_dataset``
+  Combine schema inspection and a conservative starting recommendation in one
+  call. This is the best first tool when the agent needs a single JSON payload
+  with ``summary``, ``warnings``, ``recommendations``, inspection details and a
+  suggested policy.
 
 ``suggest_temporal_partition_policy``
   Suggest a conservative starting policy from dataset shape. It can return a
