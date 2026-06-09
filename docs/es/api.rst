@@ -84,6 +84,22 @@ Workflow principal
    :undoc-members:
    :no-index:
 
+Scenarios built-in
+------------------
+
+.. autofunction:: jano.scenarios.estimate_prediction_band_by_fold
+   :no-index:
+
+.. autoclass:: jano.scenarios.PredictionBandContext
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.scenarios.PredictionBandScenarioResult
+   :members:
+   :undoc-members:
+   :no-index:
+
 Perfiles de evaluación
 ----------------------
 

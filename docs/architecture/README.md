@@ -24,6 +24,7 @@ Jano is organized as a set of layers that should remain separable:
 - Runner: model execution over temporal folds with explicit retraining rules.
 - Online runner: event-level or micro-batch prequential learning simulation.
 - Study: higher-level operational hypotheses built from lower-level primitives.
+- Scenario: ready-to-use production-style workflows that compose the core without changing it.
 - MCP: local tool surface for AI agents and other MCP-aware clients.
 
 ## Active Design Principles
@@ -34,6 +35,7 @@ Jano is organized as a set of layers that should remain separable:
 - Higher-level APIs reduce boilerplate without hiding temporal structure.
 - Runner outputs are data-first and plot-ready, not dashboard-first.
 - Studies should encode clear operational questions, not replace lower-level composition.
+- Scenarios may be opinionated, but they must live above the runner and keep core contracts stable.
 - Agent-facing APIs should return stable, structured objects that are easy to inspect.
 
 ## Starting Points

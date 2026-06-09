@@ -54,5 +54,21 @@
     "recommended_use": "Minute-level temporal granularity, gaps and long-horizon planning examples.",
     "size_mb": 19.7,
     "sha256": null
+  },
+  "rossmann_store_sales": {
+    "title": "Rossmann Store Sales",
+    "source_url": "https://www.kaggle.com/datasets/pratyushakar/rossmann-store-sales",
+    "source_page": "https://www.kaggle.com/c/rossmann-store-sales",
+    "license": "Kaggle dataset; review competition and dataset terms before use or redistribution.",
+    "local_path": "rossmann/rossmann-store-sales.zip",
+    "extract_dir": "rossmann",
+    "download_method": "kaggle",
+    "kaggle_dataset": "pratyushakar/rossmann-store-sales",
+    "task": "panel_regression",
+    "time_col": "Date",
+    "target_col": "Sales",
+    "recommended_use": "Gold example for random split vs chronological validation, walk-forward simulation and retraining policy comparison.",
+    "size_mb": 8.0,
+    "sha256": null
   }
 }

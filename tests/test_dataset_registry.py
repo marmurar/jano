@@ -72,6 +72,35 @@ def test_download_dataset_extracts_zip_safely(tmp_path) -> None:
     assert (extracted / "folder" / "example.csv").exists()
 
 
+def test_download_dataset_supports_kaggle_entries(tmp_path, monkeypatch) -> None:
+    registry_path = _write_registry(
+        tmp_path,
+        {
+            "rossmann": {
+                "source_url": "https://www.kaggle.com/datasets/example/rossmann",
+                "download_method": "kaggle",
+                "kaggle_dataset": "example/rossmann",
+                "local_path": "rossmann/rossmann.zip",
+                "sha256": None,
+            }
+        },
+    )
+
+    def fake_run(command, check):
+        target_dir = Path(command[-1])
+        target_dir.mkdir(parents=True, exist_ok=True)
+        with zipfile.ZipFile(target_dir / "downloaded.zip", "w") as archive:
+            archive.writestr("train.csv", "Date,Sales\n2015-01-01,10\n")
+
+    monkeypatch.setattr("scripts.download_dataset.subprocess.run", fake_run)
+
+    result = download_dataset("rossmann", registry_path=registry_path, data_root=tmp_path / "raw")
+
+    assert result["status"] == "downloaded"
+    assert Path(result["path"]).name == "rossmann.zip"
+    assert Path(result["path"]).exists()
+
+
 def test_download_dataset_rejects_unknown_or_unsafe_entries(tmp_path) -> None:
     registry_path = _write_registry(
         tmp_path,

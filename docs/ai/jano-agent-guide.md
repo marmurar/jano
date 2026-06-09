@@ -43,6 +43,13 @@ long does a model or rule remain useful after a fixed training window?
 Use `RollingTrainHistoryPolicy` when the question is: how much history is optimal on
 average across walk-forward iterations?
 
+Use `jano.scenarios.estimate_prediction_band_by_fold` when the user wants a
+ready-made temporal workflow that returns point predictions plus per-row
+prediction bands for each Jano fold. Jano only provides the temporal fold context;
+the user-owned `band_estimator` must decide how to compute the band, for example
+with K-fold validation, bootstrap, conformal prediction, quantile models or a
+domain-specific method.
+
 ## Metric Contract
 
 Jano does not implement metric formulas. Agents should not pass strings such as
@@ -132,6 +139,43 @@ retrain_events = run.retrain_events()
 report_data = run.report_data()
 ```
 
+### Estimate Prediction Bands With User-Owned Uncertainty Logic
+
+Use this when the temporal fold geometry should be standardized by Jano, but the
+uncertainty method belongs to the project. Do not add cross-validation or
+confidence-interval formulas to Jano for this scenario.
+
+```python
+from jano import estimate_prediction_band_by_fold
+
+
+class MyBandEstimator:
+    def estimate(self, context):
+        lower, upper = compute_project_band(
+            estimator=context.estimator,
+            fitted_estimator=context.fitted_estimator,
+            X_train=context.X_train,
+            y_train=context.y_train,
+            X_test=context.X_test,
+            predictions=context.predictions,
+        )
+        return {"lower": lower, "upper": upper}
+
+
+result = estimate_prediction_band_by_fold(
+    frame,
+    estimator=model,
+    band_estimator=MyBandEstimator(),
+    time_col="timestamp",
+    target_col="target",
+    feature_cols=["feature_a", "feature_b"],
+    train_size="90D",
+    test_size="7D",
+    step="7D",
+    metrics={"business_cost": business_cost},
+)
+```
+
 ## Data-First Reporting
 
 Prefer structured outputs over generated HTML for model execution. Jano's runner is
@@ -193,6 +237,9 @@ triage and dataset inspection, not a substitute for project-owned estimators.
 - Use `gap_before_test`, `gap_before_validation` or `TemporalSemanticsSpec` when leakage is possible.
 - Use calendar alignment with `calendar_frequency` when the user wants complete days or other fixed calendar periods.
 - Keep model fitting and metrics outside `TemporalBacktestSplitter`.
+- Keep prediction-band uncertainty logic user-defined. Pass a `band_estimator`
+  to `estimate_prediction_band_by_fold`; do not add built-in K-fold, bootstrap
+  or confidence-interval implementations to Jano core.
 - Keep online drift/retrain checkpoint logic user-defined. Pass a callable
   `retrain_trigger` to `OnlineTemporalRunner`; do not add built-in drift formulas.
 - Preserve manual fold iteration as a valid path for advanced users.

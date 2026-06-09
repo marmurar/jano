@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import shutil
+import subprocess
 import sys
 import urllib.request
 import zipfile
@@ -48,7 +49,10 @@ def download_dataset(
     status = "exists"
     if force or not target.exists():
         status = "downloaded"
-        _download(entry["source_url"], target)
+        if entry.get("download_method") == "kaggle":
+            _download_kaggle(entry, target)
+        else:
+            _download(entry["source_url"], target)
 
     _verify_checksum(target, entry.get("sha256"))
 
@@ -76,6 +80,32 @@ def _download(url: str, target: Path) -> None:
     with urllib.request.urlopen(url) as response, temporary.open("wb") as handle:
         shutil.copyfileobj(response, handle)
     temporary.replace(target)
+
+
+def _download_kaggle(entry: dict[str, Any], target: Path) -> None:
+    dataset = entry.get("kaggle_dataset")
+    if not dataset:
+        raise ValueError("kaggle datasets must define kaggle_dataset")
+    try:
+        subprocess.run(
+            ["kaggle", "datasets", "download", "-d", str(dataset), "-p", str(target.parent)],
+            check=True,
+        )
+    except FileNotFoundError as exc:
+        raise RuntimeError(
+            "Kaggle CLI is required for this dataset. Install `kaggle` and configure ~/.kaggle/kaggle.json."
+        ) from exc
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(
+            "Kaggle download failed. Check that Kaggle credentials are configured and the dataset is accessible."
+        ) from exc
+
+    if target.exists():
+        return
+    candidates = sorted(target.parent.glob("*.zip"), key=lambda path: path.stat().st_mtime, reverse=True)
+    if not candidates:
+        raise RuntimeError(f"Kaggle download completed but no zip file was found in {target.parent}")
+    candidates[0].replace(target)
 
 
 def _verify_checksum(path: Path, expected_sha256: str | None) -> None:

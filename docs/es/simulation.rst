@@ -251,6 +251,68 @@ inicial, sin meter lógica de drift dentro del splitter.
 Cuando ``DriftBasedRetrain`` se crea sin una métrica explícita, usa el
 ``primary_metric`` del perfil de evaluación.
 
+Scenarios built-in
+------------------
+
+Algunas preguntas operativas aparecen lo suficiente como para tener un workflow
+prearmado, pero no son tan generales como para convertirse en comportamiento del
+runner. Jano expone esos workflows como ``jano.scenarios``. Los scenarios se
+construyen sobre las primitivas core; no modifican ``WalkForwardRunner``.
+
+Bandas de predicción por fold
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+``estimate_prediction_band_by_fold`` responde:
+
+"En cada fold temporal, qué banda de predicción produce mi propio método de
+incertidumbre para el test futuro?"
+
+Jano no implementa cross-validation, bootstrap, conformal prediction ni fórmulas
+de intervalos de confianza en este scenario. El usuario provee un
+``band_estimator`` como objeto o callable. Ese objeto recibe el contexto del fold
+y devuelve arrays ``lower`` y ``upper`` para el test actual.
+
+.. code-block:: python
+
+   import numpy as np
+
+   from jano import estimate_prediction_band_by_fold
+
+   def mae(y_true, y_pred):
+       return float(np.mean(np.abs(np.asarray(y_true) - np.asarray(y_pred))))
+
+   class FixedWidthBand:
+       def estimate(self, context):
+           return {
+               "lower": context.predictions - 5.0,
+               "upper": context.predictions + 5.0,
+               "artifacts": {"method": "fixed_width"},
+           }
+
+   result = estimate_prediction_band_by_fold(
+       frame,
+       estimator=model,
+       band_estimator=FixedWidthBand(),
+       time_col="timestamp",
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       train_size="90D",
+       test_size="7D",
+       step="7D",
+       strategy="rolling",
+       metrics={"mae": mae},
+   )
+
+   print(result.to_frame().head())
+   print(result.predictions_frame().head())
+   print(result.band_summary())
+
+El resultado expone métricas y resumen de bandas por fold vía
+``to_frame()``, bounds inferiores y superiores por fila vía
+``predictions_frame()``, y artifacts definidos por el usuario vía
+``artifacts_frame()``. Un ``band_estimator`` real puede envolver ``KFold`` de
+scikit-learn, un método custom de remuestreo, conformal prediction u otra técnica.
+
 Alineación a días calendario
 ----------------------------
 

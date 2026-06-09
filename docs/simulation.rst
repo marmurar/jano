@@ -258,6 +258,68 @@ without forcing drift logic into the splitter itself.
 When ``DriftBasedRetrain`` is created without an explicit metric, it uses the
 ``primary_metric`` from the evaluation profile.
 
+Built-in scenarios
+------------------
+
+Some operational questions are common enough to deserve a ready-to-use workflow,
+but not generic enough to become runner behavior. Jano exposes those workflows as
+``jano.scenarios``. Scenarios are built on top of the core primitives; they do not
+change ``WalkForwardRunner``.
+
+Prediction bands by fold
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+``estimate_prediction_band_by_fold`` answers:
+
+"For each temporal fold, what prediction band does my own uncertainty method
+produce for the future test window?"
+
+Jano does not implement cross-validation, bootstrap, conformal prediction or
+confidence-interval formulas in this scenario. The user provides a
+``band_estimator`` object or callable. That object receives the fold context and
+returns ``lower`` and ``upper`` arrays for the current test fold.
+
+.. code-block:: python
+
+   import numpy as np
+
+   from jano import estimate_prediction_band_by_fold
+
+   def mae(y_true, y_pred):
+       return float(np.mean(np.abs(np.asarray(y_true) - np.asarray(y_pred))))
+
+   class FixedWidthBand:
+       def estimate(self, context):
+           return {
+               "lower": context.predictions - 5.0,
+               "upper": context.predictions + 5.0,
+               "artifacts": {"method": "fixed_width"},
+           }
+
+   result = estimate_prediction_band_by_fold(
+       frame,
+       estimator=model,
+       band_estimator=FixedWidthBand(),
+       time_col="timestamp",
+       target_col="target",
+       feature_cols=["feature_a", "feature_b"],
+       train_size="90D",
+       test_size="7D",
+       step="7D",
+       strategy="rolling",
+       metrics={"mae": mae},
+   )
+
+   print(result.to_frame().head())
+   print(result.predictions_frame().head())
+   print(result.band_summary())
+
+The result exposes fold-level metrics and band summaries through
+``to_frame()``, row-level lower and upper bounds through ``predictions_frame()``,
+and user-owned artifacts through ``artifacts_frame()``. A real ``band_estimator``
+can wrap scikit-learn ``KFold``, a custom resampling method, conformal prediction
+or any other technique.
+
 Calendar-aligned duration windows
 ---------------------------------
 

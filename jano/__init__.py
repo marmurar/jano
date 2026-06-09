@@ -40,6 +40,11 @@ from .runner import (
     WalkForwardRunResult,
     WalkForwardRunner,
 )
+from .scenarios import (
+    PredictionBandContext,
+    PredictionBandScenarioResult,
+    estimate_prediction_band_by_fold,
+)
 from .simulation import SimulationResult, TemporalSimulation
 from .splitters import TemporalBacktestSplitter
 from .splits import TimeSplit
@@ -82,6 +87,8 @@ __all__ = [
     "PartialFitUpdateStrategy",
     "PeriodicRetrain",
     "PlannedFold",
+    "PredictionBandContext",
+    "PredictionBandScenarioResult",
     "RankingProfile",
     "RefitUpdateStrategy",
     "RegressionProfile",
@@ -108,4 +115,5 @@ __all__ = [
     "WalkForwardRunResult",
     "WalkForwardRunner",
     "__version__",
+    "estimate_prediction_band_by_fold",
 ]

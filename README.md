@@ -109,8 +109,24 @@ python scripts/download_dataset.py bike_sharing_hourly --extract
 ```
 
 The current registry includes Bike Sharing, BTS Airline On-Time Performance,
-NYC TLC Yellow Taxi and Household Power datasets for regression, classification,
-ordinal-cost and larger benchmark examples.
+NYC TLC Yellow Taxi, Household Power and Rossmann Store Sales datasets for
+regression, classification, ordinal-cost, larger benchmark and gold-example
+workflows.
+
+Rossmann is the recommended gold example because it is a panel dataset with one
+row per store and day. It makes the difference between random splitting,
+chronological holdout, walk-forward simulation and retraining-policy comparison
+easy to inspect:
+
+```bash
+python scripts/download_dataset.py rossmann_store_sales --extract
+```
+
+This command requires the Kaggle CLI and local Kaggle credentials.
+The executable notebook lives at `notebooks/rossmann_temporal_validation.ipynb`.
+If Kaggle credentials are not available, the notebook uses a deterministic
+Rossmann-like fallback so Jano can still be executed end to end without
+committing large data files.
 
 ## Why Jano exists
 
@@ -159,7 +175,8 @@ The recommended high-level surface is intentionally small:
 - `WalkForwardRunner` when you want Jano to execute a model over those folds and manage retraining cadence,
 - `OnlineTemporalRunner` for observation-driven temporal evaluation with optional user-defined retrain checkpoints,
 - `TrainHistoryPolicy` for fixed-test, growing-train questions,
-- `DriftMonitoringPolicy` for fixed-train, moving-test questions.
+- `DriftMonitoringPolicy` for fixed-train, moving-test questions,
+- `jano.scenarios` for built-in production-style scenarios that compose the core without changing it.
 
 Those classes sit on top of the lower-level building blocks that remain available:
 
@@ -181,7 +198,7 @@ The cleanest mental model is to treat Jano as five layers that can stay independ
 - `TemporalSimulation` and `WalkForwardPolicy` for fold-level simulation and reporting.
 - `WalkForwardRunner` for training, predicting and measuring over temporal folds with explicit retrain rules.
 - `OnlineTemporalRunner` for causal `predict -> observe -> update` evaluation with incremental models and checkpoint detection.
-- higher-level studies and policies for operational questions such as train sufficiency, decay and retraining cadence.
+- higher-level studies, policies and scenarios for operational questions such as train sufficiency, decay, retraining cadence and prediction uncertainty by fold.
 
 That separation is deliberate. The splitter remains the free-form core. Runners and studies extend what Jano can do at the simulation layer, but they do not replace manual fold iteration.
 
@@ -504,6 +521,44 @@ Runner results are intentionally data-first rather than dashboard-first:
 - `run.retrain_events()` returns only folds where the estimator was refit.
 - `run.predictions_frame()` returns row-level test predictions.
 - `run.report_data()` / `run.to_dict()` return structured dictionaries for notebooks, agents, dashboards or presentation tools.
+
+Built-in scenarios compose the core for common production-style questions without
+changing the runner. For example, estimate prediction bands by fold with
+a user-owned band estimator:
+
+```python
+from jano import estimate_prediction_band_by_fold
+
+
+class FixedWidthBand:
+    def estimate(self, context):
+        return {
+            "lower": context.predictions - 5.0,
+            "upper": context.predictions + 5.0,
+            "artifacts": {"method": "fixed_width"},
+        }
+
+
+result = estimate_prediction_band_by_fold(
+    frame,
+    estimator=model,
+    band_estimator=FixedWidthBand(),
+    time_col="timestamp",
+    target_col="target",
+    feature_cols=["feature_a", "feature_b"],
+    train_size="90D",
+    test_size="7D",
+    step="7D",
+    metrics={"mae": mae},
+)
+
+print(result.to_frame().head())
+print(result.predictions_frame().head())
+```
+
+The ``band_estimator`` is user code. It can use scikit-learn ``KFold``, a
+bootstrap routine, conformal prediction, quantile regression or any other method
+to produce ``lower`` and ``upper`` arrays for each Jano test fold.
 
 pandas inputs stay pandas, Polars inputs use Polars column extraction, and NumPy arrays
 use array indexing. You can force a path with `engine="pandas"`, `engine="polars"` or

@@ -37,6 +37,9 @@ Use Jano when:
 - Use MCP study tools for baseline temporal hypotheses:
   `compare_retrain_policy_baselines`, `find_train_history_window_baseline` and
   `monitor_decay_baseline`.
+- Use `estimate_prediction_band_by_fold` when the user wants a built-in temporal
+  scenario for prediction bands, but keep the band computation in a user-owned
+  `band_estimator`.
 
 ## Metric Contract
 
@@ -65,6 +68,8 @@ belong to the user.
 - Do not use random `train_test_split` for time-dependent evaluation.
 - Do not add model logic to `TemporalBacktestSplitter`.
 - Do not add metric formulas to Jano core.
+- Do not add built-in K-fold, bootstrap, conformal or confidence-interval
+  formulas to Jano scenarios; the user-owned `band_estimator` computes bands.
 - Do not add built-in online drift formulas; keep retrain checkpoint logic as
   user-provided callables.
 - Prefer structured outputs over generated HTML for runner results.

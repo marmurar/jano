@@ -20,6 +20,8 @@ El registry actual incluye:
 - ``bts_airline_2024_01`` para costos ordinales de demoras y retraining.
 - ``nyc_tlc_yellow_2024_01`` para ejemplos grandes con Parquet y benchmarks.
 - ``household_power`` para granularidad temporal por minuto.
+- ``rossmann_store_sales`` como gold example para comparar split aleatorio,
+  holdout cronológico, simulación walk-forward y policies de retraining.
 
 Descarga local
 --------------
@@ -36,11 +38,39 @@ Descargar un dataset sin guardarlo en Git:
 
    python scripts/download_dataset.py bike_sharing_hourly --extract
 
+Algunos datasets requieren credenciales del proveedor. Rossmann está alojado en
+Kaggle, por lo que primero hay que configurar la Kaggle CLI y luego correr:
+
+.. code-block:: bash
+
+   python scripts/download_dataset.py rossmann_store_sales --extract
+
 Por defecto se guarda debajo de ``data/raw/``. Podés cambiar esa ubicación:
 
 .. code-block:: bash
 
    python scripts/download_dataset.py nyc_tlc_yellow_2024_01 --data-root /tmp/jano-data
+
+Gold example
+------------
+
+El notebook Rossmann es el ejemplo end-to-end recomendado:
+
+.. code-block:: bash
+
+   jupyter notebook notebooks/rossmann_temporal_validation.ipynb
+
+Demuestra:
+
+- por qué un split aleatorio puede responder la pregunta temporal equivocada,
+- cómo un holdout cronológico mejora el baseline pero sigue dando una sola foto,
+- cómo ``plan()`` expone la geometría de folds antes de entrenar,
+- cómo ``WalkForwardRunner`` ejecuta el mismo modelo en varias fechas simuladas de despliegue,
+- cómo comparar policies de retraining sobre la misma geometría temporal.
+
+Si no hay credenciales de Kaggle, el notebook usa un fallback determinístico
+similar a Rossmann. Eso lo mantiene ejecutable offline sin ocultar que el camino
+principal es el dataset real.
 
 Política
 --------
