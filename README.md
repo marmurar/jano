@@ -25,72 +25,6 @@ The core accepts `pandas.DataFrame`, `numpy.ndarray` and `polars.DataFrame` inpu
 
 The project is named after Janus, the Roman god of beginnings, transitions and thresholds. That framing fits the library well: Jano helps define how a dataset moves from training periods into evaluation periods, fold after fold.
 
-## MCP server
-
-Jano also ships an optional local MCP server so AI agents can use the library through a small, explicit tool surface instead of generating Python ad hoc.
-
-Current MCP tools:
-
-- `preview_local_dataset`
-- `inspect_local_dataset`
-- `inspect_and_recommend_local_dataset`
-- `suggest_temporal_partition_policy`
-- `validate_temporal_partition_policy`
-- `compare_temporal_partition_strategies`
-- `plan_walk_forward_simulation`
-- `run_walk_forward_simulation`
-- `run_walk_forward_baseline_model`
-- `compare_retrain_policy_baselines`
-- `find_train_history_window_baseline`
-- `monitor_decay_baseline`
-
-Install it in a Python 3.10+ environment:
-
-```bash
-python -m pip install "jano[mcp]"
-```
-
-Run it locally over stdio:
-
-```bash
-jano-mcp
-```
-
-Or use the module entrypoint:
-
-```bash
-python -m jano.mcp_server
-```
-
-Example MCP client configuration:
-
-```json
-{
-  "mcpServers": {
-    "jano": {
-      "command": "jano-mcp"
-    }
-  }
-}
-```
-
-The MCP layer is intentionally opinionated: it exposes dataset inspection, policy suggestions, plan validation, walk-forward simulation, baseline-model execution and baseline temporal studies first, while the full Python library remains available when you need custom composition. The fastest first call for an agent is usually `inspect_and_recommend_local_dataset`, which bundles inspection and a conservative starting policy in one response.
-
-This is meant for MCP-aware coding assistants such as Claude Code, Claude Desktop, Cursor, Codex runtimes with MCP support, and other local agent environments. The server runs locally and reads only the file paths you provide to its tools; Jano does not upload datasets anywhere by itself.
-
-## AI-ready usage
-
-Jano includes three surfaces intended to make the project easier for AI agents to use and extend:
-
-- Architecture notes in `docs/architecture/` explain the project layers, accepted decisions, specs and open RFCs.
-- The canonical agent guide in `docs/ai/jano-agent-guide.md` explains which Jano API to use for common temporal validation tasks.
-- Tool-specific adapters provide lightweight entry points for Codex, Claude and Cursor:
-  - `skills/jano/SKILL.md`
-  - `CLAUDE.md`
-  - `.cursor/rules/jano.mdc`
-
-Use the MCP server when an agent should execute Jano operations over local datasets. Use the skill or agent guide when an agent needs to reason about Jano, write code with the library or modify the repository safely.
-
 ## Reproducible external datasets
 
 Jano examples should be reproducible without committing large datasets to Git.
@@ -155,58 +89,6 @@ That makes it useful not only for machine learning, but for any workflow where t
 - Introducing explicit gaps between training and evaluation periods.
 - Defining `train/test` or `train/validation/test` partitions with durations, row counts or percentages.
 - Surfacing drift in simulation outcomes by making temporal changes explicit across folds.
-
-## Project direction
-
-Jano is being reshaped as a small, explicit temporal partitioning toolkit with an interface inspired by `sklearn.model_selection`.
-
-The design goals are:
-
-- Clear, composable temporal partition definitions.
-- Low hidden state and predictable behavior.
-- Compatibility with pandas-first workflows.
-- A splitter-style API that can evolve toward stronger scikit-learn interoperability.
-- Rich split objects for inspection, auditability and simulation.
-
-## Current API
-
-The recommended high-level surface is intentionally small:
-
-- `WalkForwardPolicy` for production-like walk-forward evaluation,
-- `WalkForwardRunner` when you want Jano to execute a model over those folds and manage retraining cadence,
-- `OnlineTemporalRunner` for observation-driven temporal evaluation with optional user-defined retrain checkpoints,
-- `TrainHistoryPolicy` for fixed-test, growing-train questions,
-- `DriftMonitoringPolicy` for fixed-train, moving-test questions,
-- `jano.scenarios` for built-in production-style scenarios that compose the core without changing it.
-
-Those classes sit on top of the lower-level building blocks that remain available:
-
-- `TemporalSimulation` for explicit simulation objects,
-- `TemporalBacktestSplitter` for manual fold iteration,
-- `TrainGrowthPolicy` and `PerformanceDecayPolicy` for lower-level temporal hypothesis primitives.
-
-The workflow is intentionally compositional:
-
-- start simple with predefined layouts and strategies,
-- move to `plan()` when you want to inspect or filter iterations before running them,
-- use higher-level policies such as `TrainGrowthPolicy` or `PerformanceDecayPolicy` when the question is already encapsulated,
-- and fall back to manual fold iteration when you want to compose everything yourself: partitions, gaps, feature history and model training logic.
-
-The cleanest mental model is to treat Jano as five layers that can stay independent:
-
-- `TemporalBacktestSplitter` for temporal geometry and manual fold iteration.
-- `plan()` for inspecting and filtering that geometry before materialization.
-- `TemporalSimulation` and `WalkForwardPolicy` for fold-level simulation and reporting.
-- `WalkForwardRunner` for training, predicting and measuring over temporal folds with explicit retrain rules.
-- `OnlineTemporalRunner` for causal `predict -> observe -> update` evaluation with incremental models and checkpoint detection.
-- higher-level studies, policies and scenarios for operational questions such as train sufficiency, decay, retraining cadence and prediction uncertainty by fold.
-
-That separation is deliberate. The splitter remains the free-form core. Runners and studies extend what Jano can do at the simulation layer, but they do not replace manual fold iteration.
-
-Jano does not ship metric formulas. When a runner or study needs a score, pass a
-mapping of names to callables from your own code or from the metric library you
-trust, for example `metrics={"business_cost": business_cost}`. Metric names are
-labels in outputs and retraining rules, not references to built-in Jano metrics.
 
 It supports:
 
@@ -793,6 +675,72 @@ That gives you three ways to consume the same simulation:
 
 The generated report shows each fold across the dataset timeline, with richer summary cards, clearer segment labels and row counts per partition.
 
+## MCP server
+
+Jano also ships an optional local MCP server so AI agents can use the library through a small, explicit tool surface instead of generating Python ad hoc.
+
+Current MCP tools:
+
+- `preview_local_dataset`
+- `inspect_local_dataset`
+- `inspect_and_recommend_local_dataset`
+- `suggest_temporal_partition_policy`
+- `validate_temporal_partition_policy`
+- `compare_temporal_partition_strategies`
+- `plan_walk_forward_simulation`
+- `run_walk_forward_simulation`
+- `run_walk_forward_baseline_model`
+- `compare_retrain_policy_baselines`
+- `find_train_history_window_baseline`
+- `monitor_decay_baseline`
+
+Install it in a Python 3.10+ environment:
+
+```bash
+python -m pip install "jano[mcp]"
+```
+
+Run it locally over stdio:
+
+```bash
+jano-mcp
+```
+
+Or use the module entrypoint:
+
+```bash
+python -m jano.mcp_server
+```
+
+Example MCP client configuration:
+
+```json
+{
+  "mcpServers": {
+    "jano": {
+      "command": "jano-mcp"
+    }
+  }
+}
+```
+
+The MCP layer is intentionally opinionated: it exposes dataset inspection, policy suggestions, plan validation, walk-forward simulation, baseline-model execution and baseline temporal studies first, while the full Python library remains available when you need custom composition. The fastest first call for an agent is usually `inspect_and_recommend_local_dataset`, which bundles inspection and a conservative starting policy in one response.
+
+This is meant for MCP-aware coding assistants such as Claude Code, Claude Desktop, Cursor, Codex runtimes with MCP support, and other local agent environments. The server runs locally and reads only the file paths you provide to its tools; Jano does not upload datasets anywhere by itself.
+
+## AI-ready usage
+
+Jano includes three surfaces intended to make the project easier for AI agents to use and extend:
+
+- Architecture notes in `docs/architecture/` explain the project layers, accepted decisions, specs and open RFCs.
+- The canonical agent guide in `docs/ai/jano-agent-guide.md` explains which Jano API to use for common temporal validation tasks.
+- Tool-specific adapters provide lightweight entry points for Codex, Claude and Cursor:
+  - `skills/jano/SKILL.md`
+  - `CLAUDE.md`
+  - `.cursor/rules/jano.mdc`
+
+Use the MCP server when an agent should execute Jano operations over local datasets. Use the skill or agent guide when an agent needs to reason about Jano, write code with the library or modify the repository safely.
+
 ## Installation
 
 Install the current release from PyPI:
@@ -906,6 +854,18 @@ The same citation metadata is also available in [CITATION.cff](CITATION.cff).
 
 Feedback and design discussion are especially valuable right now. If you are using temporal backtesting for ML, analytics, operations or experimentation, that context can help shape the API in the right direction.
 
+## Project direction
+
+Jano is being reshaped as a small, explicit temporal partitioning toolkit with an interface inspired by `sklearn.model_selection`.
+
+The design goals are:
+
+- Clear, composable temporal partition definitions.
+- Low hidden state and predictable behavior.
+- Compatibility with pandas-first workflows.
+- A splitter-style API that can evolve toward stronger scikit-learn interoperability.
+- Rich split objects for inspection, auditability and simulation.
+
 ## Star history
 
-[![Star History Chart](https://api.star-history.com/svg?repos=marmurar/jano&type=Date)](https://star-history.com/#marmurar/jano&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=marmurar/jano&type=Date&background=FFFFFF)](https://star-history.com/#marmurar/jano&Date)
