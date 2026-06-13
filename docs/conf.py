@@ -9,10 +9,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from jano._version import __version__
+
 project = "Jano"
 author = "Marcos Manuel Muraro"
 copyright = "2026, Marcos Manuel Muraro"
-release = "0.4.0"
+release = __version__
 
 extensions = [
     "sphinx.ext.autodoc",

@@ -7,6 +7,7 @@ import zipfile
 import numpy as np
 import pandas as pd
 
+from ._serialization import _frame_records, _json_ready, _json_ready_object
 from .policies import PerformanceDecayPolicy, TrainGrowthPolicy
 from .runner import DriftBasedRetrain, WalkForwardRunner
 from .simulation import TemporalSimulation
@@ -1049,7 +1050,10 @@ def _profile_column(frame: pd.DataFrame, column) -> dict[str, Any]:
         or any(token in name for token in ("date", "time", "timestamp", "_at", "dt"))
     )
     if should_try_datetime:
-        parsed = pd.to_datetime(non_null, errors="coerce")
+        if kind == "datetime":
+            parsed = pd.to_datetime(non_null, errors="coerce")
+        else:
+            parsed = pd.to_datetime(non_null.astype("string"), errors="coerce", format="mixed")
         parse_ratio = float(parsed.notna().mean()) if len(non_null) else 0.0
         if parse_ratio >= 0.5:
             parsed = parsed.dropna()
@@ -1298,28 +1302,3 @@ def _normalize_retrain_policy_specs(policies: list[dict[str, Any]] | None) -> li
         normalized_policy["name"] = name
         normalized.append(normalized_policy)
     return normalized
-
-
-def _frame_records(frame: pd.DataFrame) -> list[dict[str, object]]:
-    return [
-        {str(key): _json_ready(value) for key, value in row.items()}
-        for row in frame.to_dict(orient="records")
-    ]
-
-
-def _json_ready_object(value):
-    if isinstance(value, dict):
-        return {str(key): _json_ready_object(item) for key, item in value.items()}
-    if isinstance(value, (list, tuple)):
-        return [_json_ready_object(item) for item in value]
-    return _json_ready(value)
-
-
-def _json_ready(value):
-    if isinstance(value, pd.Timestamp):
-        return value.isoformat()
-    if isinstance(value, pd.Timedelta):
-        return str(value)
-    if isinstance(value, np.generic):
-        return value.item()
-    return value

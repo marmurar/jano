@@ -8,6 +8,8 @@ import pandas as pd
 
 from .io import coerce_tabular_input
 from .evaluation import EvaluationProfile
+from ._serialization import _frame_records
+from ._workflow_inputs import _resolve_workflow_inputs
 from .policies import (
     MetricFn,
     _clone_model,
@@ -269,23 +271,6 @@ class WalkForwardRunResult:
         return self.report_data(include_predictions=include_predictions)
 
 
-def _frame_records(frame: pd.DataFrame) -> list[dict[str, object]]:
-    return [
-        {str(key): _json_ready(value) for key, value in row.items()}
-        for row in frame.to_dict(orient="records")
-    ]
-
-
-def _json_ready(value):
-    if isinstance(value, pd.Timestamp):
-        return value.isoformat()
-    if isinstance(value, pd.Timedelta):
-        return str(value)
-    if isinstance(value, np.generic):
-        return value.item()
-    return value
-
-
 class WalkForwardRunner:
     """Run an estimator over temporal folds while applying a retrain policy."""
 
@@ -340,7 +325,7 @@ class WalkForwardRunner:
         if target_col is None:
             raise ValueError("target_col is required when y is not provided")
 
-        selected_input, semantics, splits = self._resolve_workflow_inputs(workflow, frame_input)
+        selected_input, semantics, splits = _resolve_workflow_inputs(workflow, frame_input)
         frame, _, resolved_features, target_name = _prepare_supervised_frame(
             selected_input,
             time_col=semantics,
@@ -451,38 +436,3 @@ class WalkForwardRunner:
         if retrain_interval is None:
             raise ValueError("retrain_interval is required when retrain='periodic'")
         return PeriodicRetrain(retrain_interval)
-
-    def _resolve_workflow_inputs(self, workflow, frame_input):
-        if isinstance(workflow, WalkForwardPolicy):
-            simulation = workflow.simulation
-            selected = simulation._select_input(frame_input)
-            splits = list(simulation.as_splitter().iter_splits(selected))
-            if simulation.max_folds is not None:
-                splits = splits[: simulation.max_folds]
-            return selected, simulation.as_splitter().temporal_semantics, splits
-
-        if isinstance(workflow, TemporalSimulation):
-            selected = workflow._select_input(frame_input)
-            splits = list(workflow.as_splitter().iter_splits(selected))
-            if workflow.max_folds is not None:
-                splits = splits[: workflow.max_folds]
-            return selected, workflow.as_splitter().temporal_semantics, splits
-
-        if isinstance(workflow, TemporalBacktestSplitter):
-            return frame_input, workflow.temporal_semantics, list(workflow.iter_splits(frame_input))
-
-        if hasattr(workflow, "simulation") and isinstance(workflow.simulation, TemporalSimulation):
-            simulation = workflow.simulation
-            selected = simulation._select_input(frame_input)
-            splits = list(simulation.as_splitter().iter_splits(selected))
-            if simulation.max_folds is not None:
-                splits = splits[: simulation.max_folds]
-            return selected, simulation.as_splitter().temporal_semantics, splits
-
-        if hasattr(workflow, "as_splitter"):
-            splitter = workflow.as_splitter()
-            return frame_input, splitter.temporal_semantics, list(splitter.iter_splits(frame_input))
-
-        raise TypeError(
-            "workflow must be a TemporalBacktestSplitter, WalkForwardPolicy, TemporalSimulation or compatible object"
-        )

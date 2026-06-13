@@ -19,6 +19,7 @@ import jano.mcp_tools as mcp_tools_module
 import jano.planning as planning_module
 import jano.policies as policies_module
 import jano.runner as runner_module
+import jano._serialization as serialization_module
 import jano.validation as validation_module
 from conftest import build_frame, write_csv_frame, SimpleLinearRegressor, MeanRegressor, mae, rmse, accuracy
 from jano import (
@@ -594,7 +595,7 @@ def test_mcp_baseline_helpers_cover_errors_and_json_ready() -> None:
     with pytest.raises(ValueError, match="majority_class baseline requires"):
         mcp_tools_module._MajorityClassBaselineModel().fit(pd.DataFrame({"x": []}), [])
 
-    records = mcp_tools_module._frame_records(
+    records = serialization_module._frame_records(
         pd.DataFrame(
             {
                 "timestamp": [pd.Timestamp("2024-01-01")],
@@ -606,7 +607,7 @@ def test_mcp_baseline_helpers_cover_errors_and_json_ready() -> None:
     assert records == [
         {"timestamp": "2024-01-01T00:00:00", "duration": "1 days 00:00:00", "value": 7}
     ]
-    assert mcp_tools_module._json_ready_object([np.float64(1.5)]) == [1.5]
+    assert serialization_module._json_ready_object([np.float64(1.5)]) == [1.5]
 
 def test_mcp_server_builds_tools_and_main_runs(monkeypatch) -> None:
     tools = {}

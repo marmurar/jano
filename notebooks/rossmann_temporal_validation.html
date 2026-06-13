@@ -3,7 +3,7 @@
 <html lang="en">
 <head><meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Notebook</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
+<title>rossmann_temporal_validation</title><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.1.10/require.min.js"></script>
 <style type="text/css">
     pre { line-height: 125%; }
 td.linenos .normal { color: inherit; background-color: transparent; padding-left: 5px; padding-right: 5px; }
@@ -7800,7 +7800,8 @@ a.anchor-link {
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
 <style>
 :root {
   --ink: #17202a;
@@ -7833,15 +7834,16 @@ body, .jp-Notebook { background: var(--paper); color: var(--ink); }
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h1 id="Rossmann-Temporal-Validation-with-Jano">Rossmann Temporal Validation with Jano<a class="anchor-link" href="#Rossmann-Temporal-Validation-with-Jano">¶</a></h1><div class="note-box">
-This notebook is the first candidate gold example for Jano. It uses the Rossmann Store Sales dataset to compare a random split, a static chronological holdout and an auditable walk-forward simulation.
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h1 id="Validaci%C3%B3n-temporal-de-Rossmann-con-Jano">Validación temporal de Rossmann con Jano<a class="anchor-link" href="#Validaci%C3%B3n-temporal-de-Rossmann-con-Jano">¶</a></h1><div class="note-box">
+Este notebook es el primer candidato a ejemplo de oro para Jano. Usa el dataset Rossmann Store Sales para comparar una partición aleatoria, un holdout cronológico estático y una simulación walk-forward auditable.
 </div>
-<p>The goal is not to win the Kaggle competition. The goal is to show how Jano helps answer a more operational question:</p>
+<p>El objetivo no es ganar la competencia de Kaggle. El objetivo es mostrar cómo Jano ayuda a responder una pregunta más operativa:</p>
 <blockquote>
-<p>Would this model have behaved consistently over time under a specific retraining and evaluation policy?</p>
+<p>¿Este modelo se habría comportado de forma consistente en el tiempo bajo una política específica de reentrenamiento y evaluación?</p>
 </blockquote>
-<p>Dataset source: <a href="https://www.kaggle.com/c/rossmann-store-sales">Rossmann Store Sales on Kaggle</a>. This notebook also supports the public Kaggle dataset mirror <a href="https://www.kaggle.com/datasets/pratyushakar/rossmann-store-sales"><code>pratyushakar/rossmann-store-sales</code></a>, which includes <code>train.csv</code>, <code>test.csv</code> and <code>store.csv</code>.</p>
+<p>Fuente del dataset: <a href="https://www.kaggle.com/c/rossmann-store-sales">Rossmann Store Sales en Kaggle</a>. Este notebook también soporta el mirror público de Kaggle <a href="https://www.kaggle.com/datasets/pratyushakar/rossmann-store-sales"><code>pratyushakar/rossmann-store-sales</code></a>, que incluye <code>train.csv</code>, <code>test.csv</code> y <code>store.csv</code>.</p>
 </div>
 </div>
 </div>
@@ -7850,16 +7852,17 @@ This notebook is the first candidate gold example for Jano. It uses the Rossmann
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="0.-Setup">0. Setup<a class="anchor-link" href="#0.-Setup">¶</a></h2><p>Heavy dataset files stay under <code>data/raw/rossmann/</code>, which is ignored by git. If you do not have the files locally, configure the Kaggle CLI first:</p>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="0.-Preparaci%C3%B3n">0. Preparación<a class="anchor-link" href="#0.-Preparaci%C3%B3n">¶</a></h2><p>Los archivos pesados del dataset viven en <code>data/raw/rossmann/</code>, que está ignorado por git. Si no tenés los archivos locales, configurá primero la Kaggle CLI:</p>
 <div class="highlight"><pre><span></span>pip<span class="w"> </span>install<span class="w"> </span>kaggle
 mkdir<span class="w"> </span>-p<span class="w"> </span>~/.kaggle
-<span class="c1"># put kaggle.json in ~/.kaggle/ and chmod 600 ~/.kaggle/kaggle.json</span>
+<span class="c1"># colocá kaggle.json en ~/.kaggle/ y ejecutá chmod 600 ~/.kaggle/kaggle.json</span>
 </pre></div>
-<p>Then run the download cell below. You can also use Jano's dataset helper:</p>
+<p>Después ejecutá la celda de descarga de abajo. También podés usar el helper de datasets de Jano:</p>
 <div class="highlight"><pre><span></span>python<span class="w"> </span>scripts/download_dataset.py<span class="w"> </span>rossmann_store_sales<span class="w"> </span>--extract
 </pre></div>
-<p>If you already have <code>train.csv</code> and <code>store.csv</code>, place them in <code>data/raw/rossmann/</code> and skip the download.</p>
+<p>Si ya tenés <code>train.csv</code> y <code>store.csv</code>, colocalos en <code>data/raw/rossmann/</code> y salteate la descarga.</p>
 </div>
 </div>
 </div>
@@ -7868,6 +7871,7 @@ mkdir<span class="w"> </span>-p<span class="w"> </span>~/.kaggle
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [1]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="kn">from</span><span class="w"> </span><span class="nn">__future__</span><span class="w"> </span><span class="kn">import</span> <span class="n">annotations</span>
@@ -7909,13 +7913,14 @@ mkdir<span class="w"> </span>-p<span class="w"> </span>~/.kaggle
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [2]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">ensure_rossmann_files</span><span class="p">()</span> <span class="o">-&gt;</span> <span class="nb">bool</span><span class="p">:</span>
 <span class="w">    </span><span class="sd">"""Return True when real Rossmann files are available locally."""</span>
     <span class="n">DATA_DIR</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">parents</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="k">if</span> <span class="n">TRAIN_CSV</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="n">STORE_CSV</span><span class="o">.</span><span class="n">exists</span><span class="p">():</span>
-        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Rossmann files already exist in </span><span class="si">{</span><span class="n">DATA_DIR</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"Los archivos de Rossmann ya existen en </span><span class="si">{</span><span class="n">DATA_DIR</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">True</span>
 
     <span class="n">command</span> <span class="o">=</span> <span class="p">[</span>
@@ -7930,8 +7935,8 @@ mkdir<span class="w"> </span>-p<span class="w"> </span>~/.kaggle
     <span class="k">try</span><span class="p">:</span>
         <span class="n">subprocess</span><span class="o">.</span><span class="n">run</span><span class="p">(</span><span class="n">command</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
     <span class="k">except</span> <span class="p">(</span><span class="ne">FileNotFoundError</span><span class="p">,</span> <span class="n">subprocess</span><span class="o">.</span><span class="n">CalledProcessError</span><span class="p">):</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"Kaggle files are not available in this environment."</span><span class="p">)</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"The notebook will use a deterministic Rossmann-like dataset so Jano can still be executed end to end."</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"Los archivos de Kaggle no están disponibles en este entorno."</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"El notebook usará un dataset determinista similar a Rossmann para que Jano pueda ejecutarse de punta a punta."</span><span class="p">)</span>
         <span class="k">return</span> <span class="kc">False</span>
 
     <span class="k">for</span> <span class="n">archive</span> <span class="ow">in</span> <span class="n">DATA_DIR</span><span class="o">.</span><span class="n">glob</span><span class="p">(</span><span class="s2">"*.zip"</span><span class="p">):</span>
@@ -7940,13 +7945,13 @@ mkdir<span class="w"> </span>-p<span class="w"> </span>~/.kaggle
 
     <span class="n">available</span> <span class="o">=</span> <span class="n">TRAIN_CSV</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span> <span class="ow">and</span> <span class="n">STORE_CSV</span><span class="o">.</span><span class="n">exists</span><span class="p">()</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="n">available</span><span class="p">:</span>
-        <span class="nb">print</span><span class="p">(</span><span class="s2">"Downloaded archive did not expose train.csv and store.csv; using synthetic fallback."</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">"El archivo descargado no expuso train.csv y store.csv; se usará el fallback sintético."</span><span class="p">)</span>
     <span class="k">return</span> <span class="n">available</span>
 
 
 <span class="n">HAS_REAL_ROSSMANN</span> <span class="o">=</span> <span class="n">ensure_rossmann_files</span><span class="p">()</span>
-<span class="n">DATASET_SOURCE</span> <span class="o">=</span> <span class="s2">"Kaggle Rossmann Store Sales"</span> <span class="k">if</span> <span class="n">HAS_REAL_ROSSMANN</span> <span class="k">else</span> <span class="s2">"Synthetic Rossmann-like fallback"</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Dataset source:"</span><span class="p">,</span> <span class="n">DATASET_SOURCE</span><span class="p">)</span>
+<span class="n">DATASET_SOURCE</span> <span class="o">=</span> <span class="s2">"Rossmann Store Sales de Kaggle"</span> <span class="k">if</span> <span class="n">HAS_REAL_ROSSMANN</span> <span class="k">else</span> <span class="s2">"Fallback sintético tipo Rossmann"</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Fuente del dataset:"</span><span class="p">,</span> <span class="n">DATASET_SOURCE</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -7957,10 +7962,11 @@ mkdir<span class="w"> </span>-p<span class="w"> </span>~/.kaggle
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Kaggle files are not available in this environment.
-The notebook will use a deterministic Rossmann-like dataset so Jano can still be executed end to end.
-Dataset source: Synthetic Rossmann-like fallback
+<pre>Los archivos de Kaggle no están disponibles en este entorno.
+El notebook usará un dataset determinista similar a Rossmann para que Jano pueda ejecutarse de punta a punta.
+Fuente del dataset: Fallback sintético tipo Rossmann
 </pre>
 </div>
 </div>
@@ -7971,9 +7977,10 @@ Dataset source: Synthetic Rossmann-like fallback
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="1.-Load-and-Prepare-a-Production-Like-Frame">1. Load and Prepare a Production-Like Frame<a class="anchor-link" href="#1.-Load-and-Prepare-a-Production-Like-Frame">¶</a></h2><p>Rossmann has one row per store and day. The target is <code>Sales</code>. We intentionally avoid <code>Customers</code> because it is not available at prediction time in the Kaggle test set, so using it would create a feature-availability problem.</p>
-<p>To keep the notebook fast, we use a configurable subset of stores. The temporal structure is preserved: every selected store keeps its complete date history.</p>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="1.-Cargar-y-preparar-un-frame-parecido-a-producci%C3%B3n">1. Cargar y preparar un frame parecido a producción<a class="anchor-link" href="#1.-Cargar-y-preparar-un-frame-parecido-a-producci%C3%B3n">¶</a></h2><p>Rossmann tiene una fila por tienda y por día. El target es <code>Sales</code>. Evitamos deliberadamente <code>Customers</code> porque no está disponible al momento de predecir en el test set de Kaggle, así que usarlo generaría un problema de disponibilidad de features.</p>
+<p>Para mantener el notebook rápido, usamos un subconjunto configurable de tiendas. La estructura temporal se preserva: cada tienda seleccionada mantiene su historial completo de fechas.</p>
 </div>
 </div>
 </div>
@@ -7982,6 +7989,7 @@ Dataset source: Synthetic Rossmann-like fallback
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [3]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">build_synthetic_rossmann_frame</span><span class="p">(</span>
@@ -7991,7 +7999,7 @@ Dataset source: Synthetic Rossmann-like fallback
     <span class="n">end</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span> <span class="s2">"2015-07-31"</span><span class="p">,</span>
     <span class="n">seed</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="n">RANDOM_SEED</span><span class="p">,</span>
 <span class="p">)</span> <span class="o">-&gt;</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">:</span>
-<span class="w">    </span><span class="sd">"""Create a deterministic Rossmann-like daily panel when Kaggle files are unavailable."""</span>
+<span class="w">    </span><span class="sd">"""Crear un panel diario determinista similar a Rossmann cuando no hay archivos de Kaggle disponibles."""</span>
     <span class="n">rng</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">default_rng</span><span class="p">(</span><span class="n">seed</span><span class="p">)</span>
     <span class="n">dates</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s2">"D"</span><span class="p">)</span>
     <span class="n">store_ids</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="n">stores</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
@@ -8063,7 +8071,7 @@ Dataset source: Synthetic Rossmann-like fallback
 
 
 <span class="n">rossmann</span> <span class="o">=</span> <span class="n">load_rossmann_frame</span><span class="p">(</span><span class="n">store_limit</span><span class="o">=</span><span class="mi">180</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Dataset source:"</span><span class="p">,</span> <span class="n">DATASET_SOURCE</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Fuente del dataset:"</span><span class="p">,</span> <span class="n">DATASET_SOURCE</span><span class="p">)</span>
 <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"rows=</span><span class="si">{</span><span class="nb">len</span><span class="p">(</span><span class="n">rossmann</span><span class="p">)</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> stores=</span><span class="si">{</span><span class="n">rossmann</span><span class="p">[</span><span class="s1">'Store'</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span><span class="si">:</span><span class="s2">,</span><span class="si">}</span><span class="s2"> date_range=</span><span class="si">{</span><span class="n">rossmann</span><span class="p">[</span><span class="s1">'Date'</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">.</span><span class="n">date</span><span class="p">()</span><span class="si">}</span><span class="s2"> -&gt; </span><span class="si">{</span><span class="n">rossmann</span><span class="p">[</span><span class="s1">'Date'</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">.</span><span class="n">date</span><span class="p">()</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
 <span class="n">display</span><span class="p">(</span><span class="n">rossmann</span><span class="o">.</span><span class="n">head</span><span class="p">())</span>
 </pre></div>
@@ -8076,13 +8084,15 @@ Dataset source: Synthetic Rossmann-like fallback
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Dataset source: Synthetic Rossmann-like fallback
+<pre>Fuente del dataset: Fallback sintético tipo Rossmann
 rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 </pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <div>
 <style scoped="">
@@ -8210,9 +8220,10 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="2.-A-Small-Model-So-the-Focus-Stays-on-Validation">2. A Small Model So the Focus Stays on Validation<a class="anchor-link" href="#2.-A-Small-Model-So-the-Focus-Stays-on-Validation">¶</a></h2><p>This notebook uses a simple median model implemented here. It memorizes median sales by store, weekday, promo and store attributes, then falls back to broader medians when a group is unseen.</p>
-<p>That keeps the example dependency-light. You can replace this class with any estimator that exposes <code>fit(X, y)</code> and <code>predict(X)</code>.</p>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="2.-Un-modelo-simple-para-que-el-foco-siga-en-la-validaci%C3%B3n">2. Un modelo simple para que el foco siga en la validación<a class="anchor-link" href="#2.-Un-modelo-simple-para-que-el-foco-siga-en-la-validaci%C3%B3n">¶</a></h2><p>Este notebook usa un modelo mediano simple implementado aquí. Memoriza la mediana de ventas por tienda, día de la semana, promo y atributos de tienda, y luego cae a medianas más generales cuando un grupo no fue visto.</p>
+<p>Eso mantiene el ejemplo liviano en dependencias. Podés reemplazar esta clase por cualquier estimador que exponga <code>fit(X, y)</code> y <code>predict(X)</code>.</p>
 </div>
 </div>
 </div>
@@ -8221,6 +8232,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [4]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">FEATURE_COLS</span> <span class="o">=</span> <span class="p">[</span>
@@ -8292,8 +8304,9 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="3.-Baseline:-Random-Split">3. Baseline: Random Split<a class="anchor-link" href="#3.-Baseline:-Random-Split">¶</a></h2><p>A random split is not automatically wrong. It is wrong when the intended question is temporal: train with the past and evaluate on a future horizon. Here we inspect what the split actually does to the date ranges.</p>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="3.-L%C3%ADnea-base:-partici%C3%B3n-aleatoria">3. Línea base: partición aleatoria<a class="anchor-link" href="#3.-L%C3%ADnea-base:-partici%C3%B3n-aleatoria">¶</a></h2><p>Una partición aleatoria no es automáticamente incorrecta. Lo es cuando la pregunta de fondo es temporal: entrenar con el pasado y evaluar sobre un horizonte futuro. Acá inspeccionamos qué hace realmente la partición con las fechas.</p>
 </div>
 </div>
 </div>
@@ -8302,6 +8315,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [5]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="k">def</span><span class="w"> </span><span class="nf">evaluate_indices</span><span class="p">(</span><span class="n">name</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">frame</span><span class="p">:</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">,</span> <span class="n">train_idx</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">,</span> <span class="n">test_idx</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">ndarray</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">dict</span><span class="p">[</span><span class="nb">str</span><span class="p">,</span> <span class="nb">object</span><span class="p">]:</span>
@@ -8330,7 +8344,19 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <span class="n">indices</span> <span class="o">=</span> <span class="n">rng</span><span class="o">.</span><span class="n">permutation</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">rossmann</span><span class="p">))</span>
 <span class="n">cut</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">indices</span><span class="p">)</span> <span class="o">*</span> <span class="mf">0.8</span><span class="p">)</span>
 <span class="n">random_result</span> <span class="o">=</span> <span class="n">evaluate_indices</span><span class="p">(</span><span class="s2">"random_80_20"</span><span class="p">,</span> <span class="n">rossmann</span><span class="p">,</span> <span class="n">indices</span><span class="p">[:</span><span class="n">cut</span><span class="p">],</span> <span class="n">indices</span><span class="p">[</span><span class="n">cut</span><span class="p">:])</span>
-<span class="n">display</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span><span class="n">random_result</span><span class="p">]))</span>
+<span class="n">display</span><span class="p">(</span>
+    <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span><span class="n">random_result</span><span class="p">])</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+        <span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">"protocol"</span><span class="p">:</span> <span class="s2">"protocolo"</span><span class="p">,</span>
+            <span class="s2">"train_rows"</span><span class="p">:</span> <span class="s2">"filas_entrenamiento"</span><span class="p">,</span>
+            <span class="s2">"test_rows"</span><span class="p">:</span> <span class="s2">"filas_prueba"</span><span class="p">,</span>
+            <span class="s2">"train_start"</span><span class="p">:</span> <span class="s2">"inicio_entrenamiento"</span><span class="p">,</span>
+            <span class="s2">"train_end"</span><span class="p">:</span> <span class="s2">"fin_entrenamiento"</span><span class="p">,</span>
+            <span class="s2">"test_start"</span><span class="p">:</span> <span class="s2">"inicio_prueba"</span><span class="p">,</span>
+            <span class="s2">"test_end"</span><span class="p">:</span> <span class="s2">"fin_prueba"</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8341,6 +8367,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <div>
 <style scoped="">
@@ -8360,13 +8387,13 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <thead>
 <tr style="text-align: right;">
 <th></th>
-<th>protocol</th>
-<th>train_rows</th>
-<th>test_rows</th>
-<th>train_start</th>
-<th>train_end</th>
-<th>test_start</th>
-<th>test_end</th>
+<th>protocolo</th>
+<th>filas_entrenamiento</th>
+<th>filas_prueba</th>
+<th>inicio_entrenamiento</th>
+<th>fin_entrenamiento</th>
+<th>inicio_prueba</th>
+<th>fin_prueba</th>
 <th>mae</th>
 <th>rmspe</th>
 </tr>
@@ -8396,8 +8423,9 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="4.-Baseline:-Static-Chronological-Holdout">4. Baseline: Static Chronological Holdout<a class="anchor-link" href="#4.-Baseline:-Static-Chronological-Holdout">¶</a></h2><p>A chronological holdout is a better operational baseline: train on the past and test on the last six weeks. It still gives only one snapshot. It cannot show whether performance was stable across multiple deployment dates.</p>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="4.-L%C3%ADnea-base:-holdout-cronol%C3%B3gico-est%C3%A1tico">4. Línea base: holdout cronológico estático<a class="anchor-link" href="#4.-L%C3%ADnea-base:-holdout-cronol%C3%B3gico-est%C3%A1tico">¶</a></h2><p>Un holdout cronológico es una mejor línea base operativa: entrena con el pasado y prueba sobre las últimas seis semanas. Igual sigue dando una sola foto. No muestra si el rendimiento fue estable en varias fechas de despliegue.</p>
 </div>
 </div>
 </div>
@@ -8406,6 +8434,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [6]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">holdout_days</span> <span class="o">=</span> <span class="mi">42</span>
@@ -8417,15 +8446,27 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
     <span class="n">random_result</span><span class="p">,</span>
     <span class="n">evaluate_indices</span><span class="p">(</span><span class="s2">"last_42_days_holdout"</span><span class="p">,</span> <span class="n">rossmann</span><span class="p">,</span> <span class="n">holdout_train_idx</span><span class="p">,</span> <span class="n">holdout_test_idx</span><span class="p">),</span>
 <span class="p">])</span>
-<span class="n">display</span><span class="p">(</span><span class="n">baseline_comparison</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span>
+    <span class="n">baseline_comparison</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+        <span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">"protocol"</span><span class="p">:</span> <span class="s2">"protocolo"</span><span class="p">,</span>
+            <span class="s2">"train_rows"</span><span class="p">:</span> <span class="s2">"filas_entrenamiento"</span><span class="p">,</span>
+            <span class="s2">"test_rows"</span><span class="p">:</span> <span class="s2">"filas_prueba"</span><span class="p">,</span>
+            <span class="s2">"train_start"</span><span class="p">:</span> <span class="s2">"inicio_entrenamiento"</span><span class="p">,</span>
+            <span class="s2">"train_end"</span><span class="p">:</span> <span class="s2">"fin_entrenamiento"</span><span class="p">,</span>
+            <span class="s2">"test_start"</span><span class="p">:</span> <span class="s2">"inicio_prueba"</span><span class="p">,</span>
+            <span class="s2">"test_end"</span><span class="p">:</span> <span class="s2">"fin_prueba"</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+<span class="p">)</span>
 
 <span class="n">random_temporal_overlap</span> <span class="o">=</span> <span class="p">(</span>
     <span class="n">baseline_comparison</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="s2">"train_end"</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">baseline_comparison</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="s2">"test_start"</span><span class="p">]</span>
     <span class="ow">and</span> <span class="n">baseline_comparison</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="s2">"test_end"</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">baseline_comparison</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="s2">"train_start"</span><span class="p">]</span>
 <span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Interpretation:"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"- Random split train/test date ranges overlap: </span><span class="si">{</span><span class="n">random_temporal_overlap</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"- The chronological holdout answers a cleaner production-like question, but only for one future window."</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Interpretación:"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"- Las ventanas temporales de train y test de la partición aleatoria se superponen: </span><span class="si">{</span><span class="n">random_temporal_overlap</span><span class="si">}</span><span class="s2">"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"- El holdout cronológico responde una pregunta más parecida a producción, pero solo para una ventana futura."</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8436,14 +8477,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child">
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Interpretation:
-- Random split train/test date ranges overlap: True
-- The chronological holdout answers a cleaner production-like question, but only for one future window.
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <div>
 <style scoped="">
@@ -8463,13 +8497,13 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <thead>
 <tr style="text-align: right;">
 <th></th>
-<th>protocol</th>
-<th>train_rows</th>
-<th>test_rows</th>
-<th>train_start</th>
-<th>train_end</th>
-<th>test_start</th>
-<th>test_end</th>
+<th>protocolo</th>
+<th>filas_entrenamiento</th>
+<th>filas_prueba</th>
+<th>inicio_entrenamiento</th>
+<th>fin_entrenamiento</th>
+<th>inicio_prueba</th>
+<th>fin_prueba</th>
 <th>mae</th>
 <th>rmspe</th>
 </tr>
@@ -8504,6 +8538,103 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 </div>
 </div>
 </div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>Interpretación:
+- Las ventanas temporales de train y test de la partición aleatoria se superponen: True
+- El holdout cronológico responde una pregunta más parecida a producción, pero solo para una ventana futura.
+</pre>
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell jp-MarkdownCell jp-Notebook-cell" id="cell-id=58fcc5a0">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="4.-TimeSeriesSplit:-la-primitiva-b%C3%A1sica-de-walk-forward">4. TimeSeriesSplit: la primitiva básica de walk-forward<a class="anchor-link" href="#4.-TimeSeriesSplit:-la-primitiva-b%C3%A1sica-de-walk-forward">¶</a></h2><p><code>TimeSeriesSplit</code> es una línea base walk-forward válida. Conserva el orden temporal y te permite hacer crecer la ventana de entrenamiento mientras movés la ventana de prueba hacia adelante. Eso sirve para una validación secuencial rápida.</p>
+<p>Lo que <strong>no</strong> te da es el contrato temporal más amplio que Jano modela como un objeto de primera clase: un plan que podés inspeccionar, filtrar, acotar con anclas de inicio y fin, componer con reglas de reentrenamiento y luego materializar en una simulación.</p>
+<p>La idea acá no es que <code>TimeSeriesSplit</code> esté mal. La idea es que resuelve un problema más chico.</p>
+</div>
+</div>
+</div>
+</div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=9f0dab6e">
+<div class="jp-Cell-inputWrapper" tabindex="0">
+<div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
+</div>
+<div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [7]:</div>
+<div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
+<div class="cm-editor cm-s-jupyter">
+<div class="highlight hl-ipython3"><pre><span></span><span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">sklearn.model_selection</span><span class="w"> </span><span class="kn">import</span> <span class="n">TimeSeriesSplit</span>
+<span class="k">except</span> <span class="ne">ModuleNotFoundError</span><span class="p">:</span>
+    <span class="n">TimeSeriesSplit</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="c1"># Una línea base secuencial sobre el mismo caso Rossmann.</span>
+<span class="c1"># Para que la geometría temporal se vea clara, usamos un eje de fechas único.</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">iter_time_series_splits</span><span class="p">(</span><span class="n">n_samples</span><span class="p">,</span> <span class="n">n_splits</span><span class="p">,</span> <span class="n">test_size</span><span class="p">,</span> <span class="n">gap</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_train_size</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">n_splits</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">"n_splits must be at least 1"</span><span class="p">)</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="n">test_size</span>
+    <span class="n">test_starts</span> <span class="o">=</span> <span class="p">[</span><span class="n">n_samples</span> <span class="o">-</span> <span class="n">n_splits</span> <span class="o">*</span> <span class="n">test_size</span> <span class="o">+</span> <span class="n">i</span> <span class="o">*</span> <span class="n">step</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_splits</span><span class="p">)]</span>
+    <span class="k">for</span> <span class="n">test_start</span> <span class="ow">in</span> <span class="n">test_starts</span><span class="p">:</span>
+        <span class="n">test_end</span> <span class="o">=</span> <span class="n">test_start</span> <span class="o">+</span> <span class="n">test_size</span>
+        <span class="n">train_end</span> <span class="o">=</span> <span class="n">test_start</span> <span class="o">-</span> <span class="n">gap</span>
+        <span class="n">train_start</span> <span class="o">=</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">max_train_size</span> <span class="ow">is</span> <span class="kc">None</span> <span class="k">else</span> <span class="nb">max</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">train_end</span> <span class="o">-</span> <span class="n">max_train_size</span><span class="p">)</span>
+        <span class="k">yield</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">train_start</span><span class="p">,</span> <span class="n">train_end</span><span class="p">),</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">test_start</span><span class="p">,</span> <span class="n">test_end</span><span class="p">)</span>
+
+<span class="n">time_axis</span> <span class="o">=</span> <span class="n">rossmann</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">"Date"</span><span class="p">)</span><span class="o">.</span><span class="n">drop_duplicates</span><span class="p">(</span><span class="s2">"Date"</span><span class="p">)[</span> <span class="p">[</span><span class="s2">"Date"</span><span class="p">]</span> <span class="p">]</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="n">TimeSeriesSplit</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+    <span class="n">splitter</span> <span class="o">=</span> <span class="n">TimeSeriesSplit</span><span class="p">(</span><span class="n">n_splits</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">gap</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_train_size</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+    <span class="n">split_iter</span> <span class="o">=</span> <span class="n">splitter</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="n">time_axis</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">split_iter</span> <span class="o">=</span> <span class="n">iter_time_series_splits</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">time_axis</span><span class="p">),</span> <span class="n">n_splits</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">test_size</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">gap</span><span class="o">=</span><span class="mi">1</span><span class="p">,</span> <span class="n">max_train_size</span><span class="o">=</span><span class="mi">60</span><span class="p">)</span>
+
+<span class="n">rows</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">for</span> <span class="n">fold</span><span class="p">,</span> <span class="p">(</span><span class="n">train_idx</span><span class="p">,</span> <span class="n">test_idx</span><span class="p">)</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">split_iter</span><span class="p">):</span>
+    <span class="n">train</span> <span class="o">=</span> <span class="n">time_axis</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">train_idx</span><span class="p">]</span>
+    <span class="n">test</span> <span class="o">=</span> <span class="n">time_axis</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="n">test_idx</span><span class="p">]</span>
+    <span class="n">rows</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+        <span class="p">{</span>
+            <span class="s2">"pliegue"</span><span class="p">:</span> <span class="n">fold</span><span class="p">,</span>
+            <span class="s2">"inicio_entrenamiento"</span><span class="p">:</span> <span class="n">train</span><span class="p">[</span><span class="s2">"Date"</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">.</span><span class="n">date</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="s2">"fin_entrenamiento"</span><span class="p">:</span> <span class="n">train</span><span class="p">[</span><span class="s2">"Date"</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">.</span><span class="n">date</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="s2">"filas_entrenamiento"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">train</span><span class="p">),</span>
+            <span class="s2">"inicio_prueba"</span><span class="p">:</span> <span class="n">test</span><span class="p">[</span><span class="s2">"Date"</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span><span class="o">.</span><span class="n">date</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="s2">"fin_prueba"</span><span class="p">:</span> <span class="n">test</span><span class="p">[</span><span class="s2">"Date"</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">()</span><span class="o">.</span><span class="n">date</span><span class="p">()</span><span class="o">.</span><span class="n">isoformat</span><span class="p">(),</span>
+            <span class="s2">"filas_prueba"</span><span class="p">:</span> <span class="nb">len</span><span class="p">(</span><span class="n">test</span><span class="p">),</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+
+<span class="n">tscv_summary</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">rows</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="n">tscv_summary</span><span class="o">.</span><span class="n">to_string</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">))</span>
+</pre></div>
+</div>
+</div>
+</div>
+</div>
+<div class="jp-Cell-outputWrapper">
+<div class="jp-Collapser jp-OutputCollapser jp-Cell-outputCollapser">
+</div>
+<div class="jp-OutputArea jp-Cell-outputArea">
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre> pliegue inicio_entrenamiento fin_entrenamiento  filas_entrenamiento inicio_prueba fin_prueba  filas_prueba
+       0           2015-03-18        2015-05-26                   60    2015-05-28 2015-06-12            14
+       1           2015-04-03        2015-06-11                   60    2015-06-13 2015-06-29            14
+       2           2015-04-20        2015-06-27                   60    2015-06-30 2015-07-15            14
+       3           2015-05-06        2015-07-14                   60    2015-07-16 2015-07-31            14
+</pre>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -8511,15 +8642,16 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="5.-Plan-the-Walk-Forward-Simulation-Before-Training">5. Plan the Walk-Forward Simulation Before Training<a class="anchor-link" href="#5.-Plan-the-Walk-Forward-Simulation-Before-Training">¶</a></h2><p>This is where Jano enters. <a href="https://marmurar.github.io/jano/concepts.html#planning-before-materialization"><code>plan()</code></a> precomputes the fold geometry before materializing train/test slices or fitting a model.</p>
-<p>Here the policy means:</p>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="5.-Planificar-la-simulaci%C3%B3n-walk-forward-antes-de-entrenar">5. Planificar la simulación walk-forward antes de entrenar<a class="anchor-link" href="#5.-Planificar-la-simulaci%C3%B3n-walk-forward-antes-de-entrenar">¶</a></h2><p>Acá entra Jano. <a href="https://marmurar.github.io/jano/concepts.html#planning-before-materialization"><code>plan()</code></a> precalcula la geometría de los folds antes de materializar slices de train/test o de ajustar un modelo.</p>
+<p>Acá la policy significa:</p>
 <ul>
-<li>use 180 days of training history;</li>
-<li>evaluate the next 42 days;</li>
-<li>move forward by 42 days;</li>
-<li>align windows to calendar days;</li>
-<li>keep at most eight folds for a compact notebook.</li>
+<li>usar 180 días de historial de entrenamiento;</li>
+<li>evaluar los siguientes 42 días;</li>
+<li>avanzar 42 días;</li>
+<li>alinear las ventanas a días calendario;</li>
+<li>mantener como máximo ocho folds para un notebook compacto.</li>
 </ul>
 </div>
 </div>
@@ -8529,6 +8661,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [8]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">policy</span> <span class="o">=</span> <span class="n">WalkForwardPolicy</span><span class="p">(</span>
@@ -8545,9 +8678,22 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
     <span class="n">max_folds</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
 <span class="p">)</span>
 
-<span class="n">plan</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">plan</span><span class="p">(</span><span class="n">rossmann</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Rossmann 180D train / 42D test walk-forward plan"</span><span class="p">)</span>
+<span class="n">plan</span> <span class="o">=</span> <span class="n">policy</span><span class="o">.</span><span class="n">plan</span><span class="p">(</span><span class="n">rossmann</span><span class="p">,</span> <span class="n">title</span><span class="o">=</span><span class="s2">"Plan walk-forward de Rossmann con 180D de train y 42D de test"</span><span class="p">)</span>
 <span class="n">plan_df</span> <span class="o">=</span> <span class="n">plan</span><span class="o">.</span><span class="n">to_frame</span><span class="p">()</span>
-<span class="n">display</span><span class="p">(</span><span class="n">plan_df</span><span class="p">[[</span><span class="s2">"iteration"</span><span class="p">,</span> <span class="s2">"fold"</span><span class="p">,</span> <span class="s2">"train_start"</span><span class="p">,</span> <span class="s2">"train_end"</span><span class="p">,</span> <span class="s2">"train_rows"</span><span class="p">,</span> <span class="s2">"test_start"</span><span class="p">,</span> <span class="s2">"test_end"</span><span class="p">,</span> <span class="s2">"test_rows"</span><span class="p">]])</span>
+<span class="n">display</span><span class="p">(</span>
+    <span class="n">plan_df</span><span class="p">[[</span><span class="s2">"iteration"</span><span class="p">,</span> <span class="s2">"fold"</span><span class="p">,</span> <span class="s2">"train_start"</span><span class="p">,</span> <span class="s2">"train_end"</span><span class="p">,</span> <span class="s2">"train_rows"</span><span class="p">,</span> <span class="s2">"test_start"</span><span class="p">,</span> <span class="s2">"test_end"</span><span class="p">,</span> <span class="s2">"test_rows"</span><span class="p">]]</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span>
+        <span class="n">columns</span><span class="o">=</span><span class="p">{</span>
+            <span class="s2">"iteration"</span><span class="p">:</span> <span class="s2">"iteración"</span><span class="p">,</span>
+            <span class="s2">"fold"</span><span class="p">:</span> <span class="s2">"pliegue"</span><span class="p">,</span>
+            <span class="s2">"train_start"</span><span class="p">:</span> <span class="s2">"inicio_entrenamiento"</span><span class="p">,</span>
+            <span class="s2">"train_end"</span><span class="p">:</span> <span class="s2">"fin_entrenamiento"</span><span class="p">,</span>
+            <span class="s2">"train_rows"</span><span class="p">:</span> <span class="s2">"filas_entrenamiento"</span><span class="p">,</span>
+            <span class="s2">"test_start"</span><span class="p">:</span> <span class="s2">"inicio_prueba"</span><span class="p">,</span>
+            <span class="s2">"test_end"</span><span class="p">:</span> <span class="s2">"fin_prueba"</span><span class="p">,</span>
+            <span class="s2">"test_rows"</span><span class="p">:</span> <span class="s2">"filas_prueba"</span><span class="p">,</span>
+        <span class="p">}</span>
+    <span class="p">)</span>
+<span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8558,6 +8704,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <div>
 <style scoped="">
@@ -8577,14 +8724,14 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <thead>
 <tr style="text-align: right;">
 <th></th>
-<th>iteration</th>
-<th>fold</th>
-<th>train_start</th>
-<th>train_end</th>
-<th>train_rows</th>
-<th>test_start</th>
-<th>test_end</th>
-<th>test_rows</th>
+<th>iteración</th>
+<th>pliegue</th>
+<th>inicio_entrenamiento</th>
+<th>fin_entrenamiento</th>
+<th>filas_entrenamiento</th>
+<th>inicio_prueba</th>
+<th>fin_prueba</th>
+<th>filas_prueba</th>
 </tr>
 </thead>
 <tbody>
@@ -8688,9 +8835,10 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="6.-Run-the-Same-Model-Across-the-Planned-Folds">6. Run the Same Model Across the Planned Folds<a class="anchor-link" href="#6.-Run-the-Same-Model-Across-the-Planned-Folds">¶</a></h2><p><a href="https://marmurar.github.io/jano/api.html#jano.runner.WalkForwardRunner"><code>WalkForwardRunner</code></a> owns the fit/predict/metric loop. The splitter still owns temporal geometry.</p>
-<p>This keeps the experiment explicit: same model, same features, same metric, multiple temporal deployment dates.</p>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="6.-Ejecutar-el-mismo-modelo-sobre-los-folds-planificados">6. Ejecutar el mismo modelo sobre los folds planificados<a class="anchor-link" href="#6.-Ejecutar-el-mismo-modelo-sobre-los-folds-planificados">¶</a></h2><p><a href="https://marmurar.github.io/jano/api.html#jano.runner.WalkForwardRunner"><code>WalkForwardRunner</code></a> controla el bucle de fit/predict/métrica. El splitter sigue siendo dueño de la geometría temporal.</p>
+<p>Esto mantiene el experimento explícito: mismo modelo, mismas features, misma métrica, múltiples fechas de despliegue temporal.</p>
 </div>
 </div>
 </div>
@@ -8699,6 +8847,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [9]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">evaluation</span> <span class="o">=</span> <span class="n">EvaluationProfile</span><span class="p">(</span>
@@ -8720,10 +8869,10 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <span class="n">display</span><span class="p">(</span><span class="n">fold_metrics</span><span class="p">)</span>
 <span class="n">display</span><span class="p">(</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">([</span><span class="n">run</span><span class="o">.</span><span class="n">summary</span><span class="p">()]))</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Interpretation:"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"- Each row is one simulated deployment date."</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"- The metric trajectory shows whether the same model strategy behaves consistently across time."</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"- This is information a single random split or a single holdout cannot expose."</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Interpretación:"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"- Cada fila es una fecha de despliegue simulada."</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"- La trayectoria de métricas muestra si la misma estrategia del modelo se comporta de forma consistente en el tiempo."</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"- Esta es información que una sola partición aleatoria o un solo holdout no puede mostrar."</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -8734,15 +8883,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child">
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Interpretation:
-- Each row is one simulated deployment date.
-- The metric trajectory shows whether the same model strategy behaves consistently across time.
-- This is information a single random split or a single holdout cannot expose.
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <div>
 <style scoped="">
@@ -8894,6 +9035,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 </div>
 </div>
 <div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <div>
 <style scoped="">
@@ -8948,6 +9090,16 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 </div>
 </div>
 </div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>Interpretación:
+- Cada fila es una fecha de despliegue simulada.
+- La trayectoria de métricas muestra si la misma estrategia del modelo se comporta de forma consistente en el tiempo.
+- Esta es información que una sola partición aleatoria o un solo holdout no puede mostrar.
+</pre>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -8955,8 +9107,9 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="7.-Compare-Retraining-Policies">7. Compare Retraining Policies<a class="anchor-link" href="#7.-Compare-Retraining-Policies">¶</a></h2><p>The same fold geometry can answer a second operational question: do we need to retrain every fold, or is a cheaper cadence enough for this model and dataset?</p>
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="7.-Comparar-pol%C3%ADticas-de-reentrenamiento">7. Comparar políticas de reentrenamiento<a class="anchor-link" href="#7.-Comparar-pol%C3%ADticas-de-reentrenamiento">¶</a></h2><p>La misma geometría de folds puede responder una segunda pregunta operativa: ¿necesitamos reentrenar en cada fold, o alcanza con una cadencia más barata para este modelo y este dataset?</p>
 </div>
 </div>
 </div>
@@ -8965,6 +9118,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [10]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">policy_runs</span> <span class="o">=</span> <span class="p">{}</span>
@@ -8985,12 +9139,16 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <span class="n">comparison</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
     <span class="p">{</span><span class="n">label</span><span class="p">:</span> <span class="n">result</span><span class="o">.</span><span class="n">summary</span><span class="p">()</span> <span class="k">for</span> <span class="n">label</span><span class="p">,</span> <span class="n">result</span> <span class="ow">in</span> <span class="n">policy_runs</span><span class="o">.</span><span class="n">items</span><span class="p">()}</span>
 <span class="p">)</span><span class="o">.</span><span class="n">T</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">names</span><span class="o">=</span><span class="s2">"policy"</span><span class="p">)</span>
-<span class="n">display</span><span class="p">(</span><span class="n">comparison</span><span class="p">[[</span><span class="s2">"policy"</span><span class="p">,</span> <span class="s2">"folds"</span><span class="p">,</span> <span class="s2">"retrain_events"</span><span class="p">,</span> <span class="s2">"rmspe_mean"</span><span class="p">,</span> <span class="s2">"rmspe_best"</span><span class="p">,</span> <span class="s2">"rmspe_best_fold"</span><span class="p">,</span> <span class="s2">"mae_mean"</span><span class="p">]])</span>
+<span class="n">display</span><span class="p">(</span>
+    <span class="n">comparison</span><span class="p">[[</span><span class="s2">"policy"</span><span class="p">,</span> <span class="s2">"folds"</span><span class="p">,</span> <span class="s2">"retrain_events"</span><span class="p">,</span> <span class="s2">"rmspe_mean"</span><span class="p">,</span> <span class="s2">"rmspe_best"</span><span class="p">,</span> <span class="s2">"rmspe_best_fold"</span><span class="p">,</span> <span class="s2">"mae_mean"</span><span class="p">]]</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+        <span class="p">{</span><span class="s2">"always"</span><span class="p">:</span> <span class="s2">"siempre"</span><span class="p">,</span> <span class="s2">"never"</span><span class="p">:</span> <span class="s2">"nunca"</span><span class="p">,</span> <span class="s2">"periodic_2"</span><span class="p">:</span> <span class="s2">"periódico_2"</span><span class="p">}</span>
+    <span class="p">)</span>
+<span class="p">)</span>
 
 <span class="n">best_policy</span> <span class="o">=</span> <span class="n">comparison</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s2">"rmspe_mean"</span><span class="p">)</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Interpretation:"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"- Best mean RMSPE in this run: </span><span class="si">{</span><span class="n">best_policy</span><span class="p">[</span><span class="s1">'policy'</span><span class="p">]</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">best_policy</span><span class="p">[</span><span class="s1">'rmspe_mean'</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">)."</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"- The important point is not that one policy always wins; Jano makes the policy comparison explicit and reproducible."</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Interpretación:"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">"- El mejor RMSPE medio en esta corrida fue: </span><span class="si">{</span><span class="n">best_policy</span><span class="p">[</span><span class="s1">'policy'</span><span class="p">]</span><span class="si">}</span><span class="s2"> (</span><span class="si">{</span><span class="n">best_policy</span><span class="p">[</span><span class="s1">'rmspe_mean'</span><span class="p">]</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">)."</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"- El punto importante no es que una política gane siempre; Jano hace explícita y reproducible la comparación de políticas."</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -9001,14 +9159,15 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child">
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Interpretation:
-- Best mean RMSPE in this run: never (0.1230).
-- The important point is not that one policy always wins; Jano makes the policy comparison explicit and reproducible.
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="application/vnd.jupyter.stderr" tabindex="0">
+<pre>/var/folders/0s/p5lt9bzd49q0f0z226dpx1fc0000gn/T/ipykernel_18493/2973629911.py:20: FutureWarning: Downcasting behavior in `replace` is deprecated and will be removed in a future version. To retain the old behavior, explicitly call `result.infer_objects(copy=False)`. To opt-in to the future behavior, set `pd.set_option('future.no_silent_downcasting', True)`
+  comparison[["policy", "folds", "retrain_events", "rmspe_mean", "rmspe_best", "rmspe_best_fold", "mae_mean"]].replace(
 </pre>
 </div>
 </div>
 <div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <div>
 <style scoped="">
@@ -9040,7 +9199,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <tbody>
 <tr>
 <th>0</th>
-<td>always</td>
+<td>siempre</td>
 <td>8</td>
 <td>8</td>
 <td>0.130788</td>
@@ -9050,7 +9209,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 </tr>
 <tr>
 <th>1</th>
-<td>never</td>
+<td>nunca</td>
 <td>8</td>
 <td>1</td>
 <td>0.123012</td>
@@ -9060,7 +9219,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 </tr>
 <tr>
 <th>2</th>
-<td>periodic_2</td>
+<td>periódico_2</td>
 <td>8</td>
 <td>4</td>
 <td>0.145853</td>
@@ -9073,6 +9232,15 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 </div>
 </div>
 </div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>Interpretación:
+- El mejor RMSPE medio en esta corrida fue: never (0.1230).
+- El punto importante no es que una política gane siempre; Jano hace explícita y reproducible la comparación de políticas.
+</pre>
+</div>
+</div>
 </div>
 </div>
 </div><div class="jp-Cell jp-CodeCell jp-Notebook-cell" id="cell-id=32665110">
@@ -9080,6 +9248,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
 <div class="jp-InputArea jp-Cell-inputArea">
+<div class="jp-InputPrompt jp-InputArea-prompt">In [11]:</div>
 <div class="jp-CodeMirrorEditor jp-Editor jp-InputArea-editor" data-type="inline">
 <div class="cm-editor cm-s-jupyter">
 <div class="highlight hl-ipython3"><pre><span></span><span class="n">trajectory</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
@@ -9090,9 +9259,9 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <span class="n">rmspe_pivot</span> <span class="o">=</span> <span class="n">rmspe_trajectory</span><span class="o">.</span><span class="n">pivot</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="s2">"fold"</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="s2">"policy"</span><span class="p">,</span> <span class="n">values</span><span class="o">=</span><span class="s2">"value"</span><span class="p">)</span>
 <span class="n">display</span><span class="p">(</span><span class="n">rmspe_pivot</span><span class="p">)</span>
 
-<span class="nb">print</span><span class="p">(</span><span class="s2">"Interpretation:"</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"- This table is plot-ready data: one fold per row, one retraining policy per column."</span><span class="p">)</span>
-<span class="nb">print</span><span class="p">(</span><span class="s2">"- Downstream tools can render it as a line chart, dashboard card or report without Jano owning presentation style."</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"Interpretación:"</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"- Esta tabla ya está lista para graficar: un pliegue por fila, una política de reentrenamiento por columna."</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">"- Herramientas posteriores pueden renderizarla como línea temporal, tarjeta de tablero o reporte sin que Jano imponga el estilo visual."</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
@@ -9103,14 +9272,7 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 </div>
 <div class="jp-OutputArea jp-Cell-outputArea">
 <div class="jp-OutputArea-child">
-<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
-<pre>Interpretation:
-- This table is plot-ready data: one fold per row, one retraining policy per column.
-- Downstream tools can render it as a line chart, dashboard card or report without Jano owning presentation style.
-</pre>
-</div>
-</div>
-<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
 <div class="jp-RenderedHTMLCommon jp-RenderedHTML jp-OutputArea-output" data-mime-type="text/html" tabindex="0">
 <div>
 <style scoped="">
@@ -9195,6 +9357,15 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 </div>
 </div>
 </div>
+<div class="jp-OutputArea-child">
+<div class="jp-OutputPrompt jp-OutputArea-prompt"></div>
+<div class="jp-RenderedText jp-OutputArea-output" data-mime-type="text/plain" tabindex="0">
+<pre>Interpretación:
+- Esta tabla ya está lista para graficar: un pliegue por fila, una política de reentrenamiento por columna.
+- Herramientas posteriores pueden renderizarla como línea temporal, tarjeta de tablero o reporte sin que Jano imponga el estilo visual.
+</pre>
+</div>
+</div>
 </div>
 </div>
 </div>
@@ -9202,18 +9373,19 @@ rows=89,100 stores=180 date_range=2014-01-01 -&gt; 2015-07-31
 <div class="jp-Cell-inputWrapper" tabindex="0">
 <div class="jp-Collapser jp-InputCollapser jp-Cell-inputCollapser">
 </div>
-<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
-<h2 id="8.-What-Jano-Adds-Here">8. What Jano Adds Here<a class="anchor-link" href="#8.-What-Jano-Adds-Here">¶</a></h2><div class="result-box">
-Jano does not claim that random split is always invalid. It makes the temporal assumption testable. If random, holdout and walk-forward behavior are consistent, that is useful evidence. If they diverge, Jano shows when, where and under which retraining policy.
+<div class="jp-InputArea jp-Cell-inputArea"><div class="jp-InputPrompt jp-InputArea-prompt">
+</div><div class="jp-RenderedHTMLCommon jp-RenderedMarkdown jp-MarkdownOutput" data-mime-type="text/markdown">
+<h2 id="8.-Qu%C3%A9-aporta-Jano-aqu%C3%AD">8. Qué aporta Jano aquí<a class="anchor-link" href="#8.-Qu%C3%A9-aporta-Jano-aqu%C3%AD">¶</a></h2><div class="result-box">
+Jano no afirma que la partición aleatoria sea siempre inválida. Hace testeable la hipótesis temporal. Si el comportamiento de la partición aleatoria, el holdout y el walk-forward es consistente, eso también es evidencia útil. Si divergen, Jano muestra cuándo, dónde y bajo qué política de reentrenamiento.
 </div>
-<p>In this example, the important artifacts are:</p>
+<p>En este ejemplo, los artefactos importantes son:</p>
 <ul>
-<li><code>plan_df</code>: the auditable temporal geometry before training;</li>
-<li><code>fold_metrics</code>: fold-by-fold behavior under one policy;</li>
-<li><code>comparison</code>: aggregate comparison of retraining policies;</li>
-<li><code>trajectory</code>: plot-ready metric data for custom reports, dashboards or agents.</li>
+<li><code>plan_df</code>: la geometría temporal auditable antes de entrenar;</li>
+<li><code>fold_metrics</code>: comportamiento fold por fold bajo una política;</li>
+<li><code>comparison</code>: comparación agregada de políticas de reentrenamiento;</li>
+<li><code>trajectory</code>: datos de métricas listos para graficar para reportes, dashboards o agentes.</li>
 </ul>
-<p>This is the core paper/landing-page argument: temporal validation should be an empirical simulation, not a hidden assumption inside a single split.</p>
+<p>Este es el argumento central para paper/landing: la validación temporal debería ser una simulación empírica, no una suposición oculta dentro de una sola partición.</p>
 </div>
 </div>
 </div>

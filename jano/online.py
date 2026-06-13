@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from .evaluation import EvaluationProfile
+from ._serialization import _frame_records, _json_ready
 from .policies import MetricFn, MetricSpec, _clone_model, _prepare_supervised_frame
 from .types import ColumnRef, SizeSpec, TemporalSemanticsSpec
 
@@ -702,19 +703,3 @@ def _normalize_retrain_signal(signal: object) -> dict[str, object]:
         "retrain_trigger must return None, bool, str or a dictionary with retrain/checkpoint metadata"
     )
 
-
-def _frame_records(frame: pd.DataFrame) -> list[dict[str, object]]:
-    return [
-        {str(key): _json_ready(value) for key, value in row.items()}
-        for row in frame.to_dict(orient="records")
-    ]
-
-
-def _json_ready(value):
-    if isinstance(value, pd.Timestamp):
-        return value.isoformat()
-    if isinstance(value, pd.Timedelta):
-        return str(value)
-    if isinstance(value, np.generic):
-        return value.item()
-    return value

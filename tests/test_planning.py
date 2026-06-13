@@ -230,7 +230,7 @@ def test_planning_simulation_and_splitter_cover_remaining_helpers(tmp_path, monk
     assert simulation.plan(numpy_frame).total_folds == 2
     assert simulation.run(numpy_frame).total_folds == 2
     assert simulation._timeline_column_name(frame[["timestamp", "feature", "target"]]) == "timestamp"
-    assert simulation._select_input(frame).equals(frame)
+    assert simulation.select_input(frame).equals(frame)
 
     with pytest.raises(ValueError, match="did not produce any valid folds"):
         TemporalSimulation(

@@ -152,7 +152,7 @@ class TemporalSimulation:
         Returns:
             A ``SimulationResult`` containing the materialized folds and their summary.
         """
-        selected = self._select_input(X)
+        selected = self.select_input(X)
         splits = list(self.splitter.iter_splits(selected))
         if self.max_folds is not None:
             splits = splits[: self.max_folds]
@@ -190,7 +190,7 @@ class TemporalSimulation:
         Returns:
             A ``SimulationPlan`` with fold boundaries and row counts.
         """
-        selected = self._select_input(X)
+        selected = self.select_input(X)
         plan = self.splitter.plan(selected)
         if self.max_folds is not None:
             plan = plan.select_until_iteration(self.max_folds - 1)
@@ -198,7 +198,8 @@ class TemporalSimulation:
             raise ValueError("The current configuration did not produce any valid folds")
         return SimulationPlan(partition_plan=plan, title=title or "Jano simulation summary")
 
-    def _select_input(self, X):
+    def select_input(self, X):
+        """Return the simulation input filtered to the configured temporal window."""
         engine = self.splitter._build_engine(X)
         if self.start_at is None and self.end_at is None:
             return X
@@ -215,6 +216,10 @@ class TemporalSimulation:
         if filtered.empty:
             raise ValueError("The configured simulation window does not contain any rows")
         return filtered
+
+    def _select_input(self, X):
+        """Backward-compatible alias for :meth:`select_input`."""
+        return self.select_input(X)
 
     def _timeline_column_name(self, frame: pd.DataFrame):
         column = self.temporal_semantics.timeline_col
