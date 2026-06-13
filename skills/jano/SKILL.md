@@ -24,8 +24,13 @@ Use Jano when:
 - Start with `WalkForwardPolicy` for production-like simulations.
 - Use `policy.plan(frame)` before materializing folds when inspecting geometry.
 - Use `WalkForwardRunner` when fitting and predicting over folds.
+- Use `TemporalSystemRunner` when the user has a system that updates state and
+  then evaluates the current state on the next test window, for example RAG
+  refreshes, prompt updates or custom fine-tuning jobs.
 - Use `TemporalBacktestSplitter` for manual control.
 - Use `report_data()`, `metric_trajectory()` and `fold_summary()` for agent-readable outputs.
+- Use `evaluation_details()` and `update_events()` when working with
+  `TemporalSystemRunner`.
 - Use `OnlineTemporalRunner(retrain_trigger=...)` when the user wants online
   event or micro-batch checkpoints for retraining inflection points.
 - Use MCP tools `inspect_local_dataset`, `suggest_temporal_partition_policy` and
@@ -40,6 +45,9 @@ Use Jano when:
 - Use `estimate_prediction_band_by_fold` when the user wants a built-in temporal
   scenario for prediction bands, but keep the band computation in a user-owned
   `band_estimator`.
+- Keep `TemporalSystemRunner` in Python. MCP is for dataset inspection,
+  planning and baseline studies; it does not transport arbitrary
+  `UpdateableSystem` implementations.
 
 ## Metric Contract
 

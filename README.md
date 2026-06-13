@@ -238,6 +238,56 @@ print(run.retrain_events())
 report_data = run.report_data(include_predictions=False)
 ```
 
+## Example: run a temporal system with update policies
+
+Not every temporal workflow updates itself through `fit()` and `predict()`.
+For RAG refreshes, prompt-set updates or fine-tuning jobs, the more natural
+contract is "update the current system state, then evaluate that state on the
+next temporal window".
+
+```python
+import numpy as np
+import pandas as pd
+
+from jano import (
+    PeriodicRetrain,
+    SystemEvaluationResult,
+    SystemUpdateResult,
+    TemporalPartitionSpec,
+    TemporalSystemRunner,
+    WalkForwardPolicy,
+)
+
+class MeanTargetSystem:
+    def update(self, train_frame: pd.DataFrame):
+        mean_target = float(train_frame["target"].mean())
+        return SystemUpdateResult(
+            state=mean_target,
+            metadata={"train_target_mean": mean_target},
+        )
+
+    def evaluate(self, state, test_frame: pd.DataFrame):
+        predictions = np.repeat(float(state), len(test_frame))
+        mae = float(np.mean(np.abs(test_frame["target"] - predictions)))
+        return SystemEvaluationResult(
+            metrics={"mae": mae},
+            metadata={"prediction_mean": float(state)},
+        )
+
+runner = TemporalSystemRunner(
+    system=MeanTargetSystem(),
+    update_policy=PeriodicRetrain(2),
+    metric_directions={"mae": "min"},
+    primary_metric="mae",
+)
+
+run = runner.run(policy, frame)
+
+print(run.to_frame().head())
+print(run.metric_trajectory().head())
+print(run.update_events())
+```
+
 ## Example: evaluate observation-driven online updates
 
 Jano always operates on temporal processes, but the clock does not have to be a
@@ -725,6 +775,12 @@ Example MCP client configuration:
 ```
 
 The MCP layer is intentionally opinionated: it exposes dataset inspection, policy suggestions, plan validation, walk-forward simulation, baseline-model execution and baseline temporal studies first, while the full Python library remains available when you need custom composition. The fastest first call for an agent is usually `inspect_and_recommend_local_dataset`, which bundles inspection and a conservative starting policy in one response.
+
+The MCP server does not attempt to transport arbitrary Python systems or
+callables. If you need `TemporalSystemRunner`, `WalkForwardRunner` with custom
+metrics, or project-owned update logic such as reindexing a RAG system or
+refreshing prompt sets, use the Python API directly and keep MCP for dataset
+inspection, planning and baseline studies.
 
 This is meant for MCP-aware coding assistants such as Claude Code, Claude Desktop, Cursor, Codex runtimes with MCP support, and other local agent environments. The server runs locally and reads only the file paths you provide to its tools; Jano does not upload datasets anywhere by itself.
 

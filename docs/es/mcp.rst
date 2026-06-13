@@ -182,6 +182,13 @@ productivas con métricas deberían usar ``WalkForwardRunner`` directamente desd
 Python. Así la construcción del modelo, feature engineering y métricas custom
 quedan en código del usuario.
 
+La misma frontera aplica a ``TemporalSystemRunner``. MCP sirve muy bien para
+inspección de datasets, planning de policies y estudios baseline, pero no para
+transportar objetos Python arbitrarios que implementan ``UpdateableSystem``. Si
+el proyecto necesita simular un refresh de RAG, una actualización de prompts o
+un job de fine-tuning custom, esa lógica debe quedar en Python y MCP puede
+quedar como capa de inspect -> suggest -> validate -> plan alrededor de eso.
+
 Ejemplos de estudios temporales
 -------------------------------
 

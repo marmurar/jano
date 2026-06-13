@@ -36,12 +36,17 @@ from jano import (
     RollingTrainHistoryPolicy,
     RollingTrainHistoryResult,
     SimulationPlan,
+    SystemEvaluationResult,
+    SystemRunResult,
+    SystemUpdateResult,
     TemporalBacktestSplitter,
     TemporalPartitionSpec,
+    TemporalSystemRunner,
     TemporalSemanticsSpec,
     TemporalSimulation,
     TrainHistoryPolicy,
     TrainGrowthPolicy,
+    UpdateableSystem,
     WalkForwardRunResult,
     WalkForwardRunner,
     WalkForwardPolicy,
@@ -67,3 +72,11 @@ def test_legacy_import_surface_matches_public_splitter() -> None:
 
 def test_legacy_describe_import_surface_matches_public_summary() -> None:
     assert LegacySimulationSummary is SimulationSummary
+
+
+def test_system_runner_surface_is_exported() -> None:
+    assert TemporalSystemRunner.__name__ == "TemporalSystemRunner"
+    assert SystemRunResult.__name__ == "SystemRunResult"
+    assert SystemUpdateResult.__name__ == "SystemUpdateResult"
+    assert SystemEvaluationResult.__name__ == "SystemEvaluationResult"
+    assert UpdateableSystem.__name__ == "UpdateableSystem"

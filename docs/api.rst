@@ -64,6 +64,31 @@ Main workflow
    :undoc-members:
    :no-index:
 
+.. autoclass:: jano.system_runner.TemporalSystemRunner
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.system_runner.SystemRunResult
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.systems.SystemUpdateResult
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.systems.SystemEvaluationResult
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.systems.UpdateableSystem
+   :members:
+   :undoc-members:
+   :no-index:
+
 .. autoclass:: jano.online.OnlineTemporalRunner
    :members:
    :undoc-members:

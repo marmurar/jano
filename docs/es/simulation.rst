@@ -251,6 +251,79 @@ inicial, sin meter lógica de drift dentro del splitter.
 Cuando ``DriftBasedRetrain`` se crea sin una métrica explícita, usa el
 ``primary_metric`` del perfil de evaluación.
 
+Ejecutar sistemas temporales con policies de actualización
+----------------------------------------------------------
+
+No todo sistema temporal se actualiza con ``fit()`` y ``predict()``. Un pipeline
+RAG, una configuración de prompts o un job de fine-tuning suelen comportarse más
+como "actualizar estado y luego evaluar ese estado sobre la siguiente ventana".
+
+``TemporalSystemRunner`` cubre ese caso sin cambiar el core temporal de Jano.
+Mantiene la misma geometría de folds, pero reemplaza el contrato del estimador por
+el protocolo ``UpdateableSystem``:
+
+- ``update(train_frame)`` refresca el estado del sistema para la ventana de train actual
+- ``evaluate(state, test_frame)`` devuelve métricas definidas por el usuario sobre la siguiente ventana de test
+
+.. code-block:: python
+
+   import numpy as np
+   import pandas as pd
+
+   from jano import (
+       PeriodicRetrain,
+       SystemEvaluationResult,
+       SystemUpdateResult,
+       TemporalPartitionSpec,
+       TemporalSystemRunner,
+       WalkForwardPolicy,
+   )
+
+   class MeanTargetSystem:
+       def update(self, train_frame: pd.DataFrame):
+           mean_target = float(train_frame["target"].mean())
+           return SystemUpdateResult(
+               state=mean_target,
+               metadata={"train_target_mean": mean_target},
+           )
+
+       def evaluate(self, state, test_frame: pd.DataFrame):
+           predictions = np.repeat(float(state), len(test_frame))
+           mae = float(np.mean(np.abs(test_frame["target"] - predictions)))
+           return SystemEvaluationResult(
+               metrics={"mae": mae},
+               metadata={"prediction_mean": float(state)},
+           )
+
+   policy = WalkForwardPolicy(
+       time_col="timestamp",
+       partition=TemporalPartitionSpec(
+           layout="train_test",
+           train_size="30D",
+           test_size="7D",
+       ),
+       step="7D",
+       strategy="rolling",
+   )
+
+   runner = TemporalSystemRunner(
+       system=MeanTargetSystem(),
+       update_policy=PeriodicRetrain(2),
+       metric_directions={"mae": "min"},
+       primary_metric="mae",
+   )
+
+   run = runner.run(policy, frame)
+   print(run.to_frame().head())
+   print(run.metric_trajectory().head())
+   print(run.update_events())
+
+La distinción importante es conceptual más que técnica: el paso de actualización
+puede significar reentrenar un modelo, reconstruir un índice de retrieval,
+refrescar un set de prompts o relanzar un fine-tuning. Jano sigue siendo dueño del
+particionado temporal y de la simulación de policies; el objeto sistema es dueño
+de la lógica operativa de actualización.
+
 Scenarios built-in
 ------------------
 

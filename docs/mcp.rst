@@ -182,6 +182,13 @@ MCP JSON cannot transport Python callables, so metric-evaluated production runs
 should use the Python ``WalkForwardRunner`` directly. That keeps model
 construction, feature engineering and custom metrics in user code.
 
+The same boundary applies to ``TemporalSystemRunner``. MCP is a good fit for
+dataset inspection, policy planning and baseline temporal studies, but not for
+shipping arbitrary Python objects that implement ``UpdateableSystem``. If the
+project needs to simulate a RAG refresh, a prompt-set update or a custom
+fine-tuning job, keep that logic in Python and use MCP only for the
+inspect -> suggest -> validate -> plan workflow around it.
+
 Temporal study examples
 -----------------------
 

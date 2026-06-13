@@ -34,6 +34,11 @@ row counts, iteration indices or exclude specific windows.
 Use `WalkForwardRunner` when the user wants Jano to fit, predict and measure a model
 over temporal folds.
 
+Use `TemporalSystemRunner` when the user wants Jano to simulate update policies
+over a system that is better described as `update(train_frame) -> state` and
+`evaluate(state, test_frame) -> metrics`, such as RAG refreshes, prompt-set
+updates or custom fine-tuning jobs.
+
 Use `TrainHistoryPolicy` when the question is: does more training history improve
 performance on the same fixed test window?
 
@@ -139,6 +144,29 @@ retrain_events = run.retrain_events()
 report_data = run.report_data()
 ```
 
+### Execute a Temporal System Without Forcing `predict()`
+
+Use this when the user owns a system that updates state and then evaluates that
+state on the next test window.
+
+```python
+from jano import PeriodicRetrain, TemporalSystemRunner
+
+runner = TemporalSystemRunner(
+    system=my_system,
+    update_policy=PeriodicRetrain(2),
+    metric_directions={"groundedness": "max", "cost_usd": "min"},
+    primary_metric="groundedness",
+)
+
+run = runner.run(policy, frame)
+
+records = run.to_frame()
+metrics = run.metric_trajectory()
+update_events = run.update_events()
+details = run.evaluation_details()
+```
+
 ### Estimate Prediction Bands With User-Owned Uncertainty Logic
 
 Use this when the temporal fold geometry should be standardized by Jano, but the
@@ -223,8 +251,9 @@ For unfamiliar datasets, inspect and validate before running models:
 Use `run_walk_forward_baseline_model` for quick sanity checks over a dataset before
 writing custom model code. It supports `model="mean"` for numeric regression targets
 and `model="majority_class"` for classification targets. For production estimators,
-write Python with `WalkForwardRunner` so the project controls feature engineering,
-model construction and custom metrics explicitly.
+write Python with `WalkForwardRunner` or `TemporalSystemRunner` so the project
+controls feature engineering, model construction, update logic and custom
+metrics explicitly.
 
 Use the baseline study tools when the agent needs fast evidence about temporal
 hypotheses before writing custom model code. These MCP tools are for operational
