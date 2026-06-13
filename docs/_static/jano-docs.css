@@ -208,6 +208,8 @@ div.body span.caption-text {
 
 div.sphinxsidebar {
   background: transparent;
+  box-sizing: border-box;
+  padding-right: 1.15rem;
   padding-top: 1rem;
 }
 
@@ -1122,6 +1124,10 @@ hr.docutils {
 }
 
 @media (max-width: 900px) {
+  div.sphinxsidebar {
+    padding-right: 0;
+  }
+
   div.body {
     padding: 1.7rem 1.3rem;
     border-radius: 20px;
