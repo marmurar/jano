@@ -31,7 +31,7 @@ productiva, por favor citá el proyecto con este BibTeX:
      author       = {Muraro, Marcos Manuel},
      title        = {Jano: Temporal Simulation and Backtesting Toolkit for Time-Dependent Machine Learning Systems},
      year         = {2026},
-     version      = {0.4.1},
+     version      = {0.4.2},
      url          = {https://github.com/marmurar/jano},
      repository   = {https://github.com/marmurar/jano},
      doi          = {10.5281/zenodo.20301006},
