@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import Any, Dict, Iterator, List, Mapping, Sequence
 
 import numpy as np
@@ -223,7 +222,7 @@ class SimulationPlan:
 
     Attributes:
         partition_plan: Lower-level partition plan with fold boundaries and counts.
-        title: Report title used when the plan is described or written as HTML.
+        title: Report title used when the plan is described.
     """
 
     partition_plan: PartitionPlan
@@ -288,7 +287,3 @@ class SimulationPlan:
     def describe(self) -> SimulationSummary:
         """Materialize the plan and return its structured summary."""
         return self.materialize().summary
-
-    def write_html(self, path: str | Path) -> Path:
-        """Materialize the plan and write its rendered HTML report."""
-        return self.materialize().write_html(path)

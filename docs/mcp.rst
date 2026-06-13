@@ -102,7 +102,7 @@ Available MCP tools
 
 ``run_walk_forward_simulation``
   Materialize a walk-forward simulation and return a compact summary, selected
-  partition-engine metadata and rendered HTML.
+  partition-engine metadata and plot-ready chart data.
 
 ``run_walk_forward_baseline_model``
   Execute a built-in baseline model over the walk-forward folds and return

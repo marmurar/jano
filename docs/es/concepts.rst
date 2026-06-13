@@ -136,7 +136,7 @@ Jano expone dos vistas complementarias:
 - ``WalkForwardRunner.run()`` ejecuta un modelo sobre el workflow temporal y devuelve métricas por fold, eventos de retraining y predicciones
 - ``split()`` entrega tuplas de índices, útil para integración liviana
 - ``iter_splits()`` entrega objetos ``TimeSplit`` con metadata y helpers
-- ``describe_simulation()`` entrega ``SimulationSummary``, HTML o ``SimulationChartData`` para plots custom
+- ``describe_simulation()`` entrega ``SimulationSummary`` o ``SimulationChartData`` para plots custom
 
 Motor adaptativo de particionado
 --------------------------------

@@ -114,7 +114,6 @@ class WalkForwardPolicy:
     def run(
         self,
         X,
-        output_path: str | None = None,
         title: str | None = None,
     ) -> SimulationResult:
         """Materialize the walk-forward simulation.
@@ -122,14 +121,13 @@ class WalkForwardPolicy:
         Args:
             X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
                 ``polars.DataFrame``.
-            output_path: Optional filesystem path for the HTML report.
             title: Optional title used in reports.
 
         Returns:
             A ``SimulationResult`` with materialized folds, tabular summary, chart
-            data and rendered HTML.
+            data and engine metadata.
         """
-        return self._simulation.run(X, output_path=output_path, title=title)
+        return self._simulation.run(X, title=title)
 
     def as_splitter(self) -> TemporalBacktestSplitter:
         """Expose the underlying splitter for manual control."""

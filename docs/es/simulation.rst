@@ -1,10 +1,9 @@
 Simulación y reporting
 ======================
 
-Jano puede describir una simulación temporal sobre un dataset concreto y exponerla de tres formas complementarias:
+Jano puede describir una simulación temporal sobre un dataset concreto y exponerla de dos formas complementarias:
 
 - un ``SimulationSummary`` estructurado
-- un reporte HTML standalone con timeline
 - ``SimulationChartData`` listo para graficar en tus propias visualizaciones Python
 
 El entry point principal es ``describe_simulation()`` sobre ``TemporalBacktestSplitter``.
@@ -64,7 +63,6 @@ Ejemplo
 
    print(result.total_folds)
    print(result.to_frame().head())
-   print(result.html[:120])
    print(result.chart_data.segment_stats)
 
 Si querés inspeccionar la simulación antes de materializar folds, usá ``plan()``:
@@ -705,39 +703,5 @@ Algunos pipelines necesitan una capa adicional más allá del fold: distintos gr
    recent_context = history["__default__"]
    lag_context = history["lag_features"]
 
-Preview simple de HTML
-----------------------
-
-Debajo hay un mock compacto del tipo de timeline que muestra el reporte HTML generado.
-
-.. raw:: html
-
-   <div class="simulation-preview">
-     <div class="preview-top">
-       <div class="preview-kicker">Simulation report</div>
-       <div class="preview-title">Walk-forward simulation</div>
-       <div class="preview-meta">
-         <span class="preview-chip">Rows: 365</span>
-         <span class="preview-chip">Folds: 6</span>
-         <span class="preview-chip">Strategy: rolling</span>
-       </div>
-     </div>
-     <div class="preview-body">
-       <div class="preview-row">
-         <div class="preview-label">Fold 0</div>
-         <div class="preview-track">
-           <div class="preview-segment train" style="left: 4%; width: 44%;"></div>
-           <div class="preview-segment validation" style="left: 53%; width: 14%;"></div>
-           <div class="preview-segment test" style="left: 72%; width: 18%;"></div>
-         </div>
-       </div>
-       <div class="preview-row">
-         <div class="preview-label">Fold 1</div>
-         <div class="preview-track">
-           <div class="preview-segment train" style="left: 9%; width: 44%;"></div>
-           <div class="preview-segment validation" style="left: 58%; width: 14%;"></div>
-           <div class="preview-segment test" style="left: 77%; width: 18%;"></div>
-         </div>
-       </div>
-     </div>
-   </div>
+Los resultados quedan expuestos como estructura tabular y como ``chart_data`` listo para
+graficar desde notebooks, dashboards o cualquier capa de visualización externa.

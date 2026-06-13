@@ -184,7 +184,7 @@ def test_planned_fold_properties_are_exposed() -> None:
     assert fold.is_partial is True
     assert fold.to_dict()["test_rows"] == 1
 
-def test_planning_simulation_and_splitter_cover_remaining_helpers(tmp_path, monkeypatch) -> None:
+def test_planning_simulation_and_splitter_cover_remaining_helpers(monkeypatch) -> None:
     frame = build_frame(size=12)
     semantics = TemporalSemanticsSpec(
         timeline_col="timestamp",
@@ -210,11 +210,8 @@ def test_planning_simulation_and_splitter_cover_remaining_helpers(tmp_path, monk
     sim_plan = SimulationPlan(plan, "Coverage")
     materialized = sim_plan.materialize()
     assert sim_plan.describe().title == "Coverage"
-    html_path = tmp_path / "plan.html"
-    assert sim_plan.write_html(html_path) == html_path
     assert materialized.to_dict()["engine"]["engine"] == materialized.engine_metadata.engine
     assert list(materialized.iter_splits())
-    assert materialized.write_html(tmp_path / "result.html").exists()
 
     with pytest.raises(ValueError, match="greater than zero"):
         TemporalSimulation("timestamp", TemporalPartitionSpec(layout="train_test", train_size=4, test_size=2), 1, max_folds=0)
@@ -261,7 +258,6 @@ def test_planning_simulation_and_splitter_cover_remaining_helpers(tmp_path, monk
         )
     with pytest.raises(ValueError, match="output must be one of"):
         splitter.describe_simulation(frame, output="json")
-    assert isinstance(splitter.describe_simulation(frame, output="html"), str)
     assert splitter.describe_simulation(frame, output="chart_data").to_dict()
     assert TemporalBacktestSplitter._is_valid_segments({"train": np.array([0])}) is True
     assert TemporalBacktestSplitter._is_valid_segments({"train": np.array([])}) is False

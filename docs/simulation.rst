@@ -1,10 +1,9 @@
 Simulation reporting
 ====================
 
-Jano can describe a temporal simulation over a concrete dataset and expose it in three complementary ways:
+Jano can describe a temporal simulation over a concrete dataset and expose it in two complementary ways:
 
 - a structured ``SimulationSummary``,
-- a standalone HTML timeline report,
 - or plot-ready ``SimulationChartData`` that you can feed into your own Python visualizations.
 
 The entry point is ``describe_simulation()`` on ``TemporalBacktestSplitter``.
@@ -68,10 +67,8 @@ Example
    print(result.total_folds)
    print(result.to_frame().head())
 
-   html = result.html
    chart_data = result.chart_data
 
-   print(html[:120])
    print(chart_data.segment_stats)
 
 If you want to inspect the simulation before materializing folds, use ``plan()``:
@@ -731,51 +728,6 @@ may need different amounts of past data even when the supervised ``train`` segme
 This is useful when recent features only need a short context window while lagged or
 seasonal features need a much deeper historical slice for the same model.
 
-Simple HTML preview
--------------------
-
-Below is a compact mock of the kind of timeline the generated HTML report shows.
-
-.. raw:: html
-
-   <div class="simulation-preview">
-     <div class="preview-top">
-       <div class="preview-kicker">Simulation report</div>
-       <div class="preview-title">Walk-forward simulation</div>
-       <div class="preview-meta">
-         <span class="preview-chip">Rows: 365</span>
-         <span class="preview-chip">Folds: 6</span>
-         <span class="preview-chip">Strategy: rolling</span>
-       </div>
-     </div>
-     <div class="preview-body">
-       <div class="preview-row">
-         <div class="preview-label">Fold 0</div>
-         <div class="preview-track">
-           <span class="preview-segment train" style="left: 0%; width: 44%;"></span>
-           <span class="preview-segment validation" style="left: 48%; width: 12%;"></span>
-           <span class="preview-segment test" style="left: 64%; width: 16%;"></span>
-         </div>
-       </div>
-       <div class="preview-row">
-         <div class="preview-label">Fold 1</div>
-         <div class="preview-track">
-           <span class="preview-segment train" style="left: 8%; width: 44%;"></span>
-           <span class="preview-segment validation" style="left: 56%; width: 12%;"></span>
-           <span class="preview-segment test" style="left: 72%; width: 16%;"></span>
-         </div>
-       </div>
-       <div class="preview-row">
-         <div class="preview-label">Fold 2</div>
-         <div class="preview-track">
-           <span class="preview-segment train" style="left: 16%; width: 44%;"></span>
-           <span class="preview-segment validation" style="left: 64%; width: 12%;"></span>
-           <span class="preview-segment test" style="left: 80%; width: 14%;"></span>
-         </div>
-       </div>
-     </div>
-   </div>
-
 What it returns
 ---------------
 
@@ -786,36 +738,17 @@ By default, ``describe_simulation()`` returns a ``SimulationSummary`` object wit
 - fold-by-fold segment boundaries,
 - a tabular view through ``to_frame()``,
 - a serializable structure through ``to_dict()``,
-- plot-ready timeline metadata through ``chart_data``,
-- and an HTML report accessible through ``html`` or ``write_html()``.
+- plot-ready timeline metadata through ``chart_data``.
 
 You can also request a specific output directly:
 
 - ``output="summary"`` returns ``SimulationSummary``,
-- ``output="html"`` returns the rendered HTML string,
 - ``output="chart_data"`` returns ``SimulationChartData``.
-
-What the HTML shows
--------------------
-
-The generated report draws one line per fold over the full dataset timeline and now includes:
-
-- a richer summary header with dataset span, fold count, strategy and sizing mode,
-- segment profile cards with average, minimum and maximum row counts,
-- a clearer per-fold timeline with labels and row-count chips.
-
-Each segment is color-coded:
-
-- train in blue,
-- validation in orange,
-- test in green.
-
-This makes it easier to inspect how a proposed simulation will behave before plugging it into a model or evaluation pipeline.
 
 Using chart data directly
 -------------------------
 
-``SimulationChartData`` is designed for downstream plotting without reparsing HTML.
+``SimulationChartData`` is designed for downstream plotting without an embedded reporting layer.
 
 It includes:
 

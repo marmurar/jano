@@ -30,6 +30,7 @@ html_title = "Jano"
 html_short_title = "Jano"
 html_static_path = ["_static"]
 html_logo = "_static/jano_logo.png"
+html_favicon = "_static/jano_logo.png"
 html_css_files = ["jano-docs.css"]
 html_js_files = ["jano-theme.js"]
 html_theme_options = {

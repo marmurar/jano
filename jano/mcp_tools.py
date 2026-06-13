@@ -569,7 +569,7 @@ def run_walk_forward(
         preview_rows: Number of summary rows to include in the response.
 
     Returns:
-        JSON-ready dictionary with fold summary, chart data and rendered HTML.
+        JSON-ready dictionary with fold summary and chart data.
     """
 
     frame = load_dataset_frame(dataset_path, dataset_format=dataset_format)
@@ -598,13 +598,12 @@ def run_walk_forward(
         },
         "warnings": [],
         "recommendations": [
-            "Use the chart data or HTML for external reporting, not for the core simulation contract.",
+            "Use the chart data for external reporting, not for the core simulation contract.",
         ],
         "total_folds": int(result.total_folds),
         "engine": result.engine_metadata.to_dict(),
         "summary_preview": summary_frame.head(preview_rows).to_dict(orient="records"),
         "chart_data": result.chart_data.to_dict(),
-        "html": result.html,
     }
 
 

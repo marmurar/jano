@@ -165,25 +165,21 @@ class TemporalBacktestSplitter:
     def describe_simulation(
         self,
         X: pd.DataFrame,
-        output_path: str | Path | None = None,
         title: str | None = None,
         output: str = "summary",
-    ) -> SimulationSummary | SimulationChartData | str:
+    ) -> SimulationSummary | SimulationChartData:
         """Describe a simulation over a concrete dataset.
 
         Args:
             X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
                 ``polars.DataFrame``.
-            output_path: Optional filesystem path where the rendered HTML report should
-                be written.
             title: Optional title used in the returned report outputs.
             output: Output mode. Use ``"summary"`` for ``SimulationSummary``,
-                ``"html"`` for a rendered HTML string or ``"chart_data"`` for
-                plot-ready Python data.
+                or ``"chart_data"`` for plot-ready Python data.
 
         Returns:
-            A ``SimulationSummary``, raw HTML string or ``SimulationChartData``
-            depending on ``output``.
+            A ``SimulationSummary`` or ``SimulationChartData`` depending on
+            ``output``.
         """
         engine = self._build_engine(X)
         frame = engine.to_pandas()
@@ -198,16 +194,11 @@ class TemporalBacktestSplitter:
             title=title or "Jano simulation summary",
         )
 
-        if output_path is not None:
-            summary.write_html(output_path)
-
         if output == "summary":
             return summary
-        if output == "html":
-            return summary.html
         if output == "chart_data":
             return summary.chart_data
-        raise ValueError("output must be one of 'summary', 'html' or 'chart_data'")
+        raise ValueError("output must be one of 'summary' or 'chart_data'")
 
     def _build_engine(self, X) -> PartitionEngine:
         engine = PartitionEngine.from_input(X, prefer=self.engine)

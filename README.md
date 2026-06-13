@@ -99,7 +99,7 @@ It supports:
 - Optional gaps before validation or test segments.
 - Plain index output through `split()`.
 - Rich fold objects through `iter_splits()`.
-- Simulation summaries, HTML timeline reports and plot-ready chart data through `describe_simulation()`.
+- Simulation summaries and plot-ready chart data through `describe_simulation()`.
 - An adaptive partition engine that keeps pandas, NumPy and Polars inputs native for planning when it is safe, and falls back to pandas when stability is more important.
 
 ## Example: random splits vs temporal validation
@@ -705,11 +705,10 @@ lag_context = history["lag_features"]
 This is useful when recent features only need a short window while lagged or seasonal
 features need much deeper historical context for the same model.
 
-## Example: describe a simulation as HTML
+## Example: describe a simulation for tabular inspection or plotting
 
 ```python
 summary = splitter.describe_simulation(frame, title="Walk-forward simulation")
-html = splitter.describe_simulation(frame, output="html")
 chart_data = splitter.describe_simulation(frame, output="chart_data")
 
 print(summary.total_folds)
@@ -717,13 +716,10 @@ print(summary.to_frame().head())
 print(chart_data.segment_stats)
 ```
 
-That gives you three ways to consume the same simulation:
+That gives you two ways to consume the same simulation:
 
 - `summary` for tabular metadata and export helpers,
-- `html` for a standalone visual report,
 - `chart_data` for direct Python plotting without reparsing HTML.
-
-The generated report shows each fold across the dataset timeline, with richer summary cards, clearer segment labels and row counts per partition.
 
 ## MCP server
 

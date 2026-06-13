@@ -198,7 +198,7 @@ def test_mcp_plan_walk_forward_returns_preview_rows(tmp_path) -> None:
     assert "iteration" in result["columns"]
     assert len(result["preview"]) == 4
 
-def test_mcp_run_walk_forward_returns_summary_and_html(tmp_path) -> None:
+def test_mcp_run_walk_forward_returns_summary_and_chart_data(tmp_path) -> None:
     path = write_csv_frame(tmp_path, build_frame(size=18))
 
     result = run_walk_forward(
@@ -217,7 +217,6 @@ def test_mcp_run_walk_forward_returns_summary_and_html(tmp_path) -> None:
         "converted": False,
     }
     assert len(result["summary_preview"]) == 3
-    assert "<html" in result["html"].lower()
     assert "segment_stats" in result["chart_data"]
 
 def test_mcp_run_walk_forward_baseline_returns_runner_data(tmp_path) -> None:
@@ -587,7 +586,7 @@ def test_mcp_tools_cover_formats_and_temporal_semantics(tmp_path) -> None:
         preview_rows=1,
     )
     assert plan["total_folds"] == 1
-    assert "html" in run
+    assert "chart_data" in run
 
 def test_mcp_baseline_helpers_cover_errors_and_json_ready() -> None:
     with pytest.raises(ValueError, match="mean baseline requires"):

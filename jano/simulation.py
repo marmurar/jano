@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Iterator, List
 
 import pandas as pd
@@ -44,11 +43,6 @@ class SimulationResult:
         """Return plot-ready chart data for the simulation."""
         return self.summary.chart_data
 
-    @property
-    def html(self) -> str:
-        """Return the rendered HTML report."""
-        return self.summary.html
-
     def to_frame(self) -> pd.DataFrame:
         """Return fold-level simulation metadata as a pandas DataFrame."""
         return self.summary.to_frame()
@@ -59,10 +53,6 @@ class SimulationResult:
             **self.summary.to_dict(),
             "engine": self.engine_metadata.to_dict(),
         }
-
-    def write_html(self, path: str | Path) -> Path:
-        """Write the rendered HTML report to disk."""
-        return self.summary.write_html(path)
 
     def iter_splits(self) -> Iterator[TimeSplit]:
         """Iterate over materialized fold objects."""
@@ -137,7 +127,6 @@ class TemporalSimulation:
     def run(
         self,
         X: pd.DataFrame,
-        output_path: str | Path | None = None,
         title: str | None = None,
     ) -> SimulationResult:
         """Execute the configured simulation over ``X`` and materialize its folds.
@@ -145,8 +134,6 @@ class TemporalSimulation:
         Args:
             X: Input dataset as ``pandas.DataFrame``, ``numpy.ndarray`` or
                 ``polars.DataFrame``.
-            output_path: Optional filesystem path where the rendered HTML report should
-                be written.
             title: Optional title used in the returned report outputs.
 
         Returns:
@@ -166,8 +153,6 @@ class TemporalSimulation:
             time_col=self.time_col,
             title=title or "Jano simulation summary",
         )
-        if output_path is not None:
-            summary.write_html(output_path)
         return SimulationResult(
             frame=frame,
             splits=splits,

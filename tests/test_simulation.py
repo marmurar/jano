@@ -58,7 +58,7 @@ from jano.simulation import SimulationResult
 from jano.splits import TimeSplit
 from jano.types import SegmentBoundaries, SizeSpec
 
-def test_describe_simulation_returns_summary_with_html(tmp_path) -> None:
+def test_describe_simulation_returns_summary_with_chart_data() -> None:
     frame = build_frame(size=10)
     splitter = TemporalBacktestSplitter(
         time_col="timestamp",
@@ -78,40 +78,7 @@ def test_describe_simulation_returns_summary_with_html(tmp_path) -> None:
     assert summary.segment_order == ["train", "test"]
     assert isinstance(summary.chart_data, SimulationChartData)
     assert summary.chart_data.segment_stats["train"]["avg_rows"] == 4.0
-    assert "Fold 0" in summary.html
-    assert "Temporal partition simulation overview" in summary.html
-    assert "Segment profile" in summary.html
-
-    output_path = tmp_path / "simulation.html"
-    written_path = summary.write_html(output_path)
-    assert written_path == output_path
-    assert output_path.exists()
-    assert "Jano simulation summary" in output_path.read_text(encoding="utf-8")
-
-def test_describe_simulation_can_write_html_directly(tmp_path) -> None:
-    frame = build_frame(size=10)
-    splitter = TemporalBacktestSplitter(
-        time_col="timestamp",
-        partition=TemporalPartitionSpec(
-            layout="train_val_test",
-            train_size=4,
-            validation_size=2,
-            test_size=2,
-        ),
-        step=2,
-        strategy="expanding",
-    )
-
-    output_path = tmp_path / "report.html"
-    summary = splitter.describe_simulation(
-        frame,
-        output_path=output_path,
-        title="Walk-forward report",
-    )
-
-    assert output_path.exists()
-    assert summary.title == "Walk-forward report"
-    assert "validation" in summary.to_dict()["segment_order"]
+    assert summary.chart_data.folds[0]["segments"]["train"]["offset_pct"] == 0.0
     assert not summary.to_frame().empty
 
 def test_describe_simulation_rejects_empty_fold_configuration() -> None:
@@ -130,7 +97,7 @@ def test_describe_simulation_rejects_empty_fold_configuration() -> None:
     with pytest.raises(ValueError, match="did not produce any valid folds"):
         splitter.describe_simulation(frame)
 
-def test_describe_simulation_can_return_html_or_chart_data() -> None:
+def test_describe_simulation_can_return_chart_data() -> None:
     frame = build_frame(size=10)
     splitter = TemporalBacktestSplitter(
         time_col="timestamp",
@@ -144,11 +111,8 @@ def test_describe_simulation_can_return_html_or_chart_data() -> None:
         strategy="expanding",
     )
 
-    html = splitter.describe_simulation(frame, output="html", title="HTML only")
     chart_data = splitter.describe_simulation(frame, output="chart_data")
 
-    assert isinstance(html, str)
-    assert "HTML only" in html
     assert isinstance(chart_data, SimulationChartData)
     assert chart_data.segment_order == ["train", "validation", "test"]
     assert chart_data.segment_colors["validation"]
@@ -170,7 +134,7 @@ def test_describe_simulation_rejects_invalid_output_mode() -> None:
     with pytest.raises(ValueError, match="output must be one of"):
         splitter.describe_simulation(frame, output="svg")
 
-def test_temporal_simulation_runs_without_manual_iteration(tmp_path) -> None:
+def test_temporal_simulation_runs_without_manual_iteration() -> None:
     frame = build_frame(size=10)
     simulation = TemporalSimulation(
         time_col="timestamp",
@@ -183,15 +147,12 @@ def test_temporal_simulation_runs_without_manual_iteration(tmp_path) -> None:
         strategy="rolling",
     )
 
-    output_path = tmp_path / "simulation.html"
-    result = simulation.run(frame, output_path=output_path, title="Production month")
+    result = simulation.run(frame, title="Production month")
 
     assert isinstance(result, SimulationResult)
     assert result.total_folds == 4
     assert isinstance(result.summary, SimulationSummary)
     assert isinstance(result.chart_data, SimulationChartData)
-    assert "Production month" in result.html
-    assert output_path.exists()
     assert len(list(result.iter_splits())) == 4
     assert not result.to_frame().empty
     assert result.to_dict()["total_folds"] == 4

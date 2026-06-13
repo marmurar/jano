@@ -95,7 +95,7 @@ The current core supports:
 - Optional gaps before train, validation or test, plus a trailing gap after test.
 - Temporal semantics that let each segment use a different timestamp column for eligibility.
 - Input normalization for ``pandas``, ``numpy`` and optional ``polars`` data.
-- Simulation reporting as summary objects, HTML reports or plot-ready Python data.
+- Simulation reporting as summary objects or plot-ready Python data.
 - Retrain execution modes such as always, never, periodic or drift-based retraining.
 - A numpy-first temporal indexing path that trims overhead on large datasets.
 

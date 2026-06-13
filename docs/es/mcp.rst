@@ -102,7 +102,7 @@ Tools MCP disponibles
 
 ``run_walk_forward_simulation``
   Materializa una simulación walk-forward y devuelve un resumen compacto, metadata del motor
-  de particionado elegido y el HTML renderizado.
+  de particionado elegido y chart data listo para graficar.
 
 ``run_walk_forward_baseline_model``
   Ejecuta un baseline incorporado sobre los folds walk-forward y devuelve datos del runner:
