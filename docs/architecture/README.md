@@ -48,3 +48,4 @@ Jano is organized as a set of layers that should remain separable:
 - [ADR 0001: Keep the splitter model-agnostic](adrs/0001-keep-splitter-model-agnostic.md)
 - [ADR 0002: Keep runner reporting data-first](adrs/0002-runner-reporting-data-first.md)
 - [ADR 0003: Keep manual fold iteration public](adrs/0003-manual-fold-iteration-remains-public.md)
+- [ADR 0004: Add a temporal system runner above the core](adrs/0004-temporal-system-runner.md)
