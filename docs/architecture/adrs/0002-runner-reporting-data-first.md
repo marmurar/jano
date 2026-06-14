@@ -28,8 +28,8 @@ Runner reporting remains data-first.
 - `report_data()`
 - `to_dict()`
 
-Jano may keep simple HTML for simulation geometry inspection, but runner execution
-results should prioritize stable, plot-ready and JSON-ready data.
+Simulation geometry inspection also follows this data-first principle through
+`SimulationSummary` and `SimulationChartData`.
 
 ## Consequences
 
