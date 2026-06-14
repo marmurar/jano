@@ -38,6 +38,10 @@ Jano is organized as a set of layers that should remain separable:
 - Scenarios may be opinionated, but they must live above the runner and keep core contracts stable.
 - Agent-facing APIs should return stable, structured objects that are easy to inspect.
 
+## Use Cases
+
+- [Use cases beyond supervised ML](use-cases.md)
+
 ## Starting Points
 
 - [Spec: Walk-forward runner](specs/walk-forward-runner.md)
