@@ -11,6 +11,7 @@ from .mcp_tools import (
     monitor_decay,
     plan_walk_forward,
     preview_dataset,
+    run_simulation_campaign as _run_simulation_campaign,
     run_walk_forward,
     run_walk_forward_baseline,
     suggest_partition_policy,
@@ -288,6 +289,23 @@ def build_server():
             validation_time_col=validation_time_col,
             test_time_col=test_time_col,
             title=title,
+            preview_rows=preview_rows,
+        )
+
+    @mcp.tool()
+    def run_simulation_campaign(
+        dataset_path: str,
+        variants: list[dict],
+        dataset_format: str = "auto",
+        max_workers: int | None = None,
+        preview_rows: int = 20,
+    ) -> dict:
+        """Run several simulation variants in parallel and compare them."""
+        return _run_simulation_campaign(
+            dataset_path,
+            variants=variants,
+            dataset_format=dataset_format,
+            max_workers=max_workers,
             preview_rows=preview_rows,
         )
 

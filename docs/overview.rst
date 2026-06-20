@@ -4,7 +4,7 @@ Overview
 Why Jano exists
 ---------------
 
-Jano is designed to structure, execute and analyze temporal simulations for machine learning systems operating on time-correlated data. The goal is not only to split a dataset once, but to create a disciplined way to reason about how machine learning systems behave when chronology, retraining cadence and data availability are treated as real constraints.
+Jano empirically estimates the expected loss of an update policy over a sequential process. The goal is not only to split a dataset once, but to create a disciplined way to reason about how systems behave when order, update cadence and data availability are treated as real constraints.
 
 In many real systems, data is naturally organized across entities and time. A more faithful representation looks like:
 

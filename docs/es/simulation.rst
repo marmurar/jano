@@ -175,6 +175,52 @@ Los modos shorthand de retraining son:
 - ``retrain="never"`` o ``retrain=False`` para entrenar una vez y reutilizar el mismo modelo
 - ``retrain="periodic"`` más ``retrain_interval=K`` para refittear cada ``K`` folds
 
+Campañas de simulación
+----------------------
+
+Si querés comparar varias geometrías temporales sobre el mismo dataset, podés
+encapsularlas en una ``SimulationCampaign`` y correr las variantes en paralelo.
+Esto sirve para análisis de sensibilidad, barridos de cantidad de folds y
+calibración de policies. Cada variante sigue siendo una simulación independiente;
+Jano solo paraleliza la ejecución y agrega los resultados.
+
+.. code-block:: python
+
+   from jano import SimulationCampaign, SimulationVariant, TemporalPartitionSpec, TemporalSimulation
+
+   campaign = SimulationCampaign(
+       [
+           SimulationVariant(
+               name="daily",
+               simulation=TemporalSimulation(
+                   time_col="timestamp",
+                   partition=TemporalPartitionSpec(
+                       layout="train_test",
+                       train_size="30D",
+                       test_size="1D",
+                   ),
+                   step="1D",
+               ),
+           ),
+           SimulationVariant(
+               name="weekly",
+               simulation=TemporalSimulation(
+                   time_col="timestamp",
+                   partition=TemporalPartitionSpec(
+                       layout="train_test",
+                       train_size="42D",
+                       test_size="7D",
+                   ),
+                   step="7D",
+               ),
+           ),
+       ]
+   )
+
+   batch = campaign.run(frame, max_workers=2)
+   print(batch.to_frame())
+   print(batch.result_for("daily").summary.to_frame().head())
+
 Perfiles de evaluación
 ----------------------
 

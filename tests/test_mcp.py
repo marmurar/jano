@@ -62,6 +62,7 @@ from jano.mcp_tools import (
     monitor_decay,
     plan_walk_forward,
     preview_dataset,
+    run_simulation_campaign,
     run_walk_forward,
     run_walk_forward_baseline,
     suggest_partition_policy,
@@ -218,6 +219,34 @@ def test_mcp_run_walk_forward_returns_summary_and_chart_data(tmp_path) -> None:
     }
     assert len(result["summary_preview"]) == 3
     assert "segment_stats" in result["chart_data"]
+
+
+def test_mcp_run_simulation_campaign_compares_variants(tmp_path) -> None:
+    path = write_csv_frame(tmp_path, build_frame(size=30))
+
+    result = run_simulation_campaign(
+        path,
+        variants=[
+            {
+                "name": "daily",
+                "partition": {"layout": "train_test", "train_size": "8D", "test_size": "2D"},
+                "step": "2D",
+                "time_col": "timestamp",
+            },
+            {
+                "name": "weekly",
+                "partition": {"layout": "train_test", "train_size": "10D", "test_size": "3D"},
+                "step": "3D",
+                "time_col": "timestamp",
+            },
+        ],
+        max_workers=2,
+    )
+
+    assert result["summary"]["variant_count"] == 2
+    assert result["summary"]["total_folds"] >= 2
+    assert [row["variant"] for row in result["variants"]] == ["daily", "weekly"]
+    assert result["runs_preview"][0]["variant"] == "daily"
 
 def test_mcp_run_walk_forward_baseline_returns_runner_data(tmp_path) -> None:
     path = write_csv_frame(tmp_path, build_frame(size=18))
@@ -639,6 +668,7 @@ def test_mcp_server_builds_tools_and_main_runs(monkeypatch) -> None:
     monkeypatch.setattr(mcp_server_module, "compare_partition_strategies", lambda *args, **kwargs: {"kind": "compare_partitions", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "plan_walk_forward", lambda *args, **kwargs: {"kind": "plan", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "run_walk_forward", lambda *args, **kwargs: {"kind": "run", "args": args, "kwargs": kwargs})
+    monkeypatch.setattr(mcp_server_module, "_run_simulation_campaign", lambda *args, **kwargs: {"kind": "campaign", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "run_walk_forward_baseline", lambda *args, **kwargs: {"kind": "baseline", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "compare_retrain_policies", lambda *args, **kwargs: {"kind": "compare", "args": args, "kwargs": kwargs})
     monkeypatch.setattr(mcp_server_module, "find_train_history_window", lambda *args, **kwargs: {"kind": "history", "args": args, "kwargs": kwargs})
@@ -662,6 +692,10 @@ def test_mcp_server_builds_tools_and_main_runs(monkeypatch) -> None:
     )["kind"] == "compare_partitions"
     assert tools["plan_walk_forward_simulation"]("data.csv", {"layout": "train_test"}, "1D", "ts")["kind"] == "plan"
     assert tools["run_walk_forward_simulation"]("data.csv", {"layout": "train_test"}, "1D", "ts")["kind"] == "run"
+    assert tools["run_simulation_campaign"](
+        "data.csv",
+        [{"name": "daily", "partition": {"layout": "train_test"}, "step": "1D", "time_col": "ts"}],
+    )["kind"] == "campaign"
     assert tools["run_walk_forward_baseline_model"](
         "data.csv",
         {"layout": "train_test"},

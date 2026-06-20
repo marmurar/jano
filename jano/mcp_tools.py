@@ -8,6 +8,7 @@ import numpy as np
 import pandas as pd
 
 from ._serialization import _frame_records, _json_ready, _json_ready_object
+from .campaigns import SimulationCampaign, SimulationVariant
 from .policies import PerformanceDecayPolicy, TrainGrowthPolicy
 from .runner import DriftBasedRetrain, WalkForwardRunner
 from .simulation import TemporalSimulation
@@ -604,6 +605,81 @@ def run_walk_forward(
         "engine": result.engine_metadata.to_dict(),
         "summary_preview": summary_frame.head(preview_rows).to_dict(orient="records"),
         "chart_data": result.chart_data.to_dict(),
+    }
+
+
+def run_simulation_campaign(
+    dataset_path: str,
+    *,
+    variants: list[dict[str, Any]],
+    dataset_format: str = "auto",
+    max_workers: int | None = None,
+    preview_rows: int = 20,
+) -> dict[str, Any]:
+    """Run several walk-forward simulations in parallel and compare them.
+
+    Each variant is a compact simulation specification that must include ``name``,
+    ``partition``, ``step`` and ``time_col``. The rest of the fields mirror
+    ``run_walk_forward``.
+    """
+
+    if not variants:
+        raise ValueError("variants must not be empty")
+
+    frame = load_dataset_frame(dataset_path, dataset_format=dataset_format)
+    campaign_variants: list[SimulationVariant] = []
+    for index, variant in enumerate(variants):
+        if not isinstance(variant, dict):
+            raise ValueError("Each variant must be a dictionary")
+        name = str(variant.get("name") or f"variant_{index}")
+        if "partition" not in variant:
+            raise ValueError(f"variant '{name}' is missing partition")
+        if "step" not in variant:
+            raise ValueError(f"variant '{name}' is missing step")
+        if "time_col" not in variant:
+            raise ValueError(f"variant '{name}' is missing time_col")
+        simulation = _build_simulation(
+            partition=variant["partition"],
+            step=variant["step"],
+            time_col=variant.get("time_col"),
+            strategy=variant.get("strategy", "rolling"),
+            allow_partial=bool(variant.get("allow_partial", False)),
+            engine=str(variant.get("engine", "auto")),
+            start_at=variant.get("start_at"),
+            end_at=variant.get("end_at"),
+            max_folds=variant.get("max_folds"),
+            order_col=variant.get("order_col"),
+            train_time_col=variant.get("train_time_col"),
+            validation_time_col=variant.get("validation_time_col"),
+            test_time_col=variant.get("test_time_col"),
+        )
+        campaign_variants.append(
+            SimulationVariant(
+                name=name,
+                simulation=simulation,
+                title=variant.get("title"),
+                metadata=dict(variant.get("metadata") or {}),
+            )
+        )
+
+    result = SimulationCampaign(campaign_variants).run(frame, max_workers=max_workers)
+    summary_frame = result.to_frame()
+    return {
+        "dataset_path": str(Path(dataset_path)),
+        "summary": {
+            "variant_count": int(len(campaign_variants)),
+            "total_folds": int(summary_frame["total_folds"].sum()) if not summary_frame.empty else 0,
+            "max_workers": max_workers,
+        },
+        "warnings": [],
+        "recommendations": [
+            "Use the comparison table to decide which partition or cadence to keep.",
+            "Run the chosen variant again on the Python API if you need a full object graph.",
+        ],
+        "variant_count": int(len(campaign_variants)),
+        "max_workers": max_workers,
+        "variants": summary_frame.to_dict(orient="records"),
+        "runs_preview": summary_frame.head(preview_rows).to_dict(orient="records"),
     }
 
 

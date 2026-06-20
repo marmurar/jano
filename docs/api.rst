@@ -54,6 +54,21 @@ Main workflow
    :undoc-members:
    :no-index:
 
+.. autoclass:: jano.campaigns.SimulationVariant
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.campaigns.SimulationCampaign
+   :members:
+   :undoc-members:
+   :no-index:
+
+.. autoclass:: jano.campaigns.BatchSimulationResult
+   :members:
+   :undoc-members:
+   :no-index:
+
 .. autoclass:: jano.runner.WalkForwardRunner
    :members:
    :undoc-members:

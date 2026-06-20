@@ -22,6 +22,7 @@ import jano.runner as runner_module
 import jano.validation as validation_module
 from conftest import build_frame, write_csv_frame, SimpleLinearRegressor, MeanRegressor
 from jano import (
+    BatchSimulationResult,
     AlwaysRetrain,
     DriftBasedRetrain,
     DriftMonitoringPolicy,
@@ -36,6 +37,7 @@ from jano import (
     RollingTrainHistoryPolicy,
     RollingTrainHistoryResult,
     SimulationPlan,
+    SimulationCampaign,
     SystemEvaluationResult,
     SystemRunResult,
     SystemUpdateResult,
@@ -44,6 +46,7 @@ from jano import (
     TemporalSystemRunner,
     TemporalSemanticsSpec,
     TemporalSimulation,
+    SimulationVariant,
     TrainHistoryPolicy,
     TrainGrowthPolicy,
     UpdateableSystem,
@@ -80,3 +83,9 @@ def test_system_runner_surface_is_exported() -> None:
     assert SystemUpdateResult.__name__ == "SystemUpdateResult"
     assert SystemEvaluationResult.__name__ == "SystemEvaluationResult"
     assert UpdateableSystem.__name__ == "UpdateableSystem"
+
+
+def test_campaign_surface_is_exported() -> None:
+    assert SimulationVariant.__name__ == "SimulationVariant"
+    assert SimulationCampaign.__name__ == "SimulationCampaign"
+    assert BatchSimulationResult.__name__ == "BatchSimulationResult"

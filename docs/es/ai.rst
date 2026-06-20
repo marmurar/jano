@@ -64,6 +64,8 @@ Usa MCP cuando un agente debe ejecutar operaciones sobre archivos locales:
 - previsualizar un dataset local,
 - construir un plan walk-forward,
 - correr una simulación walk-forward,
+- correr varias variantes de simulación en paralelo con
+  ``run_simulation_campaign``,
 - ejecutar un baseline simple sobre los mismos folds con
   ``run_walk_forward_baseline_model``,
 - comparar policies de reentrenamiento con
@@ -79,6 +81,9 @@ La tool de baseline sirve para chequeos rápidos con ``model="mean"`` en
 regresión numérica o ``model="majority_class"`` en clasificación. Para modelos
 productivos conviene escribir Python con ``WalkForwardRunner`` y controlar
 explícitamente features, estimadores y métricas.
+
+Usá ``run_simulation_campaign`` cuando la pregunta sea comparar varias
+hipótesis de particionado en paralelo, no coordinar múltiples agentes.
 
 Las tools de studies baseline sirven para triage operativo y exploración de
 hipótesis temporales antes de escribir código de modelo propio.

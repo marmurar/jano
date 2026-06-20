@@ -21,6 +21,7 @@ from .online import (
     PartialFitUpdateStrategy,
     RefitUpdateStrategy,
 )
+from .campaigns import BatchSimulationResult, SimulationCampaign, SimulationVariant
 from .planning import PartitionPlan, PlannedFold, SimulationPlan
 from .policies import (
     PerformanceDecayPolicy,
@@ -89,6 +90,7 @@ __all__ = [
     "PartialFitUpdateStrategy",
     "PeriodicRetrain",
     "PlannedFold",
+    "BatchSimulationResult",
     "PredictionBandContext",
     "PredictionBandScenarioResult",
     "RankingProfile",
@@ -101,10 +103,12 @@ __all__ = [
     "RollingTrainHistoryResult",
     "SegmentBoundaries",
     "SimulationChartData",
+    "SimulationCampaign",
     "SimulationPlan",
     "SimulationResult",
     "SimulationSummary",
     "SizeSpec",
+    "SimulationVariant",
     "SystemEvaluationResult",
     "SystemRunResult",
     "SystemUpdateResult",

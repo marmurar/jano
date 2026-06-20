@@ -13,7 +13,7 @@
 [![PyPI Downloads](https://static.pepy.tech/badge/jano/month)](https://pepy.tech/projects/jano)
 [![License](https://img.shields.io/pypi/l/jano.svg)](https://github.com/marmurar/jano/blob/master/LICENSE.txt)
 
-Jano is a Python library for defining temporal partitions and backtesting schemes over time-correlated datasets.
+Jano empirically estimates the expected loss of an update policy over a sequential process.
 
 The missing layer between ML models and production temporal validation.
 
@@ -194,6 +194,48 @@ print(result.chart_data.segment_stats)
 ```
 
 By default, `engine="auto"` lets Jano choose the safest fast path for partitioning:
+
+## Example: compare simulation variants in parallel
+
+When you want to sweep a few temporal hypotheses over the same dataset, wrap
+them in a `SimulationCampaign` and run them in parallel:
+
+```python
+from jano import SimulationCampaign, SimulationVariant, TemporalPartitionSpec, TemporalSimulation
+
+campaign = SimulationCampaign(
+    [
+        SimulationVariant(
+            name="daily",
+            simulation=TemporalSimulation(
+                time_col="timestamp",
+                partition=TemporalPartitionSpec(
+                    layout="train_test",
+                    train_size="30D",
+                    test_size="1D",
+                ),
+                step="1D",
+            ),
+        ),
+        SimulationVariant(
+            name="weekly",
+            simulation=TemporalSimulation(
+                time_col="timestamp",
+                partition=TemporalPartitionSpec(
+                    layout="train_test",
+                    train_size="42D",
+                    test_size="7D",
+                ),
+                step="7D",
+            ),
+        ),
+    ]
+)
+
+batch = campaign.run(frame, max_workers=2)
+print(batch.to_frame())
+print(batch.result_for("daily").summary.to_frame().head())
+```
 
 ## Example: run a model over the walk-forward policy
 
@@ -735,6 +777,7 @@ Current MCP tools:
 - `compare_temporal_partition_strategies`
 - `plan_walk_forward_simulation`
 - `run_walk_forward_simulation`
+- `run_simulation_campaign`
 - `run_walk_forward_baseline_model`
 - `compare_retrain_policy_baselines`
 - `find_train_history_window_baseline`
@@ -770,13 +813,13 @@ Example MCP client configuration:
 }
 ```
 
-The MCP layer is intentionally opinionated: it exposes dataset inspection, policy suggestions, plan validation, walk-forward simulation, baseline-model execution and baseline temporal studies first, while the full Python library remains available when you need custom composition. The fastest first call for an agent is usually `inspect_and_recommend_local_dataset`, which bundles inspection and a conservative starting policy in one response.
+The MCP layer is intentionally opinionated: it exposes dataset inspection, policy suggestions, plan validation, walk-forward simulation, campaign sweeps, baseline-model execution and baseline temporal studies first, while the full Python library remains available when you need custom composition. The fastest first call for an agent is usually `inspect_and_recommend_local_dataset`, which bundles inspection and a conservative starting policy in one response.
 
 The MCP server does not attempt to transport arbitrary Python systems or
 callables. If you need `TemporalSystemRunner`, `WalkForwardRunner` with custom
 metrics, or project-owned update logic such as reindexing a RAG system or
 refreshing prompt sets, use the Python API directly and keep MCP for dataset
-inspection, planning and baseline studies.
+inspection, planning, campaign sweeps and baseline studies.
 
 This is meant for MCP-aware coding assistants such as Claude Code, Claude Desktop, Cursor, Codex runtimes with MCP support, and other local agent environments. The server runs locally and reads only the file paths you provide to its tools; Jano does not upload datasets anywhere by itself.
 

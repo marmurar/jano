@@ -181,6 +181,52 @@ The shorthand retrain modes are:
 - ``retrain="never"`` or ``retrain=False`` to fit once and reuse the same model
 - ``retrain="periodic"`` plus ``retrain_interval=K`` to refit every ``K`` folds
 
+Simulation campaigns
+--------------------
+
+If you want to compare multiple temporal geometries over the same dataset,
+bundle them into a ``SimulationCampaign`` and run the variants in parallel.
+This is useful for sensitivity analysis, fold-count sweeps and policy
+calibration. Each variant remains an independent simulation; Jano only
+parallelizes the execution and aggregates the results.
+
+.. code-block:: python
+
+   from jano import SimulationCampaign, SimulationVariant, TemporalPartitionSpec, TemporalSimulation
+
+   campaign = SimulationCampaign(
+       [
+           SimulationVariant(
+               name="daily",
+               simulation=TemporalSimulation(
+                   time_col="timestamp",
+                   partition=TemporalPartitionSpec(
+                       layout="train_test",
+                       train_size="30D",
+                       test_size="1D",
+                   ),
+                   step="1D",
+               ),
+           ),
+           SimulationVariant(
+               name="weekly",
+               simulation=TemporalSimulation(
+                   time_col="timestamp",
+                   partition=TemporalPartitionSpec(
+                       layout="train_test",
+                       train_size="42D",
+                       test_size="7D",
+                   ),
+                   step="7D",
+               ),
+           ),
+       ]
+   )
+
+   batch = campaign.run(frame, max_workers=2)
+   print(batch.to_frame())
+   print(batch.result_for("daily").summary.to_frame().head())
+
 Evaluation profiles
 -------------------
 

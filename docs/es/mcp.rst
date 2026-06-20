@@ -104,6 +104,11 @@ Tools MCP disponibles
   Materializa una simulación walk-forward y devuelve un resumen compacto, metadata del motor
   de particionado elegido y chart data listo para graficar.
 
+``run_simulation_campaign``
+  Ejecuta varias variantes de simulación walk-forward en paralelo y devuelve
+  una tabla comparativa compacta. Usala cuando quieras barrer hipótesis de
+  particionado, no coordinar múltiples agentes.
+
 ``run_walk_forward_baseline_model``
   Ejecuta un baseline incorporado sobre los folds walk-forward y devuelve datos del runner:
   resumen agregado, preview de folds, trayectoria de métricas, eventos de reentrenamiento
@@ -185,9 +190,10 @@ quedan en código del usuario.
 La misma frontera aplica a ``TemporalSystemRunner``. MCP sirve muy bien para
 inspección de datasets, planning de policies y estudios baseline, pero no para
 transportar objetos Python arbitrarios que implementan ``UpdateableSystem``. Si
-el proyecto necesita simular un refresh de RAG, una actualización de prompts o
-un job de fine-tuning custom, esa lógica debe quedar en Python y MCP puede
-quedar como capa de inspect -> suggest -> validate -> plan alrededor de eso.
+el proyecto necesita simular un refresh de RAG, una actualización de prompts,
+un job de fine-tuning custom o una campaña de variantes de particionado, esa
+lógica debe quedar en Python y MCP puede quedar como capa de inspect ->
+suggest -> validate -> plan -> compare alrededor de eso.
 
 Ejemplos de estudios temporales
 -------------------------------

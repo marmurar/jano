@@ -236,6 +236,7 @@ Available MCP tools cover:
 - policy geometry comparisons with `compare_temporal_partition_strategies`
 - fold planning with `plan_walk_forward_simulation`
 - simulation execution with `run_walk_forward_simulation`
+- parallel simulation sweeps with `run_simulation_campaign`
 - simple baseline-model execution with `run_walk_forward_baseline_model`
 - retraining policy comparison with `compare_retrain_policy_baselines`
 - fixed-test train-history search with `find_train_history_window_baseline`
@@ -254,6 +255,9 @@ and `model="majority_class"` for classification targets. For production estimato
 write Python with `WalkForwardRunner` or `TemporalSystemRunner` so the project
 controls feature engineering, model construction, update logic and custom
 metrics explicitly.
+
+Use `run_simulation_campaign` when the question is not a single fold geometry but
+several competing simulation hypotheses that should be compared in parallel.
 
 Use the baseline study tools when the agent needs fast evidence about temporal
 hypotheses before writing custom model code. These MCP tools are for operational

@@ -104,6 +104,11 @@ Available MCP tools
   Materialize a walk-forward simulation and return a compact summary, selected
   partition-engine metadata and plot-ready chart data.
 
+``run_simulation_campaign``
+  Run several walk-forward simulation variants in parallel and return a compact
+  comparison table. Use this when you want to sweep partition hypotheses rather
+  than coordinate multiple agents.
+
 ``run_walk_forward_baseline_model``
   Execute a built-in baseline model over the walk-forward folds and return
   runner data: aggregate summary, fold preview, metric trajectory, retraining
@@ -185,9 +190,10 @@ construction, feature engineering and custom metrics in user code.
 The same boundary applies to ``TemporalSystemRunner``. MCP is a good fit for
 dataset inspection, policy planning and baseline temporal studies, but not for
 shipping arbitrary Python objects that implement ``UpdateableSystem``. If the
-project needs to simulate a RAG refresh, a prompt-set update or a custom
-fine-tuning job, keep that logic in Python and use MCP only for the
-inspect -> suggest -> validate -> plan workflow around it.
+project needs to simulate a RAG refresh, a prompt-set update, a custom
+fine-tuning job or a campaign of partition variants, keep that logic in Python
+and use MCP only for the inspect -> suggest -> validate -> plan -> compare
+workflow around it.
 
 Temporal study examples
 -----------------------

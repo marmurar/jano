@@ -12,9 +12,9 @@ Jano
 .. raw:: html
 
    <div class="landing-hero">
-     <p class="landing-lead">
-       Temporal Simulation and Backtesting Toolkit for Time-Dependent Machine Learning Systems
-     </p>
+   <p class="landing-lead">
+       A framework for simulation over ordered observations
+   </p>
      <p class="landing-tagline">
        The missing layer between ML models and production temporal validation.
      </p>
@@ -48,7 +48,7 @@ Jano
 
       A visual summary of how Jano lays out temporal partitions, folds and reporting across time.
 
-Jano is a Python toolkit designed to structure, execute and analyze temporal simulations for machine learning systems operating on time-correlated data. It provides a formal framework to define time-aware partitioning policies, run walk-forward evaluations, execute models under explicit retraining rules and generate auditable reports that reflect how systems behave under realistic, production-like temporal dynamics.
+Jano empirically estimates the expected loss of an update policy over a sequential process. It provides a formal framework to define ordered partitions, run walk-forward evaluations, execute systems under explicit update rules and generate auditable reports that reflect how behavior changes over successive observations.
 
 Unlike traditional random splits that implicitly assume i.i.d. data, Jano treats chronology as a first-class constraint. It is built for scenarios where leakage must be tightly controlled and where system performance is expected to evolve over time because of drift, retraining cycles or changing data distributions.
 
