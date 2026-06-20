@@ -663,23 +663,16 @@ def run_simulation_campaign(
         )
 
     result = SimulationCampaign(campaign_variants).run(frame, max_workers=max_workers)
-    summary_frame = result.to_frame()
+    payload = result.to_dict()
     return {
         "dataset_path": str(Path(dataset_path)),
-        "summary": {
-            "variant_count": int(len(campaign_variants)),
-            "total_folds": int(summary_frame["total_folds"].sum()) if not summary_frame.empty else 0,
-            "max_workers": max_workers,
-        },
+        **payload,
         "warnings": [],
         "recommendations": [
             "Use the comparison table to decide which partition or cadence to keep.",
             "Run the chosen variant again on the Python API if you need a full object graph.",
         ],
-        "variant_count": int(len(campaign_variants)),
-        "max_workers": max_workers,
-        "variants": summary_frame.to_dict(orient="records"),
-        "runs_preview": summary_frame.head(preview_rows).to_dict(orient="records"),
+        "runs_preview": result.to_frame().head(preview_rows).to_dict(orient="records"),
     }
 
 

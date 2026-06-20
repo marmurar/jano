@@ -28,6 +28,14 @@ class BatchSimulationResult:
     results: list[SimulationResult]
     summary: pd.DataFrame
     max_workers: int | None = None
+    _result_index: dict[str, int] = field(init=False, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "_result_index",
+            {variant.name: index for index, variant in enumerate(self.variants)},
+        )
 
     def to_frame(self) -> pd.DataFrame:
         """Return the per-variant comparison table."""
@@ -60,10 +68,10 @@ class BatchSimulationResult:
 
     def result_for(self, name: str) -> SimulationResult:
         """Return the simulation result associated with ``name``."""
-        for variant, result in zip(self.variants, self.results):
-            if variant.name == name:
-                return result
-        raise KeyError(f"Unknown simulation variant: {name}")
+        try:
+            return self.results[self._result_index[name]]
+        except KeyError as exc:
+            raise KeyError(f"Unknown simulation variant: {name}") from exc
 
 
 class SimulationCampaign:
