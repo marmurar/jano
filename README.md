@@ -13,6 +13,13 @@
 [![PyPI Downloads](https://static.pepy.tech/badge/jano/month)](https://pepy.tech/projects/jano)
 [![License](https://img.shields.io/pypi/l/jano.svg)](https://github.com/marmurar/jano/blob/master/LICENSE.txt)
 
+> "Para siempre cerraste alguna puerta  
+> y hay un espejo que te aguarda en vano;  
+> la encrucijada te parece abierta  
+> y la vigila, cuadrifronte, Jano."
+>
+> Borges, J. L. (1960). *Límites*. En *El hacedor*. Emecé Editores.
+
 Jano empirically estimates the expected loss of an update policy over a sequential process.
 
 The missing layer between ML models and production temporal validation.
