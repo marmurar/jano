@@ -96,6 +96,61 @@ def test_partition_plan_can_select_iterations_and_materialize() -> None:
     assert plan.to_frame()["iteration"].tolist() == [1, 3]
     assert [split.fold for split in splits] == [1, 3]
 
+
+@pytest.mark.parametrize(
+    ("train_size", "test_size", "step"),
+    [
+        (3, 2, 2),
+        (0.3, 0.2, 0.2),
+    ],
+)
+@pytest.mark.parametrize("backend", ["pandas", "numpy", "polars"])
+def test_positional_plan_materialization_matches_direct_splits(
+    train_size,
+    test_size,
+    step,
+    backend,
+) -> None:
+    frame = (
+        build_frame(size=10)
+        .iloc[[5, 0, 7, 1, 8, 2, 9, 3, 6, 4]]
+        .reset_index(drop=True)
+    )
+    frame.loc[[0, 1], "timestamp"] = pd.Timestamp("2024-01-01")
+    if backend == "numpy":
+        data = frame.to_records(index=False)
+    elif backend == "polars":
+        data = pl.DataFrame(frame)
+    else:
+        data = frame
+
+    splitter = TemporalBacktestSplitter(
+        time_col="timestamp",
+        partition=TemporalPartitionSpec(
+            layout="train_test",
+            train_size=train_size,
+            test_size=test_size,
+        ),
+        step=step,
+        strategy="rolling",
+    )
+
+    direct = list(splitter.iter_splits(data))
+    materialized = splitter.plan(data).materialize()
+
+    assert len(materialized) == len(direct)
+    for direct_split, materialized_split in zip(direct, materialized):
+        assert materialized_split.fold == direct_split.fold
+        assert materialized_split.boundaries == direct_split.boundaries
+        assert materialized_split.metadata == direct_split.metadata
+        assert materialized_split.segments.keys() == direct_split.segments.keys()
+        for segment_name in direct_split.segments:
+            np.testing.assert_array_equal(
+                materialized_split.segments[segment_name],
+                direct_split.segments[segment_name],
+            )
+
+
 def test_partition_plan_can_select_from_iteration() -> None:
     frame = build_frame(size=12)
     splitter = TemporalBacktestSplitter(

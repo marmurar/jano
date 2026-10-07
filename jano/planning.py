@@ -174,16 +174,37 @@ class PartitionPlan:
         indexer = TimeIndexer(engine=engine, semantics=self.temporal_semantics)
         splits: list[TimeSplit] = []
         for fold in self.folds:
-            segments = {
-                name: indexer.slice_between_for_segment(name, boundary.start, boundary.end)
-                for name, boundary in fold.boundaries.items()
+            positions = fold.metadata.get("positions")
+            # Positional boundaries are descriptive; stored positions identify the rows.
+            if self.size_kind in {"rows", "fraction"} and isinstance(positions, Mapping):
+                segments = {
+                    name: indexer.slice_positional(*positions[name])
+                    for name in fold.boundaries
+                }
+            else:
+                segments = {
+                    name: indexer.slice_between_for_segment(
+                        name,
+                        boundary.start,
+                        boundary.end,
+                    )
+                    for name, boundary in fold.boundaries.items()
+                }
+            metadata = {
+                key: value
+                for key, value in fold.metadata.items()
+                if key != "positions"
             }
             splits.append(
                 TimeSplit(
                     fold=fold.iteration,
                     segments=segments,
                     boundaries=fold.boundaries,
-                    metadata={**fold.metadata, "strategy": self.strategy, "size_kind": self.size_kind},
+                    metadata={
+                        **metadata,
+                        "strategy": self.strategy,
+                        "size_kind": self.size_kind,
+                    },
                 )
             )
         return splits
